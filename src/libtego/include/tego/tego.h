@@ -126,8 +126,8 @@ void tego_v3_onion_service_id_from_string(
     tego_error_t** error);
 
 /*
- * Serializes out a service id object as a null terminated string
- * string to provided character buffer.
+ * Serializes out a service id object as a null-terminated utf8 string
+ * to provided character buffer.
  *
  * @param serviceId : v3 onion service id object to serialize
  * @param out_serviceIdString : destination buffer for string
@@ -805,15 +805,49 @@ void tego_context_get_tor_bootstrap_status(
 
 // milliseconds since 1970-01-01T00:00:00 utc.
 typedef uint64_t tego_time_t;
-// unique (per user) identifier
+// unique (per user) message identifier
 typedef uint64_t tego_message_id_t;
+// unique (per user) attachement identifier
+typedef uint64_t tego_attachment_id_t;
+// struct for file hash
+typedef struct tego_file_hash tego_file_hash_t;
+
+/*
+ * Calculates the number of bytes needed to serialize a file hash to
+ * a null-terminated utf8 string
+ *
+ * @param fileHash : file hash object to serialize
+ * @param error : filled on error
+ * @return : the number of bytes required to serialize fileHash including
+ *  the null-terinator
+ */
+size_t tego_file_hash_string_size(
+    tego_file_hash_t const* fileHash,
+    tego_error_t** error);
+
+/*
+ * Serializes out a file hash as a null-terminated utf8 string to
+ * provided character buffer.
+ *
+ * @param fileHash : file hash object to serialize
+ * @param out_hashString : destination buffer to write string
+ * @param hashStringSize : size of the out_hashString buffer in bytes
+ * @param error : filled on error
+ * @return : number of bytes written to out_hashString including the
+ *  null-terminator
+ */
+size_t tego_file_hash_to_string(
+    tego_file_hash_t const* fileHash,
+    char* out_hashString,
+    size_t hashStringSize,
+    tego_error_t** error);
 
 /*
  * Send a text message from the host to the given user
  *
  * @param context : the current tego context
  * @param user : the user to send a message to
- * @param mesage : utf8 text message to send
+ * @param message : utf8 text message to send
  * @param messageLength : length of message not including null-terminator
  * @param out_id : filled with assigned message id for callbacks
  * @param error : filled on error
@@ -824,6 +858,48 @@ void tego_context_send_message(
     const char* message,
     size_t messageLength,
     tego_message_id_t* out_id,
+    tego_error_t** error);
+
+/*
+ * Request to send a file to the given user
+ *
+ * @param context : the current tego context
+ * @param user : the user to send a file to
+ * @param filePath : utf8 path to file to send
+ * @param filePathLength : length of filePath not including null-terminator
+ * @param out_id : filled with assigned attachment id for callbacks
+ * @param error : filled on error
+ */
+void tego_context_send_attachement_request(
+    tego_context* context,
+    tego_user_id_t const*  user,
+    char const* filePath,
+    size_t filePathLength,
+    tego_attachment_id_t* out_id,
+    tego_error_t** error);
+
+typedef enum
+{
+    tego_attachment_acknowledge_accept, // proceed with a file transfer
+    tego_attachment_acknowledge_reject, // reject the file transfer
+} tego_attachment_acknowledge_t;
+
+/*
+ * Acknowledges a request to send an attachment
+ *
+ * @param context : the current tego context
+ * @param user : the user that sent the attachment request
+ * @param response : how to respond to the request
+ * @param destPath : optional, destination to save the attachment
+ * @param destPathLength : length of destPath not including the null-terminator
+ * @param error : filled on error
+ */
+void tego_context_acknowledge_attachment_request(
+    tego_context* context,
+    tego_user_id_t const* user,
+    tego_attachment_acknowledge_t response,
+    char const* destPath,
+    size_t destPathLength,
     tego_error_t** error);
 
 /*
@@ -1042,7 +1118,7 @@ typedef void (*tego_message_received_callback_t)(
     size_t messageLength);
 
 /*
- * Callback fired when a chat message is received an acknowledge
+ * Callback fired when a chat message is received and acknowledge
  * by the recipient
  *
  * @param context : the current tego context
@@ -1055,6 +1131,58 @@ typedef void (*tego_message_acknowledged_callback_t)(
     const tego_user_id_t* userId,
     tego_message_id_t messageId,
     tego_bool_t messageAccepted);
+
+
+/*
+ * Callback fired when a user wants to send recipient an attachement
+ *
+ * @param context : the current tego context
+ * @param sender : the user sending the request
+ * @param attachmentId : id of the attachment received
+ * @param attachmentName : name of the file user wants to send
+ * @param attachmentNameLength : length of attachmentName not including the null-terminator
+ * @param attachmentSize : size of the attachment in bytes
+ * @param fileHash : hash of the attachment user
+ */
+typedef void (*tego_attachment_request_received_callback_t)(
+    tego_context* context,
+    tego_user_id_t const* sender,
+    tego_attachment_id_t attachmentId,
+    char const* attachmentName,
+    size_t attachmentNameLength,
+    uint64_t attachmentSize,
+    tego_file_hash_t const* fileHash);
+
+/*
+ * Callback fired when a user acknowledges our attachment request
+ *
+ * @param conext : the current tego cotext
+ * @param receiver : the user acknowledging our request
+ * @param attachmentId : the id of the attachment that is being acknowledged
+ * @param acknowledgemnt : how the recipient acknowledged our request (accept or reject)
+ */
+typedef void (*tego_attachement_request_acknowledged_callback_t)(
+    tego_context_t* context,
+    const tego_user_id_t* receiver,
+    tego_attachment_id_t attachmentId,
+    tego_attachment_acknowledge_t acknowledgement);
+
+/*
+ * Callback fired when attachment send or receive progress has changed
+ * This callback is fired for both the sender and the receiver
+ *
+ * @param context : the current tego context
+ * @param userId : the user sending/receiving the attachment
+ * @param attachmentId : the attachment associated with this callback
+ * @param bytesComplete : number of bytes sent/received
+ * @param bytesTotal : the total size of the attachment
+ */
+typedef void(*tego_attachment_progress_callback_t)(
+    tego_context_t* context,
+    const tego_user_id_t* userId,
+    tego_attachment_id_t attachmentId,
+    uint64_t bytesComplete,
+    uint64_t bytesTotal);
 
 /*
  * Callback fired when a user's status changes
@@ -1143,6 +1271,21 @@ void tego_context_set_message_acknowledged_callback(
     tego_message_acknowledged_callback_t,
     tego_error_t** error);
 
+void tego_context_set_attachment_request_received_callback(
+    tego_context_t* context,
+    tego_attachment_request_received_callback_t,
+    tego_error_t* error);
+
+void tego_context_set_attachement_request_acknowledged_callback(
+    tego_context_t* context,
+    tego_attachement_request_acknowledged_callback_t,
+    tego_error_t* error);
+
+void tego_context_set_attachment_progress_callback_t(
+    tego_context_t* context,
+    tego_attachment_progress_callback_t,
+    tego_error_t* error);
+
 void tego_context_set_user_status_changed_callback(
     tego_context_t* context,
     tego_user_status_changed_callback_t,
@@ -1173,6 +1316,9 @@ void tego_user_id_delete(tego_user_id_t*);
 // tor
 void tego_tor_launch_config_delete(tego_tor_launch_config_t*);
 void tego_tor_daemon_config_delete(tego_tor_daemon_config_t*);
+
+// file transfer
+void tego_file_hash_delete(tego_file_hash_t*);
 
 #ifdef __cplusplus
 }
