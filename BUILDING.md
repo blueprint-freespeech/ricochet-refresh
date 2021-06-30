@@ -4,7 +4,21 @@
 
 Clone
 
-Download and install the prebuilt Qt 5.15 ( https://www.qt.io/download-qt-installer ) and add bin directory containing 'qmake' to your PATH environment variable.
+#### Install Qt
+
+If you want to use upstream Qt binaries, download and install the prebuilt Qt 5.15 ( https://www.qt.io/download-qt-installer ) and add bin directory containing 'qmake' to your PATH environment variable.
+
+Or, if you want to use your distro's Qt binaries, do this (tested with Debian Bullseye):
+
+```sh
+sudo apt install build-essential libssl-dev pkg-config libprotobuf-dev protobuf-compiler libgl-dev
+sudo apt install qttools5-dev-tools qtdeclarative5-dev qml-module-qtquick-controls qml-module-qtquick-dialogs
+# If you're on ppc64el, run this:
+export PATH=$PATH:/usr/lib/powerpc64le-linux-gnu/qt5/bin
+# If you're on amd64, run this instead:
+export PATH=$PATH:/usr/lib/x86_64-linux-gnu/qt5/bin
+# If you're on some other arch, it's hopefully self-evident how to modify one of the above lines.
+```
 
 #### Debian
 
