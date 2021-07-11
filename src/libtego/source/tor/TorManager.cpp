@@ -166,6 +166,38 @@ void TorManager::start()
             tegoError.release());
     }
 
+    // Use environment variables (if present) to find Tor control port, as per this spec:
+    // https://gitlab.torproject.org/legacy/trac/-/wikis/doc/Tor_friendly_applications_best_practices#network-configuration
+    if (!qEnvironmentVariableIsEmpty("TOR_CONTROL_PORT")) {
+        QHostAddress address("127.0.0.1");
+        quint16 port;
+        QByteArray password;
+
+        if (!qEnvironmentVariableIsEmpty("TOR_CONTROL_HOST"))
+            address = QHostAddress(QString::fromLatin1(qgetenv("TOR_CONTROL_HOST")));
+
+        bool ok = false;
+        port = qgetenv("TOR_CONTROL_PORT").toUShort(&ok);
+        if (!ok)
+            port = 0;
+
+        if (!qEnvironmentVariableIsEmpty("TOR_CONTROL_PASSWD"))
+            password = qgetenv("TOR_CONTROL_PASSWD");
+
+        if (!port) {
+            d->setError(QStringLiteral("Invalid control port settings from environment or configuration"));
+            return;
+        }
+
+        if (address.isNull())
+            address = QHostAddress::LocalHost;
+
+        d->control->setAuthPassword(password);
+        d->control->connect(address, port);
+
+        return;
+    }
+
     // Launch a bundled Tor instance
     QString executable = d->torExecutablePath();
     if (executable.isEmpty()) {
