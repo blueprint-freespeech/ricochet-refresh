@@ -131,3 +131,9 @@ Use the 'Build -> Run qmake' menu to test your changes.
 You also need a `tor.exe` binary, placed in the same folder as `ricochet.exe`.
 
 The windows installer can be built using Inno Setup. See `packaging\installer` for more information.
+
+## Integrated Development Environments (IDEs)
+### Qt Creator
+Ricochet Refresh can be developed and debugged with [Qt Creator](https://www.qt.io/product/development-tools), a cross-platform IDE.
+
+Loading and compiling `tego.pro` works fine out of the box. However Qt Creator's code model ignores precompiled headers by default, which causes lots of unknown type errors. In order to fix this, go to `Tools / Options / C++ / Code Model` and disable `[ ] Ignore precompiled headers`.
