@@ -1,8 +1,10 @@
 ## New Building
 
+Cloning must be done with `--recurse-submodules`:
+```sh
+git clone --recurse-submodules https://github.com/blueprint-freespeech/ricochet-refresh.git
+```
 ### Linux
-
-Clone
 
 #### Install Qt
 
