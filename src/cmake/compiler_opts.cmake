@@ -64,7 +64,7 @@ endfunction ()
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/compiler/static)
 function (setup_compiler_static_flags target)
-    option(TEGO_STATIC_BUILD OFF CACHE BOOL "Enable compiler specific static build flags")
+    set(TEGO_STATIC_BUILD OFF CACHE BOOL "Enable compiler specific static build flags")
     if (TEGO_STATIC_BUILD)
         if (MINGW)
             include(mingw-static)
