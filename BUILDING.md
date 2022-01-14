@@ -26,12 +26,16 @@ git pull --recurse-submodules
 ### Dependencies
 
 You will need:
- * Qt5 (Qt Base, Qt Declarative, Qt Quick)
+ * Qt5 > 5.15 (Qt Base, Qt Declarative, Qt Quick)
  * Tor
  * OpenSSL (libcrypto)
  * Protocol Buffers (libprotobuf, protoc)
- * {fmt}
  * CMake
+ * {fmt}
+
+You may opt between installing {fmt} from your distro packages, as instructed
+bellow, or use the {fmt} version included as a submodule (configure time flag
+`-DUSE_SUBMODULE_FMT`).
 
 #### Fedora
 ```sh
