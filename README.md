@@ -30,7 +30,7 @@ For more information about Ricochet Refresh, you can:
 Security and anonymity are difficult, complicated, and deep topics. We strongly encourage you to evaluate your risks, threats, and exposure with any software. *Do not rely on Ricochet Refresh for your safety*. We believe Ricochet Refresh does a really good job at protecting your privacy and anonymity, however, we can not guarantee this protection. 
 
 ### Downloads
-Ricochet Refresh is currently available for OS X (10.12 or later), Linux, and Windows. Visit the [releases page](https://github.com/blueprint-freespeech/ricochet-refresh/releases) for the latest version and changelog.
+Ricochet Refresh is currently available for OS X (10.12 or later), Linux, and Windows. Visit the [releases page](https://github.com/blueprint-freespeech/ricochet-refresh/releases) or [AUR page](https://aur.archlinux.org/packages/ricochet-refresh) for the latest version and changelog.
 
 ### Building from source
 See [BUILDING](https://github.com/blueprint-freespeech/ricochet-refresh/blob/master/BUILDING.md) for Linux, OS X, and Windows build instructions.
