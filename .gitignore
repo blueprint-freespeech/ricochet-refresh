@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022 Blueprint for Free Speech <ricochet@blueprintforfreespeech.net>
+#
+# SPDX-License-Identifier: CC0-1.0
+
 # Build files
 Makefile
 Makefile.*

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022 Blueprint for Free Speech <ricochet@blueprintforfreespeech.net>
+#
+# SPDX-License-Identifier: GPL-3.0-only
+
 # based off https://github.com/cpp-best-practices/cpp_starter_project/blob/main/cmake/Sanitizers.cmake
 
 function (msvc_setup_sanitizers target)
