@@ -12,39 +12,39 @@
         <location filename="../../libtego_ui/ui/qml/AboutPreferences.qml" line="14"/>
         <source>Ricochet-Refresh %1</source>
         <extracomment>%1 version, e.g. 1.0.0</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Ricochet-Refresh %1</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/AboutPreferences.qml" line="20"/>
         <source>Ricochet Refresh version %1</source>
         <extracomment>provides a readable interpretation of the Ricochet-Refresh version number for accessibility tech like screen readers</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Ricochet Refresh versioon %1</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/AboutPreferences.qml" line="32"/>
         <source>The license of Ricochet Refresh and its dependencies</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Ricochet Refreshi litsents ja selle sõltuvused</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/AboutPreferences.qml" line="33"/>
         <source>License</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Litsents</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/AboutPreferences.qml" line="37"/>
         <source>About</source>
-        <translation type="unfinished">Lähemalt</translation>
+        <translation type="unfinished">Teave</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/AboutPreferences.qml" line="39"/>
         <source>About page, contains license and version information</source>
         <extracomment>summary of the window&apos;s contents for accessibility tech like screen readers</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Teabe leht, sisaldab teavet litsentsi ja versiooni kohta</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/AboutPreferences.qml" line="17"/>
         <source>Current Ricochet-Refresh version</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Praegune Ricochet-Refreshi versioon</translation>
     </message>
 </context>
 <context>
@@ -65,19 +65,19 @@
         <location filename="../../libtego_ui/ui/qml/AddContactDialog.qml" line="116"/>
         <source>Closes the contact add window</source>
         <extracomment>description for &apos;Cancel&apos; button accessibility tech like screen readers</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Sulgeb kontakti lisamise akna</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/AddContactDialog.qml" line="122"/>
         <source>Add</source>
         <extracomment>button label to finish adding a contact/friend</extracomment>
-        <translation>Lisa</translation>
+        <translation type="unfinished">Lisa</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/AddContactDialog.qml" line="130"/>
         <source>Adds the contact to your contact list</source>
         <extracomment>description for &apos;Add&apos; button for accessibility tech like screen readres</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Lisab kontakti teie kontaktiloendisse</translation>
     </message>
 </context>
 <context>
@@ -86,13 +86,13 @@
         <location filename="../../libtego_ui/ui/qml/ChatPage.qml" line="165"/>
         <source>Message area</source>
         <extracomment>label for accessibility tech like screen readers</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Sõnumiala</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/ChatPage.qml" line="167"/>
         <source>Write the message to be sent here. Press enter to send</source>
         <extracomment>description of the text area used to send messages for accessibility tech like screen readers</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Kirjutage siia saadetav sõnum. Saatmiseks vajutage sisestusklahvi</translation>
     </message>
 </context>
 <context>
@@ -100,12 +100,12 @@
     <message>
         <location filename="../../libtego_ui/ui/qml/ContactActions.qml" line="49"/>
         <source>Warning</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Hoiatus</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/ContactActions.qml" line="51"/>
         <source>Could not successfully export conversation</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Vestlust ei õnnestunud eksportida</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/ContactActions.qml" line="65"/>
@@ -129,13 +129,13 @@
         <location filename="../../libtego_ui/ui/qml/ContactActions.qml" line="80"/>
         <source>Send File...</source>
         <extracomment>Context menu command to initiate a file transfer, opens a system file dialog</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Saada fail...</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/ContactActions.qml" line="85"/>
         <source>Export Conversation</source>
         <extracomment>Context menu command to initiate a chat log export, opens a system file dialog to export to</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Ekspordi vestlus</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/ContactActions.qml" line="91"/>
@@ -147,7 +147,7 @@
         <location filename="../../libtego_ui/ui/qml/ContactActions.qml" line="98"/>
         <source>Contact options</source>
         <extracomment>Description of the items in the context menu for accessibility tech like screen readers</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Kontakti valikud</translation>
     </message>
 </context>
 <context>
@@ -162,7 +162,7 @@
         <location filename="../../libtego_ui/ui/qml/ContactIDField.qml" line="45"/>
         <source>This ID is invalid</source>
         <extracomment>Error message showed when the id doesn&apos;t comply with spec https://gitweb.torproject.org/torspec.git/tree/rend-spec-v3.txt</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">See ID on kehtetu</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/ContactIDField.qml" line="50"/>
@@ -192,7 +192,7 @@
         <location filename="../../libtego_ui/ui/qml/ContactIDField.qml" line="119"/>
         <source>Copies the ricochet id to the clipboard</source>
         <extracomment>Text description of ricochet id copy button for accessibility tech like screen readers</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Kopeerib ricocheti ID lõikepuhvrisse</translation>
     </message>
 </context>
 <context>
@@ -225,7 +225,7 @@
         <location filename="../../libtego_ui/ui/qml/ContactList.qml" line="89"/>
         <source>Status for the given contacts</source>
         <extracomment>Description of the section header for accessibility tech like screen readers</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Antud kontaktide olek</translation>
     </message>
     <message>
         <source>Outdated</source>
@@ -279,20 +279,20 @@
         <location filename="../../libtego_ui/ui/qml/ContactPreferences.qml" line="24"/>
         <source>Contact list</source>
         <extracomment>Description of the list of contacts for accessibility tech like screen readers</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Kontaktide nimekiri</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/ContactPreferences.qml" line="99"/>
         <source>Contact ID for </source>
         <extracomment>Description of text box containing a contact&apos;s contact id for accessibility tech like screen readers</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Kontakt ID </translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/ContactPreferences.qml" line="103"/>
         <location filename="../../libtego_ui/ui/qml/ContactPreferences.qml" line="152"/>
         <source>Unknown user</source>
         <extracomment>A placeholder name for a contact whose name we do not know</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Tundmatu kasutaja</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/ContactPreferences.qml" line="120"/>
@@ -304,7 +304,7 @@
         <location filename="../../libtego_ui/ui/qml/ContactPreferences.qml" line="125"/>
         <source>Renames this contact</source>
         <extracomment>Description of button which renames a contact for accessibility tech like screen readers</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Nimetab selle kontakti ümber</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/ContactPreferences.qml" line="132"/>
@@ -316,25 +316,25 @@
         <location filename="../../libtego_ui/ui/qml/ContactPreferences.qml" line="137"/>
         <source>Removes this contact</source>
         <extracomment>Description of button which removes a user from the contact list for accessibility tech like screen readers</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Eemaldab selle kontakti</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/ContactPreferences.qml" line="148"/>
         <source>Preferences for contact </source>
         <extracomment>Description of the contents of the &apos;Contacts&apos; window for accessibility tech like screen readers</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Kontakti eelistused </translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/ContactPreferences.qml" line="157"/>
         <source>Contact Preferences Window</source>
         <extracomment>Name of the contact preferences window for accessibility tech like screen readers</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Kontakti eelistuste aken</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/ContactPreferences.qml" line="159"/>
         <source>A list of all your contacts, with their ricochet IDs, and options such as renaming and removing</source>
         <extracomment>Description of what user can do in the contact preferences window for accessibility tech like screen readers</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Kõigi teie kontaktide loend koos nende ricochettide ID-de ja valikutega, nagu ümbernimetamine ja eemaldamine</translation>
     </message>
 </context>
 <context>
@@ -355,7 +355,7 @@
         <location filename="../../libtego_ui/ui/qml/ContactRequestDialog.qml" line="111"/>
         <source>Rejects the incoming contact request</source>
         <extracomment>Description of what &apos;Reject&apos; button does for accessibility tech like screen readers</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Lükkab sissetuleva kontaktitaotluse tagasi</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/ContactRequestDialog.qml" line="116"/>
@@ -367,7 +367,7 @@
         <location filename="../../libtego_ui/ui/qml/ContactRequestDialog.qml" line="122"/>
         <source>Accepts the incoming contact request</source>
         <extracomment>Description of what &apos;Accept&apos; button does for accessibility tech like screen readers</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Aktsepteerib sissetulevat kontaktitaotlust</translation>
     </message>
 </context>
 <context>
@@ -388,7 +388,7 @@
         <location filename="../../libtego_ui/ui/qml/ContactRequestFields.qml" line="47"/>
         <source>Field for the contact&apos;s nickname</source>
         <extracomment>Description of textbox for setting a contact&apos;s nickname for accessibility tech like screen readers</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Kontakti hüüdnime väli</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/ContactRequestFields.qml" line="52"/>
@@ -400,7 +400,7 @@
         <location filename="../../libtego_ui/ui/qml/ContactRequestFields.qml" line="67"/>
         <source>Field for the contact&apos;s greeting message</source>
         <extracomment>Description of textbox for setting a new contact&apos;s initial greeting message for accessibility tech like screen readers</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Kontakti tervitussõnumi väli</translation>
     </message>
 </context>
 <context>
@@ -449,7 +449,7 @@ Name of the combobox used to select UI langauge for accessibility tech like scre
         <location filename="../../libtego_ui/ui/qml/GeneralPreferences.qml" line="116"/>
         <source>What language ricochet will use</source>
         <extracomment>Description of what the language combox is for for accessibility tech like screen readers</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Mis keelt ricochet kasutab</translation>
     </message>
 </context>
 <context>
@@ -509,13 +509,13 @@ Name of the button for launching the preferences window for accessibility tech l
         <location filename="../../libtego_ui/ui/qml/MainToolBar.qml" line="86"/>
         <source>Shows the add contact dialogue</source>
         <extracomment>Description of the &apos;Add Contact&apos; button for accessibility tech like screen readers</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Näitab kontakti lisamise dialoogi</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/MainToolBar.qml" line="99"/>
         <source>Shows the preferences dialogue</source>
         <extracomment>Description of the &apos;Preferences&apos; button for accessibility tech like screen readers</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Näitab eelistuste dialoogi</translation>
     </message>
 </context>
 <context>
@@ -523,7 +523,7 @@ Name of the button for launching the preferences window for accessibility tech l
     <message>
         <location filename="../../libtego_ui/ui/MainWindow.cpp" line="151"/>
         <source>Version Seperator</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Versiooni eraldaja</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/MainWindow.cpp" line="185"/>
@@ -539,19 +539,19 @@ Name of the button for launching the preferences window for accessibility tech l
         <location filename="../../libtego_ui/ui/qml/MainWindow.qml" line="70"/>
         <source>Main Toolbar</source>
         <extracomment>Name of the main toolbar for accessibility tech like screen readers</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Peamine tööriistariba</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/MainWindow.qml" line="72"/>
         <source>Toolbar with connection status, add contact button, and preferences button</source>
         <extracomment>Description of the main toolbar for accessibility tech like screen readers</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Tööriistariba ühenduse oleku, kontakti lisamise nupu ja eelistuste nupuga</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/MainWindow.qml" line="94"/>
         <source>Contact pane</source>
         <extracomment>Name of the pane holding the user&apos;s contacts for accessibility tech like screen readers</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Kontaktpaan</translation>
     </message>
 </context>
 <context>
@@ -566,43 +566,43 @@ Name of the button for launching the preferences window for accessibility tech l
         <location filename="../../libtego_ui/ui/qml/MessageDelegate.qml" line="169"/>
         <source>File transfer file name</source>
         <extracomment>Description of the text displaying the filename of a file transfer, used by accessibility tech like screen readres</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Failiedastusfaili nimi</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/MessageDelegate.qml" line="185"/>
         <source>File transfer progress</source>
         <extracomment>Description of progress bar displaying the file transfer progress, used by accessibility tech like screen readers</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Failiedastuse edenemine</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/MessageDelegate.qml" line="200"/>
         <source>File transfer status</source>
         <extracomment>Description of label displaying the current status of a file transfer, used by accessibility tech like screen readers</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Failiedastuse olek</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/MessageDelegate.qml" line="215"/>
         <source>Download</source>
         <extracomment>Label for file transfer &apos;Download&apos; button for accessibility tech like screen readers</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Lae alla</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/MessageDelegate.qml" line="217"/>
         <source>Download file</source>
         <extracomment>Description of what the file transfer &apos;Download&apos; button does for accessibility tech like screen readers</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Laadi fail alla</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/MessageDelegate.qml" line="234"/>
         <source>Cancel or reject</source>
         <extracomment>Label for file transfer &apos;Cancel&apos; button for accessibility tech like screen readers</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Tühista või keeldu</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/MessageDelegate.qml" line="236"/>
         <source>Cancels or rejects a file transfer</source>
         <extracomment>Description of what the file transfer &apos;Cancel&apos; button does for accessibility tech like screen readers</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Tühistab või lükkab failiedastuse tagasi</translation>
     </message>
     <message>
         <source>Copy ID</source>
@@ -749,7 +749,7 @@ Name of the button for launching the preferences window for accessibility tech l
         <location filename="../../libtego_ui/ui/qml/PreferencesDialog.qml" line="43"/>
         <source>Menu Tabs</source>
         <extracomment>Name of the tab bar for accessibility tech like screen readers</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Menüü vahekaardid</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/PreferencesDialog.qml" line="49"/>
@@ -777,7 +777,7 @@ Name of the button for launching the preferences window for accessibility tech l
         <location filename="../../libtego_ui/ui/qml/PreferencesDialog.qml" line="67"/>
         <source>About</source>
         <extracomment>Title of the about tab, contains license information and ricochet version</extracomment>
-        <translation>Lähemalt</translation>
+        <translation type="unfinished">Teave</translation>
     </message>
 </context>
 <context>
@@ -800,7 +800,7 @@ Name of the button for launching the preferences window for accessibility tech l
         <location filename="../../libtego_ui/ui/qml/StartupStatusPage.qml" line="53"/>
         <source>Quit</source>
         <extracomment>Button title to quit/terminate the program</extracomment>
-        <translation>Lahku</translation>
+        <translation type="unfinished">Välju</translation>
     </message>
 </context>
 <context>
@@ -815,13 +815,13 @@ Name of the button for launching the preferences window for accessibility tech l
         <location filename="../../libtego_ui/ui/qml/TorBootstrapStatus.qml" line="23"/>
         <source>Connection status</source>
         <extracomment>Description of the connection status text, used by accessibility tech like screen readers</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Ühenduse olek</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/TorBootstrapStatus.qml" line="34"/>
         <source>Connection progress</source>
         <extracomment>Description of the bootstrap progress bar, used by accessibility tech like screen readers</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Ühenduse edenemine</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/TorBootstrapStatus.qml" line="61"/>
@@ -834,25 +834,25 @@ Name of the button for launching the preferences window for accessibility tech l
         <location filename="../../libtego_ui/ui/qml/TorBootstrapStatus.qml" line="74"/>
         <source>Hide Details</source>
         <extracomment>Label for button which hides the tor logs</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Varja detaile</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/TorBootstrapStatus.qml" line="76"/>
         <source>Show Details</source>
         <extracomment>Label for button which shows the tor logs</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Näita detaile</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/TorBootstrapStatus.qml" line="88"/>
         <source>Hides the tor progress log</source>
         <extracomment>Description of hide details button, used by accessibility tech like screen readers</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Peidab tori edenemislogi</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/TorBootstrapStatus.qml" line="90"/>
         <source>Shows the tor progress log</source>
         <extracomment>Description of show details button, used by accessibility tech like screen readers</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Näitab tori edenemise logi</translation>
     </message>
     <message>
         <source>Hide details</source>
@@ -891,7 +891,7 @@ Name of the button for launching the preferences window for accessibility tech l
         <location filename="../../libtego_ui/ui/qml/TorConfigurationPage.qml" line="93"/>
         <source>If you need a proxy to access the internet, select one from this list.</source>
         <extracomment>Description used by accessibility tech, such as screen readers</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Kui vajate Interneti-juurdepääsuks puhverserverit, valige see loendist.</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/TorConfigurationPage.qml" line="98"/>
@@ -909,7 +909,7 @@ Name of the button for launching the preferences window for accessibility tech l
         <location filename="../../libtego_ui/ui/qml/TorConfigurationPage.qml" line="116"/>
         <source>Enter the IP address or hostname of the proxy you wish to connect to</source>
         <extracomment>Description of what to enter into the IP textbox, used by accessibility tech such as screen readers</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Sisestage selle puhverserveri IP-aadress või hostinimi, millega soovite ühenduse luua</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/TorConfigurationPage.qml" line="120"/>
@@ -921,13 +921,13 @@ Name of the button for launching the preferences window for accessibility tech l
         <location filename="../../libtego_ui/ui/qml/TorConfigurationPage.qml" line="131"/>
         <source>Port</source>
         <extracomment>Name of the port label, used by accessibility tech such as screen readers</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Port</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/TorConfigurationPage.qml" line="133"/>
         <source>Enter the port of the proxy you wish to connect to</source>
         <extracomment>Description of what to enter into the Port textbox, used by accessibility tech such as screen readers</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Sisestage puhverserveri port, millega soovite ühenduse luua</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/TorConfigurationPage.qml" line="139"/>
@@ -946,13 +946,13 @@ Name of the button for launching the preferences window for accessibility tech l
         <location filename="../../libtego_ui/ui/qml/TorConfigurationPage.qml" line="157"/>
         <source>Username</source>
         <extracomment>Name of the username label, used by accessibility tech such as screen readers</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Kasutajanimi</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/TorConfigurationPage.qml" line="159"/>
         <source>If required, enter the username for the proxy you wish to connect to</source>
         <extracomment>Description to enter into the Username textbox, used by accessibility tech such as screen readers</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Vajadusel sisestage selle puhverserveri kasutajanimi, millega soovite ühenduse luua</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/TorConfigurationPage.qml" line="163"/>
@@ -964,13 +964,13 @@ Name of the button for launching the preferences window for accessibility tech l
         <location filename="../../libtego_ui/ui/qml/TorConfigurationPage.qml" line="178"/>
         <source>Password</source>
         <extracomment>Name of the password label, used by accessibility tech such as screen readers</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Parool</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/TorConfigurationPage.qml" line="180"/>
         <source>If required, enter the password for the proxy you wish to connect to</source>
         <extracomment>Description to enter into the Password textbox, used by accessibility tech such as screen readers</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Vajadusel sisestage selle puhverserveri parool, millega soovite ühenduse luua</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/TorConfigurationPage.qml" line="191"/>
@@ -994,7 +994,7 @@ Name of the button for launching the preferences window for accessibility tech l
         <location filename="../../libtego_ui/ui/qml/TorConfigurationPage.qml" line="225"/>
         <source>Allowed ports</source>
         <extracomment>Name of the allowed ports label, used by accessibility tech such as screen readers</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Lubatud pordid</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/TorConfigurationPage.qml" line="237"/>
@@ -1026,7 +1026,7 @@ Name of the button for launching the preferences window for accessibility tech l
         <location filename="../../libtego_ui/ui/qml/TorLogDisplay.qml" line="20"/>
         <source>Tor log</source>
         <extracomment>Name of the text field containg the tor logs, used by accessibility tech such as screen readers</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Tor logi</translation>
     </message>
 </context>
 <context>
@@ -1040,13 +1040,13 @@ Name of the button for launching the preferences window for accessibility tech l
     <message>
         <location filename="../../libtego_ui/ui/qml/TorPreferences.qml" line="30"/>
         <source>Running</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Jooksutab</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/TorPreferences.qml" line="40"/>
         <source>Whether tor is running</source>
         <extracomment>Description of the value of this label, used by acccessibility tech like screen readers</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Kas tor töötab</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/TorPreferences.qml" line="51"/>
@@ -1073,13 +1073,13 @@ Name of the button for launching the preferences window for accessibility tech l
     <message>
         <location filename="../../libtego_ui/ui/qml/TorPreferences.qml" line="46"/>
         <source>Control connected</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Kontrollitud ühendus</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/TorPreferences.qml" line="56"/>
         <source>Whether tor control connected</source>
         <extracomment>Description of the value of this label, used by acccessibility tech like screen readers</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Kas tor juhtimine ühendatud</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/TorPreferences.qml" line="59"/>
@@ -1089,13 +1089,13 @@ Name of the button for launching the preferences window for accessibility tech l
     <message>
         <location filename="../../libtego_ui/ui/qml/TorPreferences.qml" line="61"/>
         <source>Circuits established</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Ringühendused kehtestatud</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/TorPreferences.qml" line="70"/>
         <source>Whether circuits established</source>
         <extracomment>Description of the value of this label, used by acccessibility tech like screen readers</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Kas ringühendused on loodud</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/TorPreferences.qml" line="73"/>
@@ -1105,7 +1105,7 @@ Name of the button for launching the preferences window for accessibility tech l
     <message>
         <location filename="../../libtego_ui/ui/qml/TorPreferences.qml" line="75"/>
         <source>Hidden service</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Peidetud teenus</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/TorPreferences.qml" line="79"/>
@@ -1121,7 +1121,7 @@ Name of the button for launching the preferences window for accessibility tech l
         <location filename="../../libtego_ui/ui/qml/TorPreferences.qml" line="84"/>
         <source>Whether a hidden service is up or not</source>
         <extracomment>Description of the value of this label, used by acccessibility tech like screen readers</extracomment>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Kas varjatud teenus on üleval või mitte</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/TorPreferences.qml" line="87"/>
@@ -1131,7 +1131,7 @@ Name of the button for launching the preferences window for accessibility tech l
     <message>
         <location filename="../../libtego_ui/ui/qml/TorPreferences.qml" line="89"/>
         <source>Version</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Versioon</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/TorPreferences.qml" line="119"/>
@@ -1179,7 +1179,7 @@ Name of the button for launching the preferences window for accessibility tech l
     <message>
         <location filename="../../libtego_ui/ui/qml/TorStateWidget.qml" line="38"/>
         <source>Tor status</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Tor staatus</translation>
     </message>
 </context>
 <context>
@@ -1187,7 +1187,7 @@ Name of the button for launching the preferences window for accessibility tech l
     <message>
         <location filename="../../libtego_ui/shims/ConversationModel.cpp" line="113"/>
         <source>Pending</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Ootel</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/shims/ConversationModel.cpp" line="114"/>
@@ -1202,43 +1202,43 @@ Name of the button for launching the preferences window for accessibility tech l
     <message>
         <location filename="../../libtego_ui/shims/ConversationModel.cpp" line="121"/>
         <source>Cancelled</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Tühistatud</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/shims/ConversationModel.cpp" line="122"/>
         <source>Complete</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Valmis</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/shims/ConversationModel.cpp" line="123"/>
         <source>Unkown Failure</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Tundmatu rike</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/shims/ConversationModel.cpp" line="124"/>
         <source>Bad File Hash</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Halb failiräsi</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/shims/ConversationModel.cpp" line="125"/>
         <source>Network Error</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Võrgu viga</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/shims/ConversationModel.cpp" line="126"/>
         <source>File System Error</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Failisüsteemi viga</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/shims/ConversationModel.cpp" line="128"/>
         <source>Invalid</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Kehtetu</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/shims/ConversationModel.cpp" line="223"/>
         <location filename="../../libtego_ui/shims/ConversationModel.cpp" line="395"/>
         <source>Open File</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Ava fail</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/shims/ConversationModel.cpp" line="289"/>
@@ -1246,12 +1246,12 @@ Name of the button for launching the preferences window for accessibility tech l
         <location filename="../../libtego_ui/shims/ConversationModel.cpp" line="309"/>
         <location filename="../../libtego_ui/shims/ConversationModel.cpp" line="350"/>
         <source>me</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">mina</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/shims/ConversationModel.cpp" line="436"/>
         <source>Save File</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Salvesta fail</translation>
     </message>
 </context>
 </TS>
