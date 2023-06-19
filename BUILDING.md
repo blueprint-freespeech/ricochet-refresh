@@ -1,25 +1,7 @@
 # Building Ricochet Refresh
 
-These instructions are intended for people who wish to build or modify Ricochet
-Refresh from source.
-
-## Getting the source code
-
-Clone the Ricochet Refresh git repository with `--recurse-submodules`:
-```sh
-git clone --recurse-submodules https://github.com/blueprint-freespeech/ricochet-refresh.git
-```
-
-In the event that you cloned the repo without fetching the submodules, you can
-still get them with:
-```sh
-git submodule --init --update
-```
-
-Later, you should update your local repository with:
-```sh
-git pull --recurse-submodules
-```
+These instructions are intended for people who wish to build Ricochet Refresh
+from source.
 
 ## GNU/Linux
 
@@ -35,7 +17,7 @@ You will need:
 
 You may opt between installing {fmt} from your distro packages, as instructed
 bellow, or use the {fmt} version included as a submodule (configure time flag
-`-DUSE_SUBMODULE_FMT`).
+`-DUSE_SUBMODULE_FMT=ON`).
 
 #### Fedora
 ```sh
@@ -58,10 +40,31 @@ pacman -S cmake tor qt5-base qt5-declarative qt5-quickcontrols openssl fmt \
           protobuf
 ```
 
+### Getting the source code
+
+When using {fmt} from distro packages, clone the Ricochet Refresh git repository
+without submodules and just get the Tor submodule.
+```sh
+git clone https://github.com/blueprint-freespeech/ricochet-refresh.git
+cd ricochet-refresh
+git submodule update --init src/extern/tor
+```
+
+If you wish to use the {fmt} version included as submodule do:
+```sh
+git submodule update --init src/extern/fmt
+```
+
+Later, you may update your local repository with:
+```sh
+git pull --recurse-submodules
+```
+
 ### Building
 ```sh
 mkdir build
-cmake -S ./src -B ./build -G"Unix Makefiles" -DCMAKE_BUILD_TYPE=MinSizeRel -DRICOCHET_REFRESH_INSTALL_DESKTOP=ON
+cmake -S ./src -B ./build -G"Unix Makefiles" -DCMAKE_BUILD_TYPE=MinSizeRel \
+  -DRICOCHET_REFRESH_INSTALL_DESKTOP=ON -DUSE_SUBMODULE_FMT=OFF
 cmake --build ./build -j$(nproc)
 ```
 
