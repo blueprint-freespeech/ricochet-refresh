@@ -29,7 +29,8 @@ yum install cmake tor gcc-c++ protobuf-devel protobuf-compiler openssl-devel fmt
 ```sh
 apt install cmake tor build-essential libprotobuf-dev protobuf-compiler libssl-dev \
             libfmt-dev qtbase5-dev qtdeclarative5-dev qml-module-qtquick-layouts \
-            qml-module-qtquick-controls qml-module-qtquick-dialogs
+            qml-module-qtquick-controls qml-module-qtquick-dialogs qttools5-dev \
+            qtmultimedia5-dev qtquickcontrols2-5-dev
 ```
 
 If the `qml-module-qtquick` packages aren't available, try `qtdeclarative5-controls-plugin` instead.
