@@ -309,8 +309,16 @@ Column {
     }
 
     GroupBox {
+        id: bridgesPanel
         width: parent.width
         title: "Bridges"
+
+        property bool bridgesDefined: torControl.getBridgeTypes().length != 0
+
+        SystemPalette {
+            id: bridgesPalette
+            colorGroup: bridgesPanel.bridgesDefined ? SystemPalette.Active : SystemPalette.Disabled
+        }
 
         ColumnLayout {
         width: parent.width
@@ -330,11 +338,13 @@ Column {
             RowLayout {
                 Label {
                     text: qsTr("Type:")
+                    color: bridgesPalette.text
                 }
 
                 ComboBox {
                     // Displays the selection of a bridge type (obfs4, meek-azure, etc)
                     id: bridgeTypeField
+                    enabled: bridgesPanel.bridgesDefined
                     model: ListModel {
                         id: bridgeTypeModel
                         ListElement { text: qsTr("None"); type: "none" }
@@ -353,11 +363,6 @@ Column {
                     textRole: "text"
 
                     property string selectedType: currentIndex >= 0 ? model.get(currentIndex).type : ""
-
-                    SystemPalette {
-                        id: bridgePalette
-                        colorGroup: setup.bridgeType == "" ? SystemPalette.Disabled : SystemPalette.Active
-                    }
 
                     Accessible.role: Accessible.ComboBox
                     Accessible.name: selectedType
