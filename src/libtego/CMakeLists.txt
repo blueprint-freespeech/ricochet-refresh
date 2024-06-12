@@ -103,6 +103,8 @@ include(FindProtobuf)
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
+find_package(absl REQUIRED)
+
 add_library(
     tego STATIC
     include/tego/logger.hpp
@@ -249,6 +251,7 @@ endif ()
 target_link_libraries(tego PRIVATE fmt::fmt-header-only)
 target_link_libraries(tego PRIVATE OpenSSL::Crypto)
 target_link_libraries(tego PRIVATE protobuf::libprotobuf)
+target_link_libraries(tego PRIVATE absl::log_internal_check_op)
 
 # QT
 target_link_libraries(
