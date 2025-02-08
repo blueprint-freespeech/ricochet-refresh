@@ -1,5 +1,6 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/tego-rs"
+    "crates/rico-protocol",
+    "crates/tego-rs",
 ]
