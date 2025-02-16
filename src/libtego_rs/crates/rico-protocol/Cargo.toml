@@ -12,3 +12,6 @@ protobuf-codegen = "3.0"
 
 [dependencies]
 protobuf = "3.0"
+thiserror = "1.0"
+tor-interface = "0.5"
+unicode-general-category = "1.0"

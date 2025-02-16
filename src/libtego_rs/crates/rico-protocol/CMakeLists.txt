@@ -2,6 +2,7 @@ set(rico_protocol_depends
     Cargo.toml
     build.rs
     src/lib.rs
+    src/v3/message.rs
     src/v3/mod.rs
     src/v3/protos/ChatChannel.proto
     src/v3/protos/ContactRequestChannel.proto
