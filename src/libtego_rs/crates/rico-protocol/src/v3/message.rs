@@ -1,8 +1,13 @@
+// std
+use std::collections::BTreeMap;
+
 /// The error type for the [`Message`] type.
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error("invalid version: {0:#04x}")]
     InvalidVersion(u8),
+    #[error("invalid introduction packet")]
+    InvalidIntroductionPacket,
     #[error("invalid channel type: \"{0}\"")]
     InvalidChannelType(String),
     #[error("chat message too long")]
@@ -22,7 +27,15 @@ pub enum Error {
     #[error("contact request message too long")]
     InvalidContactRequestMessageTooLong,
     #[error("chunk_data too large: {0} bytes")]
-    InvalidFileChunkDataTooLarge(usize)
+    InvalidFileChunkDataTooLarge(usize),
+    #[error("not enough data")]
+    NeedMoreBytes,
+    #[error("target channel does not exist: {0}")]
+    TargetChannelDoesNotExist(u16),
+    #[error("bad data stream")]
+    BadDataStream,
+    #[error("not implemented")]
+    NotImplemented,
 }
 
 //
@@ -32,11 +45,67 @@ pub enum Error {
 pub mod introduction {
 
     pub struct IntroductionPacket {
-        versions: Vec<Version>,
+        pub versions: Vec<Version>,
+    }
+
+    impl TryFrom<&[u8]> for IntroductionPacket {
+        type Error = crate::Error;
+
+        fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
+            match bytes.len() {
+                0 => Err(Self::Error::NeedMoreBytes),
+                1 => if bytes[0] == 0x49 {
+                    Err(Self::Error::NeedMoreBytes)
+                } else {
+                    Err(Self::Error::InvalidIntroductionPacket)
+                },
+                2 => if bytes[0] == 0x49 && bytes[1] == 0x4d {
+                    Err(Self::Error::NeedMoreBytes)
+                } else {
+                    Err(Self::Error::InvalidIntroductionPacket)
+                },
+                3 => if bytes[0] == 0x49 && bytes[1] == 0x4d && bytes[3] >= 1 {
+                    Err(Self::Error::NeedMoreBytes)
+                } else {
+                    Err(Self::Error::InvalidIntroductionPacket)
+                }
+                count => if bytes[0] == 0x49 && bytes[1] == 0x4d && bytes[3] >= 1 {
+                    if count >= 3usize + bytes[3] as usize {
+                        Err(Self::Error::NeedMoreBytes)
+                    } else {
+                        let version_count = bytes[3] as usize;
+                        let mut versions: Vec<Version> = Vec::with_capacity(version_count);
+                        for i in 0..version_count {
+                            versions.push(bytes[3 + i].try_into()?);
+                        }
+
+                        Ok(IntroductionPacket{versions})
+                    }
+                } else {
+                    Err(Self::Error::InvalidIntroductionPacket)
+                }
+            }
+        }
     }
 
     pub struct IntroductionResponsePacket {
-        version: Option<Version>,
+        pub version: Option<Version>,
+    }
+
+    impl TryFrom<&[u8]> for IntroductionResponsePacket {
+        type Error = crate::Error;
+
+        fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
+            match bytes.len() {
+                0 => Err(Self::Error::NeedMoreBytes),
+                count => if bytes[0] == 0xff {
+                    Ok(IntroductionResponsePacket{version: None})
+                } else {
+                    let version: Version = bytes[0].try_into()?;
+                    Ok(IntroductionResponsePacket{version: Some(version)})
+                }
+            }
+        }
     }
 
     pub enum Version {
@@ -87,12 +156,12 @@ pub mod control_channel {
     }
 
     pub struct OpenChannel {
-        channel_identifier: i32,
-        channel_type: ChannelType,
-        derived: Option<OpenChannelDerived>,
+        pub channel_identifier: i32,
+        pub channel_type: ChannelType,
+        pub derived: Option<OpenChannelDerived>,
     }
 
-    enum ChannelType {
+    pub enum ChannelType {
         Chat,
         ContactRequest,
         AuthHiddenService,
@@ -132,10 +201,10 @@ pub mod control_channel {
     }
 
     pub struct ChannelResult {
-        channel_identifier: i32,
-        opened: bool,
-        common_error: CommonError,
-        derived: Option<ChannelResultDerived>,
+        pub channel_identifier: i32,
+        pub opened: bool,
+        pub common_error: CommonError,
+        pub derived: Option<ChannelResultDerived>,
     }
 
     enum ChannelResultDerived {
@@ -216,8 +285,8 @@ pub mod chat_channel {
     }
 
     pub struct ChatAcknowledge {
-        message_id: Option<u32>,
-        accepted: bool,
+        pub message_id: Option<u32>,
+        pub accepted: bool,
     }
 }
 
@@ -506,4 +575,52 @@ pub enum Packet {
     },
     // used to close a channel
     CloseChannelPacket{channel: u16},
+}
+
+// on success returns a (packet, bytes read) tuple
+pub fn next_packet(bytes: &[u8], channel_map: BTreeMap<u16, control_channel::ChannelType>) -> Result<(Packet, usize), Error> {
+
+    if channel_map.is_empty() {
+        match TryInto::<introduction::IntroductionPacket>::try_into(bytes) {
+            Ok(packet) => {
+                let offset = 3 + packet.versions.len();
+                return Ok((Packet::IntroductionPacket(packet), offset));
+            },
+            Err(Error::NeedMoreBytes) => return Err(Error::NeedMoreBytes),
+            _ => (),
+        }
+
+        match TryInto::<introduction::IntroductionResponsePacket>::try_into(bytes) {
+            Ok(packet) => {
+                let offset = 1;
+                return Ok((Packet::IntroductionResponsePacket(packet), offset));
+            },
+            Err(Error::NeedMoreBytes) => return Err(Error::NeedMoreBytes),
+            _ => (),
+        }
+
+        return Err(Error::BadDataStream);
+    } else {
+        if bytes.len() >= 4 {
+            let size: u16 = (bytes[0] as u16) << 8 + bytes[1] as u16;
+            let size = size as usize;
+            let channel: u16 = (bytes[2] as u16) << 8 + bytes[3] as u16;
+
+            if size < 4 {
+                return Err(Error::BadDataStream);
+            } else if bytes.len() < size {
+                return Err(Error::NeedMoreBytes);
+            }
+
+            match channel_map.get(&channel) {
+                Some(channel_type) => {
+                    return Err(Error::NotImplemented)
+                },
+                None => return Err(Error::TargetChannelDoesNotExist(channel)),
+            }
+        } else {
+            return Err(Error::NeedMoreBytes);
+        }
+    }
+
 }
