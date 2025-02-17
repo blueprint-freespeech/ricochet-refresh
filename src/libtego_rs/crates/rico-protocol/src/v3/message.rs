@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 /// The error type for the [`Message`] type.
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
-    #[error("invalid version: {0:#04x}")]
+    #[error("invalid protocol version: {0:#04x}")]
     InvalidVersion(u8),
     #[error("invalid introduction packet")]
     InvalidIntroductionPacket,
@@ -32,8 +32,17 @@ pub enum Error {
     NeedMoreBytes,
     #[error("target channel does not exist: {0}")]
     TargetChannelDoesNotExist(u16),
+    // received bytes cannot be parsed or understood
     #[error("bad data stream")]
     BadDataStream,
+    // an error when parsing a protobuf message
+    #[error("protobuf error: {0}")]
+    ProtobufError(#[source] protobuf::Error),
+    // received message parses but contains incorrectly formatted data (e.g. byte arrays wrong size, wrong combinatins of optional params, etc)
+    #[error("invalid protobuf message")]
+    InvalidProtobufMessage,
+
+    // TODO: remove this error when no longer needed
     #[error("not implemented")]
     NotImplemented,
 }
@@ -143,16 +152,148 @@ pub mod introduction {
 //
 
 pub mod control_channel {
+    // this isn't actually used in the protocol but useful for debugging
+    pub(crate) const CHANNEL_TYPE: &'static str = "im.ricochet.control";
+
     pub enum Packet {
         OpenChannel(OpenChannel),
         ChannelResult(ChannelResult),
-        // TODO: Ricochet-Refresh v3 does not send
+        // TODO: Ricochet-Refresh v3 does not send:
         // - KeepAlive
         // - EnableFeatures
         // - FeaturesEnabled
         KeepAlive(KeepAlive),
         EnableFeatures(EnableFeatures),
         FeaturesEnabled(FeaturesEnabled),
+    }
+
+    impl TryFrom<&[u8]> for Packet {
+        type Error = crate::Error;
+
+        fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
+            use protobuf::Message;
+            use crate::v3::protos;
+
+            // parse bytes into protobuf message
+            let pb = protos::ControlChannel::Packet::parse_from_bytes(value).map_err(Self::Error::ProtobufError)?;
+
+            // convert protobuf message to Packet
+
+            // ensure the message has only 1 initialised member
+            let mut count: usize = 0;
+            count += pb.open_channel.is_some() as usize;
+            count += pb.channel_result.is_some() as usize;
+            count += pb.keep_alive.is_some() as usize;
+            count += pb.enable_features.is_some() as usize;
+            count += pb.features_enabled.is_some() as usize;
+
+            if count != 1 {
+                return Err(Self::Error::InvalidProtobufMessage);
+            }
+
+            if let Some(open_channel) = pb.open_channel.into_option() {
+                // base fields
+                let channel_identifier = open_channel.channel_identifier.ok_or(Self::Error::InvalidProtobufMessage)?;
+                let channel_type = open_channel.channel_type.as_ref().ok_or(Self::Error::InvalidProtobufMessage)?;
+                let channel_type: ChannelType = channel_type.as_str().try_into()?;
+
+                // extension fields
+                let contact_request = protos::ContactRequestChannel::exts::contact_request.get(&open_channel);
+                let client_cookie = protos::AuthHiddenService::exts::client_cookie.get(&open_channel);
+
+                let derived: Option<OpenChannelDerived> = match channel_type {
+                    // contact request channel open channel
+                    ChannelType::ContactRequest => {
+                        let mut contact_request = contact_request.ok_or(Self::Error::InvalidProtobufMessage)?;
+                        if client_cookie.is_some() {
+                            return Err(Self::Error::InvalidProtobufMessage);
+                        }
+
+                        let nickname = contact_request.take_nickname();
+                        let nickname: crate::contact_request_channel::Nickname = nickname.try_into()?;
+
+                        let message_text = contact_request.take_message_text();
+                        let message_text: crate::contact_request_channel::MessageText = message_text.try_into()?;
+
+                        let contact_request = crate::contact_request_channel::ContactRequest{nickname, message_text};
+
+                        Some(OpenChannelDerived::ContactRequestChannel(crate::contact_request_channel::OpenChannel{contact_request}))
+                    },
+                    // auth hidden service open channel
+                    ChannelType::AuthHiddenService => {
+                        if contact_request.is_some() {
+                            return Err(Self::Error::InvalidProtobufMessage);
+                        }
+                        let mut client_cookie = client_cookie.ok_or(Self::Error::InvalidProtobufMessage)?;
+
+                        let client_cookie: [u8; crate::auth_hidden_service::CLIENT_COOKIE_SIZE] = match client_cookie.try_into() {
+                            Ok(client_cookie) => client_cookie,
+                            Err(_) => return Err(Self::Error::InvalidProtobufMessage),
+                        };
+
+                        Some(OpenChannelDerived::AuthHiddenService(crate::auth_hidden_service::OpenChannel{client_cookie}))
+                    },
+                    _ => None,
+                };
+
+                let open_channel = OpenChannel{channel_identifier, channel_type, derived};
+                Ok(Packet::OpenChannel(open_channel))
+            } else if let Some(channel_result) = pb.channel_result.into_option() {
+                // base fields
+                let channel_identifier = channel_result.channel_identifier.ok_or(Self::Error::InvalidProtobufMessage)?;
+
+                let opened = channel_result.opened.ok_or(Self::Error::InvalidProtobufMessage)?;
+
+                let common_error = channel_result.common_error.ok_or(Self::Error::InvalidProtobufMessage)?;
+                let common_error = match common_error.value() {
+                    0 => CommonError::GenericError,
+                    1 => CommonError::UnknownTypeError,
+                    2 => CommonError::UnauthorizedError,
+                    3 => CommonError::BadUsageError,
+                    4 => CommonError::FailedError,
+                    _ => return Err(Self::Error::InvalidProtobufMessage),
+                };
+
+                // extension fields
+                let response = protos::ContactRequestChannel::exts::response.get(&channel_result);
+                let server_cookie = protos::AuthHiddenService::exts::server_cookie.get(&channel_result);
+
+                let derived: Option<ChannelResultDerived> = match (response, server_cookie) {
+                    // contact request channel channel result
+                    (Some(response), None) => {
+                        let status = response.status.ok_or(Self::Error::InvalidProtobufMessage)?;
+                        use crate::v3::message::contact_request_channel::Status;
+                        let status = match status.value() {
+                            0 => Status::Undefined,
+                            1 => Status::Pending,
+                            2 => Status::Accepted,
+                            3 => Status::Rejected,
+                            4 => Status::Error,
+                            _ => return Err(Self::Error::InvalidProtobufMessage),
+                        };
+
+                        let response = crate::contact_request_channel::Response{status};
+                        Some(ChannelResultDerived::ContactRequestChannel(crate::contact_request_channel::ChannelResult{response}))
+                    },
+                    // auth hidden service channel result
+                    (None, Some(server_cookie)) => {
+                        let server_cookie: [u8; crate::auth_hidden_service::SERVER_COOKIE_SIZE] = match server_cookie.try_into() {
+                            Ok(server_cookie) => server_cookie,
+                            Err(_) => return Err(Self::Error::InvalidProtobufMessage),
+                        };
+
+                        Some(ChannelResultDerived::AuthHiddenService(crate::auth_hidden_service::ChannelResult{server_cookie}))
+                    },
+                    _ => return Err(Self::Error::InvalidProtobufMessage),
+                };
+
+                let channel_result = ChannelResult{channel_identifier, opened, common_error, derived};
+                Ok(Packet::ChannelResult(channel_result))
+            } else {
+                // TODO: skip unused packets for now
+                Err(Self::Error::NotImplemented)
+            }
+        }
     }
 
     pub struct OpenChannel {
@@ -162,22 +303,24 @@ pub mod control_channel {
     }
 
     pub enum ChannelType {
+        Control,
         Chat,
         ContactRequest,
         AuthHiddenService,
         FileTransfer,
     }
 
-    impl TryFrom<String> for ChannelType {
+    impl TryFrom<&str> for ChannelType {
         type Error = crate::Error;
 
-        fn try_from(value: String) -> Result<Self, Self::Error> {
-            let channel_type = match value.as_str() {
+        fn try_from(value: &str) -> Result<Self, Self::Error> {
+            let channel_type = match value {
+                crate::control_channel::CHANNEL_TYPE => ChannelType::Control,
                 crate::chat_channel::CHANNEL_TYPE => ChannelType::Chat,
                 crate::contact_request_channel::CHANNEL_TYPE => ChannelType::ContactRequest,
                 crate::auth_hidden_service::CHANNEL_TYPE => ChannelType::AuthHiddenService,
                 crate::file_channel::CHANNEL_TYPE => ChannelType::FileTransfer,
-                _ => return Err(Self::Error::InvalidChannelType(value)),
+                _ => return Err(Self::Error::InvalidChannelType(value.to_string())),
             };
             Ok(channel_type)
         }
@@ -187,6 +330,7 @@ pub mod control_channel {
     impl From<ChannelType> for &'static str {
         fn from(value: ChannelType) -> &'static str {
             match value {
+                ChannelType::Control => crate::control_channel::CHANNEL_TYPE,
                 ChannelType::Chat => crate::chat_channel::CHANNEL_TYPE,
                 ChannelType::ContactRequest => crate::contact_request_channel::CHANNEL_TYPE,
                 ChannelType::AuthHiddenService => crate::auth_hidden_service::CHANNEL_TYPE,
@@ -298,12 +442,12 @@ pub mod contact_request_channel {
     pub(crate) const CHANNEL_TYPE: &'static str = "im.ricochet.contact.request";
 
     pub struct OpenChannel {
-        contact_request: ContactRequest,
+        pub contact_request: ContactRequest,
     }
 
     pub struct ContactRequest {
-        nickname: Nickname,
-        message_text: MessageText,
+        pub nickname: Nickname,
+        pub message_text: MessageText,
     }
 
     pub struct MessageText {
@@ -344,6 +488,7 @@ pub mod contact_request_channel {
             nickname.value
         }
     }
+
     impl TryFrom<String> for Nickname {
         type Error = crate::Error;
         fn try_from(value: String) -> Result<Self, Self::Error> {
@@ -409,11 +554,11 @@ pub mod contact_request_channel {
     }
 
     pub struct ChannelResult {
-        response: Response,
+        pub response: Response,
     }
 
     pub struct Response {
-        status: Status,
+        pub status: Status,
     }
 
     pub enum Status {
@@ -431,9 +576,9 @@ pub mod contact_request_channel {
 
 pub mod auth_hidden_service {
     pub(crate) const CHANNEL_TYPE: &'static str = "im.ricochet.auth.hidden-service";
-    const CLIENT_COOKIE_SIZE: usize = 16;
-    const SERVER_COOKIE_SIZE: usize = 16;
-    const PROOF_SIGNATURE_SIZE: usize = 64;
+    pub(crate) const CLIENT_COOKIE_SIZE: usize = 16;
+    pub(crate) const SERVER_COOKIE_SIZE: usize = 16;
+    pub(crate) const PROOF_SIGNATURE_SIZE: usize = 64;
 
     pub enum Packet {
         Proof(Proof),
@@ -441,22 +586,22 @@ pub mod auth_hidden_service {
     }
 
     pub struct OpenChannel {
-        client_cookie: [u8; CLIENT_COOKIE_SIZE],
+        pub client_cookie: [u8; CLIENT_COOKIE_SIZE],
     }
 
     pub struct ChannelResult {
-        server_cookie: [u8; SERVER_COOKIE_SIZE],
+        pub server_cookie: [u8; SERVER_COOKIE_SIZE],
     }
 
     pub struct Proof {
         // TODO: spec doesn't explicitly say how many bytes the proof's signature is
-        signature: [u8; PROOF_SIGNATURE_SIZE],
-        service_id: tor_interface::tor_crypto::V3OnionServiceId,
+        pub signature: [u8; PROOF_SIGNATURE_SIZE],
+        pub service_id: tor_interface::tor_crypto::V3OnionServiceId,
     }
 
     pub struct Result {
-        accepted: bool,
-        is_known_contract: bool,
+        pub accepted: bool,
+        pub is_known_contract: bool,
     }
 }
 
@@ -554,7 +699,7 @@ pub mod file_channel {
 pub enum Packet {
     // sent by client to begin Ricochet-Refresh handshake
     IntroductionPacket(introduction::IntroductionPacket),
-    // server reply indicating success or faillure
+    // server reply indicating introduction success or failure
     IntroductionResponsePacket(introduction::IntroductionResponsePacket),
     // used to open various channel types
     ControlChannelPacket(control_channel::Packet),
@@ -578,6 +723,8 @@ pub enum Packet {
 }
 
 // on success returns a (packet, bytes read) tuple
+// consumers should drop the returned number of bytes from their
+// read buffer
 pub fn next_packet(bytes: &[u8], channel_map: BTreeMap<u16, control_channel::ChannelType>) -> Result<(Packet, usize), Error> {
 
     if channel_map.is_empty() {
@@ -602,22 +749,29 @@ pub fn next_packet(bytes: &[u8], channel_map: BTreeMap<u16, control_channel::Cha
         return Err(Error::BadDataStream);
     } else {
         if bytes.len() >= 4 {
+            // size is encoded as big-endian u16
             let size: u16 = (bytes[0] as u16) << 8 + bytes[1] as u16;
             let size = size as usize;
+            // channel id is encoded as big-endian u16
             let channel: u16 = (bytes[2] as u16) << 8 + bytes[3] as u16;
 
+            // size must be at least
             if size < 4 {
                 return Err(Error::BadDataStream);
             } else if bytes.len() < size {
                 return Err(Error::NeedMoreBytes);
             }
 
-            match channel_map.get(&channel) {
-                Some(channel_type) => {
-                    return Err(Error::NotImplemented)
+            let bytes = &bytes[4..];
+            let packet = match channel_map.get(&channel) {
+                Some(control_channel::ChannelType::Control) => {
+                    let packet = control_channel::Packet::try_from(bytes)?;
+                    Packet::ControlChannelPacket(packet)
                 },
+                Some(_) => return Err(Error::NotImplemented),
                 None => return Err(Error::TargetChannelDoesNotExist(channel)),
-            }
+            };
+            return Ok((packet, size));
         } else {
             return Err(Error::NeedMoreBytes);
         }
