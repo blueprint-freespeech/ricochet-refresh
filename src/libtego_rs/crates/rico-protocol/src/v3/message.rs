@@ -429,7 +429,6 @@ pub mod chat_channel {
                 },
                 _ => Err(Self::Error::InvalidProtobufMessage)
             }
-
         }
     }
 
@@ -641,7 +640,47 @@ pub mod auth_hidden_service {
         type Error = crate::Error;
 
         fn try_from(value: &[u8]) -> std::result::Result<Self, Self::Error> {
-            Err(Self::Error::NotImplemented)
+            use protobuf::Message;
+            use crate::v3::protos;
+
+            // parse bytes into protobuf message
+            let pb = protos::AuthHiddenService::Packet::parse_from_bytes(value).map_err(Self::Error::ProtobufError)?;
+
+            let proof = pb.proof.into_option();
+            let result = pb.result.into_option();
+
+            match (proof, result) {
+                (Some(proof), None) => {
+                    let signature = proof.signature.ok_or(Self::Error::InvalidProtobufMessage)?;
+                    use crate::auth_hidden_service::PROOF_SIGNATURE_SIZE;
+                    let signature: [u8; PROOF_SIGNATURE_SIZE] = match signature.try_into() {
+                        Ok(signature) => signature,
+                        Err(_) => return Err(Self::Error::InvalidProtobufMessage),
+                    };
+
+                    let service_id = proof.service_id.ok_or(Self::Error::InvalidProtobufMessage)?;
+                    use tor_interface::tor_crypto::V3OnionServiceId;
+                    let service_id = match V3OnionServiceId::from_string(service_id.as_str()) {
+                        Ok(service_id) => service_id,
+                        Err(_) => return Err(Self::Error::InvalidProtobufMessage),
+                    };
+
+                    let proof = Proof{signature, service_id};
+                    Ok(Packet::Proof(proof))
+                },
+                (None, Some(result)) => {
+                    let accepted = result.accepted.ok_or(Self::Error::InvalidProtobufMessage)?;
+
+                    let is_known_contact = result.is_known_contact;
+                    if accepted && is_known_contact.is_none() {
+                        return Err(Self::Error::InvalidProtobufMessage);
+                    }
+
+                    let result = Result{accepted, is_known_contact};
+                    Ok(Packet::Result(result))
+                },
+                _ => Err(Self::Error::InvalidProtobufMessage),
+            }
         }
     }
 
@@ -661,7 +700,8 @@ pub mod auth_hidden_service {
 
     pub struct Result {
         pub accepted: bool,
-        pub is_known_contract: bool,
+        // TODO: is_known_contact must be present if accepted is true
+        pub is_known_contact: Option<bool>,
     }
 }
 
@@ -840,6 +880,10 @@ pub fn next_packet(bytes: &[u8], channel_map: BTreeMap<u16, control_channel::Cha
                 Some(ChannelType::Chat) => {
                     let packet = chat_channel::Packet::try_from(bytes)?;
                     Packet::ChatChannelPacket{channel, packet}
+                },
+                Some(ChannelType::AuthHiddenService) => {
+                    let packet = auth_hidden_service::Packet::try_from(bytes)?;
+                    Packet::AuthHiddenServicePacket{channel, packet}
                 },
                 Some(_) => return Err(Error::NotImplemented),
                 None => return Err(Error::TargetChannelDoesNotExist(channel)),
