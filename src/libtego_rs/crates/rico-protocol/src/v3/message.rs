@@ -384,6 +384,25 @@ pub mod control_channel {
 pub mod chat_channel {
     pub(crate) const CHANNEL_TYPE: &'static str = "im.ricochet.chat";
 
+    pub enum Packet {
+        ChatMessage(ChatMessage),
+        ChatAcknowledge(ChatAcknowledge),
+    }
+
+    impl TryFrom<&[u8]> for Packet {
+        type Error = crate::Error;
+
+        fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
+            Err(Self::Error::NotImplemented)
+        }
+    }
+
+    pub struct ChatMessage {
+        message: MessageText,
+        message_id: Option<u32>,
+        time_delta: Option<std::time::Duration>,
+    }
+
     pub struct MessageText {
         value: String
     }
@@ -415,17 +434,6 @@ pub mod chat_channel {
 
             Ok(MessageText{value})
         }
-    }
-
-    pub enum Packet {
-        ChatMessage(ChatMessage),
-        ChatAcknowledge(ChatAcknowledge),
-    }
-
-    pub struct ChatMessage {
-        message: MessageText,
-        message_id: Option<u32>,
-        time_delta: Option<std::time::Duration>,
     }
 
     pub struct ChatAcknowledge {
@@ -585,6 +593,14 @@ pub mod auth_hidden_service {
         Result(Result),
     }
 
+    impl TryFrom<&[u8]> for Packet {
+        type Error = crate::Error;
+
+        fn try_from(value: &[u8]) -> std::result::Result<Self, Self::Error> {
+            Err(Self::Error::NotImplemented)
+        }
+    }
+
     pub struct OpenChannel {
         pub client_cookie: [u8; CLIENT_COOKIE_SIZE],
     }
@@ -621,6 +637,14 @@ pub mod file_channel {
         FileChunk(FileChunk),
         FileChunkAck(FileChunkAck),
         FileTransferCompleteNotification(FileTransferCompleteNotification),
+    }
+
+    impl TryFrom<&[u8]> for Packet {
+        type Error = crate::Error;
+
+        fn try_from(value: &[u8]) -> std::result::Result<Self, Self::Error> {
+            Err(Self::Error::NotImplemented)
+        }
     }
 
     pub struct FileHeader {
