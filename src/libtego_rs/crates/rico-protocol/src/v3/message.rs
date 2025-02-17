@@ -393,13 +393,54 @@ pub mod chat_channel {
         type Error = crate::Error;
 
         fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
-            Err(Self::Error::NotImplemented)
+            use protobuf::Message;
+            use crate::v3::protos;
+
+            // parse bytes into protobuf message
+            let pb = protos::ChatChannel::Packet::parse_from_bytes(value).map_err(Self::Error::ProtobufError)?;
+
+            let chat_message = pb.chat_message.into_option();
+            let chat_acknowledge = pb.chat_acknowledge.into_option();
+
+            match (chat_message, chat_acknowledge) {
+                (Some(chat_message), None) => {
+                    let message_text = chat_message.message_text.ok_or(Self::Error::InvalidProtobufMessage)?;
+                    let message_text: MessageText = message_text.try_into()?;
+
+                    let message_id = chat_message.message_id.ok_or(Self::Error::InvalidProtobufMessage)?;
+
+                    let time_delta: Option<std::time::Duration> = match chat_message.time_delta {
+                        Some(time_delta) => match time_delta {
+                            ..=0 => Some(std::time::Duration::from_secs(-time_delta as u64)),
+                            _ => return Err(Self::Error::InvalidProtobufMessage),
+                        },
+                        None => None
+                    };
+
+                    let chat_message = ChatMessage{message_text, message_id, time_delta};
+                    Ok(Packet::ChatMessage(chat_message))
+                },
+                (None, Some(chat_acknowledge)) => {
+                    let message_id = chat_acknowledge.message_id.ok_or(Self::Error::InvalidProtobufMessage)?;
+                    let accepted = chat_acknowledge.accepted.ok_or(Self::Error::InvalidProtobufMessage)?;
+
+                    let chat_acknowledge = ChatAcknowledge{message_id, accepted};
+                    Ok(Packet::ChatAcknowledge(chat_acknowledge))
+                },
+                _ => Err(Self::Error::InvalidProtobufMessage)
+            }
+
         }
     }
 
     pub struct ChatMessage {
-        message: MessageText,
-        message_id: Option<u32>,
+        message_text: MessageText,
+        // TODO: in practice message id is always set
+        message_id: u32,
+        // TODO: time_delta is the number of second this message sat in the send queue
+        // before it was sent. In practice this value must be:
+        // - 0 or negative
+        // - if not present, assumed to be 0
         time_delta: Option<std::time::Duration>,
     }
 
@@ -437,7 +478,10 @@ pub mod chat_channel {
     }
 
     pub struct ChatAcknowledge {
-        pub message_id: Option<u32>,
+        // TODO: behaviour undefined in spec
+        // - acking without a message_id results in closing the associated channel
+        // - in practice, it is always set
+        pub message_id: u32,
         pub accepted: bool,
     }
 }
@@ -787,10 +831,15 @@ pub fn next_packet(bytes: &[u8], channel_map: BTreeMap<u16, control_channel::Cha
             }
 
             let bytes = &bytes[4..];
+            use control_channel::ChannelType;
             let packet = match channel_map.get(&channel) {
-                Some(control_channel::ChannelType::Control) => {
+                Some(ChannelType::Control) => {
                     let packet = control_channel::Packet::try_from(bytes)?;
                     Packet::ControlChannelPacket(packet)
+                },
+                Some(ChannelType::Chat) => {
+                    let packet = chat_channel::Packet::try_from(bytes)?;
+                    Packet::ChatChannelPacket{channel, packet}
                 },
                 Some(_) => return Err(Error::NotImplemented),
                 None => return Err(Error::TargetChannelDoesNotExist(channel)),
