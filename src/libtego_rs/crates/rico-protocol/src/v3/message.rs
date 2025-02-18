@@ -959,36 +959,38 @@ pub fn next_packet(bytes: &[u8], channel_map: BTreeMap<u16, control_channel::Cha
 
             // size must be at least
             if size < 4 {
-                return Err(Error::BadDataStream);
+                Err(Error::BadDataStream)
             } else if bytes.len() < size {
-                return Err(Error::NeedMoreBytes);
+                Err(Error::NeedMoreBytes)
+            } else if size == 4 {
+                Ok((Packet::CloseChannelPacket{channel}, 4))
+            } else {
+                let bytes = &bytes[4..];
+                use control_channel::ChannelType;
+                let packet = match channel_map.get(&channel) {
+                    Some(ChannelType::Control) => {
+                        let packet = control_channel::Packet::try_from(bytes)?;
+                        Packet::ControlChannelPacket(packet)
+                    },
+                    Some(ChannelType::Chat) => {
+                        let packet = chat_channel::Packet::try_from(bytes)?;
+                        Packet::ChatChannelPacket{channel, packet}
+                    },
+                    Some(ChannelType::AuthHiddenService) => {
+                        let packet = auth_hidden_service::Packet::try_from(bytes)?;
+                        Packet::AuthHiddenServicePacket{channel, packet}
+                    },
+                    Some(ChannelType::FileTransfer) => {
+                        let packet = file_channel::Packet::try_from(bytes)?;
+                        Packet::FileChannelPacket{channel, packet}
+                    },
+                    Some(_) => return Err(Error::NotImplemented),
+                    None => return Err(Error::TargetChannelDoesNotExist(channel)),
+                };
+                Ok((packet, size))
             }
-
-            let bytes = &bytes[4..];
-            use control_channel::ChannelType;
-            let packet = match channel_map.get(&channel) {
-                Some(ChannelType::Control) => {
-                    let packet = control_channel::Packet::try_from(bytes)?;
-                    Packet::ControlChannelPacket(packet)
-                },
-                Some(ChannelType::Chat) => {
-                    let packet = chat_channel::Packet::try_from(bytes)?;
-                    Packet::ChatChannelPacket{channel, packet}
-                },
-                Some(ChannelType::AuthHiddenService) => {
-                    let packet = auth_hidden_service::Packet::try_from(bytes)?;
-                    Packet::AuthHiddenServicePacket{channel, packet}
-                },
-                Some(ChannelType::FileTransfer) => {
-                    let packet = file_channel::Packet::try_from(bytes)?;
-                    Packet::FileChannelPacket{channel, packet}
-                },
-                Some(_) => return Err(Error::NotImplemented),
-                None => return Err(Error::TargetChannelDoesNotExist(channel)),
-            };
-            return Ok((packet, size));
         } else {
-            return Err(Error::NeedMoreBytes);
+            Err(Error::NeedMoreBytes)
         }
     }
 
