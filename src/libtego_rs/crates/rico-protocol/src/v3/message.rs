@@ -711,8 +711,8 @@ pub mod auth_hidden_service {
 
 pub mod file_channel {
     pub(crate) const CHANNEL_TYPE: &'static str = "im.ricochet.file-transfer";
-    const FILE_HASH_SIZE: usize = 64;
-    const MAX_FILE_CHUNK_SIZE: usize = 63*1024;
+    pub const FILE_HASH_SIZE: usize = 64;
+    pub const MAX_FILE_CHUNK_SIZE: usize = 63*1024;
 
     pub enum Packet {
         FileHeader(FileHeader),
@@ -727,7 +727,96 @@ pub mod file_channel {
         type Error = crate::Error;
 
         fn try_from(value: &[u8]) -> std::result::Result<Self, Self::Error> {
-            Err(Self::Error::NotImplemented)
+            use protobuf::Message;
+            use crate::v3::protos;
+
+            // parse bytes into protobuf message
+            let pb = protos::FileChannel::Packet::parse_from_bytes(value).map_err(Self::Error::ProtobufError)?;
+
+            let file_header = pb.file_header.into_option();
+            let file_header_ack = pb.file_header_ack.into_option();
+            let file_header_response = pb.file_header_response.into_option();
+            let file_chunk = pb.file_chunk.into_option();
+            let file_chunk_ack = pb.file_chunk_ack.into_option();
+            let file_transfer_complete_notification = pb.file_transfer_complete_notification.into_option();
+
+            match (
+                file_header,
+                file_header_ack,
+                file_header_response,
+                file_chunk,
+                file_chunk_ack,
+                file_transfer_complete_notification) {
+                (Some(file_header), None, None, None, None, None) => {
+                    let file_id = file_header.file_id.ok_or(Self::Error::InvalidProtobufMessage)?;
+
+                    let file_size = file_header.file_size.ok_or(Self::Error::InvalidProtobufMessage)?;
+
+                    let name = file_header.name.ok_or(Self::Error::InvalidProtobufMessage)?;
+
+                    let mut file_hash = file_header.file_hash.ok_or(Self::Error::InvalidProtobufMessage)?;
+                    let file_hash: [u8; FILE_HASH_SIZE] = match file_hash.try_into() {
+                        Ok(bytes) => bytes,
+                        Err(_) => return Err(Self::Error::InvalidProtobufMessage),
+                    };
+
+                    let file_header = FileHeader{file_id, file_size, name, file_hash};
+                    Ok(Packet::FileHeader(file_header))
+                },
+                (None, Some(file_header_ack), None, None, None, None) => {
+                    let file_id = file_header_ack.file_id.ok_or(Self::Error::InvalidProtobufMessage)?;
+
+                    let accepted = file_header_ack.accepted.ok_or(Self::Error::InvalidProtobufMessage)?;
+
+                    let file_header_ack = FileHeaderAck{file_id, accepted};
+                    Ok(Packet::FileHeaderAck(file_header_ack))
+                },
+                (None, None, Some(file_header_response), None, None, None) => {
+                    let file_id = file_header_response.file_id.ok_or(Self::Error::InvalidProtobufMessage)?;
+
+                    let response = file_header_response.response.ok_or(Self::Error::InvalidProtobufMessage)?;
+                    let response = match response {
+                        0 => Response::Accept,
+                        1 => Response::Reject,
+                        _ => return Err(Self::Error::InvalidProtobufMessage),
+                    };
+
+                    let file_header_response = FileHeaderResponse{file_id, response};
+                    Ok(Packet::FileHeaderResponse(file_header_response))
+                },
+                (None, None, None, Some(file_chunk), None, None) => {
+                    let file_id = file_chunk.file_id.ok_or(Self::Error::InvalidProtobufMessage)?;
+
+                    let chunk_data = file_chunk.chunk_data.ok_or(Self::Error::InvalidProtobufMessage)?;
+                    let chunk_data: ChunkData = chunk_data.try_into()?;
+
+                    let file_chunk = FileChunk{file_id, chunk_data};
+                    Ok(Packet::FileChunk(file_chunk))
+                },
+                (None, None, None, None, Some(file_chunk_ack), None) => {
+                    let file_id = file_chunk_ack.file_id.ok_or(Self::Error::InvalidProtobufMessage)?;
+
+                    let bytes_received = file_chunk_ack.bytes_received.ok_or(Self::Error::InvalidProtobufMessage)?;
+
+                    let file_chunk_ack = FileChunkAck{file_id, bytes_received};
+                    Ok(Packet::FileChunkAck(file_chunk_ack))
+                },
+                (None, None, None, None, None, Some(file_transfer_complete_notification)) => {
+                    let file_id = file_transfer_complete_notification.file_id.ok_or(Self::Error::InvalidProtobufMessage)?;
+
+                    let result = file_transfer_complete_notification.result.ok_or(Self::Error::InvalidProtobufMessage)?;
+                    let result = match result.value() {
+                        0 => FileTransferResult::Success,
+                        1 => FileTransferResult::Failure,
+                        2 => FileTransferResult::Cancelled,
+                        _ => return Err(Self::Error::InvalidProtobufMessage),
+                    };
+
+                    let file_transfer_complete_notification = FileTransferCompleteNotification{file_id, result};
+                    Ok(Packet::FileTransferCompleteNotification(file_transfer_complete_notification))
+                },
+                _ => Err(Self::Error::InvalidProtobufMessage),
+            }
         }
     }
 
@@ -753,7 +842,12 @@ pub mod file_channel {
 
     pub struct FileHeaderResponse {
         file_id: u32,
-        response: i32,
+        response: Response,
+    }
+
+    pub enum Response {
+        Accept,
+        Reject,
     }
 
     pub struct FileChunk {
@@ -884,6 +978,10 @@ pub fn next_packet(bytes: &[u8], channel_map: BTreeMap<u16, control_channel::Cha
                 Some(ChannelType::AuthHiddenService) => {
                     let packet = auth_hidden_service::Packet::try_from(bytes)?;
                     Packet::AuthHiddenServicePacket{channel, packet}
+                },
+                Some(ChannelType::FileTransfer) => {
+                    let packet = file_channel::Packet::try_from(bytes)?;
+                    Packet::FileChannelPacket{channel, packet}
                 },
                 Some(_) => return Err(Error::NotImplemented),
                 None => return Err(Error::TargetChannelDoesNotExist(channel)),
