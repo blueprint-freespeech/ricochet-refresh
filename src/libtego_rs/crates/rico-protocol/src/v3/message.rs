@@ -57,6 +57,7 @@ pub enum Error {
 
 pub mod introduction {
 
+    #[derive(Debug)]
     pub struct IntroductionPacket {
         versions: Vec<Version>,
     }
@@ -129,6 +130,7 @@ pub mod introduction {
         }
     }
 
+    #[derive(Debug)]
     pub struct IntroductionResponsePacket {
         pub version: Option<Version>,
     }
@@ -160,6 +162,7 @@ pub mod introduction {
         }
     }
 
+    #[derive(Debug)]
     pub enum Version {
         Ricochet1_0,
         Ricochet1_1,
@@ -198,6 +201,7 @@ pub mod control_channel {
     // this isn't actually used in the protocol but useful for debugging
     pub(crate) const CHANNEL_TYPE: &'static str = "im.ricochet.control";
 
+    #[derive(Debug)]
     pub enum Packet {
         OpenChannel(OpenChannel),
         ChannelResult(ChannelResult),
@@ -339,12 +343,14 @@ pub mod control_channel {
         }
     }
 
+    #[derive(Debug)]
     pub struct OpenChannel {
         pub channel_identifier: i32,
         pub channel_type: ChannelType,
         pub derived: Option<OpenChannelDerived>,
     }
 
+    #[derive(Debug)]
     pub enum ChannelType {
         Control,
         Chat,
@@ -382,11 +388,13 @@ pub mod control_channel {
         }
     }
 
+    #[derive(Debug)]
     enum OpenChannelDerived {
         ContactRequestChannel(crate::contact_request_channel::OpenChannel),
         AuthHiddenService(crate::auth_hidden_service::OpenChannel),
     }
 
+    #[derive(Debug)]
     pub struct ChannelResult {
         pub channel_identifier: i32,
         pub opened: bool,
@@ -394,11 +402,13 @@ pub mod control_channel {
         pub derived: Option<ChannelResultDerived>,
     }
 
+    #[derive(Debug)]
     enum ChannelResultDerived {
         ContactRequestChannel(crate::contact_request_channel::ChannelResult),
         AuthHiddenService(crate::auth_hidden_service::ChannelResult),
     }
 
+    #[derive(Debug)]
     pub enum CommonError {
         GenericError,
         UnknownTypeError,
@@ -407,14 +417,17 @@ pub mod control_channel {
         FailedError,
     }
 
+    #[derive(Debug)]
     pub struct KeepAlive {
         response_requested: bool,
     }
 
+    #[derive(Debug)]
     pub struct EnableFeatures {
         feature: Vec<String>,
     }
 
+    #[derive(Debug)]
     pub struct FeaturesEnabled {
         feature: Vec<String>,
     }
@@ -427,6 +440,7 @@ pub mod control_channel {
 pub mod chat_channel {
     pub(crate) const CHANNEL_TYPE: &'static str = "im.ricochet.chat";
 
+    #[derive(Debug)]
     pub enum Packet {
         ChatMessage(ChatMessage),
         ChatAcknowledge(ChatAcknowledge),
@@ -475,6 +489,7 @@ pub mod chat_channel {
         }
     }
 
+    #[derive(Debug)]
     pub struct ChatMessage {
         message_text: MessageText,
         // TODO: in practice message id is always set
@@ -486,6 +501,7 @@ pub mod chat_channel {
         time_delta: Option<std::time::Duration>,
     }
 
+    #[derive(Debug)]
     pub struct MessageText {
         value: String
     }
@@ -519,6 +535,7 @@ pub mod chat_channel {
         }
     }
 
+    #[derive(Debug)]
     pub struct ChatAcknowledge {
         // TODO: behaviour undefined in spec
         // - acking without a message_id results in closing the associated channel
@@ -535,15 +552,18 @@ pub mod chat_channel {
 pub mod contact_request_channel {
     pub(crate) const CHANNEL_TYPE: &'static str = "im.ricochet.contact.request";
 
+    #[derive(Debug)]
     pub struct OpenChannel {
         pub contact_request: ContactRequest,
     }
 
+    #[derive(Debug)]
     pub struct ContactRequest {
         pub nickname: Nickname,
         pub message_text: MessageText,
     }
 
+    #[derive(Debug)]
     pub struct MessageText {
         value: String
     }
@@ -573,6 +593,7 @@ pub mod contact_request_channel {
         }
     }
 
+    #[derive(Debug)]
     pub struct Nickname {
         value: String
     }
@@ -647,14 +668,17 @@ pub mod contact_request_channel {
         }
     }
 
+    #[derive(Debug)]
     pub struct ChannelResult {
         pub response: Response,
     }
 
+    #[derive(Debug)]
     pub struct Response {
         pub status: Status,
     }
 
+    #[derive(Debug)]
     pub enum Status {
         Undefined,
         Pending,
@@ -674,6 +698,7 @@ pub mod auth_hidden_service {
     pub(crate) const SERVER_COOKIE_SIZE: usize = 16;
     pub(crate) const PROOF_SIGNATURE_SIZE: usize = 64;
 
+    #[derive(Debug)]
     pub enum Packet {
         Proof(Proof),
         Result(Result),
@@ -727,20 +752,24 @@ pub mod auth_hidden_service {
         }
     }
 
+    #[derive(Debug)]
     pub struct OpenChannel {
         pub client_cookie: [u8; CLIENT_COOKIE_SIZE],
     }
 
+    #[derive(Debug)]
     pub struct ChannelResult {
         pub server_cookie: [u8; SERVER_COOKIE_SIZE],
     }
 
+    #[derive(Debug)]
     pub struct Proof {
         // TODO: spec doesn't explicitly say how many bytes the proof's signature is
         pub signature: [u8; PROOF_SIGNATURE_SIZE],
         pub service_id: tor_interface::tor_crypto::V3OnionServiceId,
     }
 
+    #[derive(Debug)]
     pub struct Result {
         pub accepted: bool,
         // TODO: is_known_contact must be present if accepted is true
@@ -757,6 +786,7 @@ pub mod file_channel {
     pub const FILE_HASH_SIZE: usize = 64;
     pub const MAX_FILE_CHUNK_SIZE: usize = 63*1024;
 
+    #[derive(Debug)]
     pub enum Packet {
         FileHeader(FileHeader),
         FileHeaderAck(FileHeaderAck),
@@ -863,6 +893,7 @@ pub mod file_channel {
         }
     }
 
+    #[derive(Debug)]
     pub struct FileHeader {
         file_id: u32,
         // TODO: file_size requirements are not defined in spec
@@ -878,26 +909,31 @@ pub mod file_channel {
         file_hash: [u8; FILE_HASH_SIZE],
     }
 
+    #[derive(Debug)]
     pub struct FileHeaderAck {
         file_id:  u32,
         accepted: bool,
     }
 
+    #[derive(Debug)]
     pub struct FileHeaderResponse {
         file_id: u32,
         response: Response,
     }
 
+    #[derive(Debug)]
     pub enum Response {
         Accept,
         Reject,
     }
 
+    #[derive(Debug)]
     pub struct FileChunk {
         file_id: u32,
         chunk_data: ChunkData,
     }
 
+    #[derive(Debug)]
     pub struct ChunkData {
         value: Vec<u8>,
     }
@@ -920,17 +956,20 @@ pub mod file_channel {
         }
     }
 
+    #[derive(Debug)]
     pub struct FileChunkAck {
         file_id: u32,
         // TODO: bytes_received param is not defined in spec
         bytes_received: u64,
     }
 
+    #[derive(Debug)]
     pub struct FileTransferCompleteNotification {
         file_id: u32,
         result: FileTransferResult,
     }
 
+    #[derive(Debug)]
     pub enum FileTransferResult {
         Success,
         Failure,
@@ -941,6 +980,7 @@ pub mod file_channel {
 //
 // Ricochet Protocol Packet
 //
+#[derive(Debug)]
 pub enum Packet {
     // sent by client to begin Ricochet-Refresh handshake
     IntroductionPacket(introduction::IntroductionPacket),
