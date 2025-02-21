@@ -42,6 +42,10 @@ pub enum Error {
     #[error("invalid protobuf message")]
     InvalidProtobufMessage,
 
+    // failed to construct a packet type
+    #[error("packet construction failed: {0}")]
+    PacketConstructionFailed(String),
+
     // TODO: remove this error when no longer needed
     #[error("not implemented")]
     NotImplemented,
@@ -54,7 +58,35 @@ pub enum Error {
 pub mod introduction {
 
     pub struct IntroductionPacket {
-        pub versions: Vec<Version>,
+        versions: Vec<Version>,
+    }
+
+    impl IntroductionPacket {
+        pub fn new(versions: Vec<Version>) -> Result<Self, crate::Error> {
+            if versions.is_empty() {
+                Err(crate::Error::PacketConstructionFailed("introduction packet must have specify at least one supported version".to_string()))
+            } else if versions.len() > u8::MAX as usize {
+                Err(crate::Error::PacketConstructionFailed("introduction packet may have no more than 255 supported version".to_string()))
+            } else {
+                Ok(Self{versions})
+            }
+        }
+
+        pub fn versions(&self) -> &Vec<Version> {
+            &self.versions
+        }
+
+        pub fn write_to_vec(&self, v: &mut Vec<u8>) -> Result<(), crate::Error> {
+
+            v.push(0x49u8);
+            v.push(0x4du8);
+            v.push(self.versions.len() as u8);
+            for ver in &self.versions {
+                v.push(ver.into());
+            }
+
+            Ok(())
+        }
     }
 
     impl TryFrom<&[u8]> for IntroductionPacket {
@@ -101,6 +133,17 @@ pub mod introduction {
         pub version: Option<Version>,
     }
 
+    impl IntroductionResponsePacket {
+        pub fn write_to_vec(&self, v: &mut Vec<u8>) -> Result<(), crate::Error> {
+            if let Some(version) = &self.version {
+                v.push(version.into());
+            } else {
+                v.push(0xffu8);
+            }
+            Ok(())
+        }
+    }
+
     impl TryFrom<&[u8]> for IntroductionResponsePacket {
         type Error = crate::Error;
 
@@ -123,8 +166,8 @@ pub mod introduction {
         RicochetRefresh3,
     }
 
-    impl From<Version> for u8 {
-        fn from(version: Version) -> u8 {
+    impl From<&Version> for u8 {
+        fn from(version: &Version) -> u8 {
             match version {
                 Version::Ricochet1_0 => 0u8,
                 Version::Ricochet1_1 => 1u8,
@@ -932,7 +975,7 @@ pub fn next_packet(bytes: &[u8], channel_map: BTreeMap<u16, control_channel::Cha
     if channel_map.is_empty() {
         match TryInto::<introduction::IntroductionPacket>::try_into(bytes) {
             Ok(packet) => {
-                let offset = 3 + packet.versions.len();
+                let offset = 3 + packet.versions().len();
                 return Ok((Packet::IntroductionPacket(packet), offset));
             },
             Err(Error::NeedMoreBytes) => return Err(Error::NeedMoreBytes),
