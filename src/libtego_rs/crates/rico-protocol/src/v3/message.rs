@@ -617,6 +617,46 @@ pub mod chat_channel {
         ChatAcknowledge(ChatAcknowledge),
     }
 
+    impl Packet {
+        pub fn write_to_vec(&self, v: &mut Vec<u8>) -> Result<(), crate::Error> {
+            use protobuf::Message;
+            use crate::v3::protos;
+
+            let mut pb: protos::ChatChannel::Packet = Default::default();
+
+            match self {
+                Packet::ChatMessage(chat_message) => {
+                    let message_text: String = chat_message.message_text().into();
+                    let message_text = Some(message_text);
+                    let message_id = Some(chat_message.message_id());
+                    let time_delta: Option<i64> = match chat_message.time_delta() {
+                        Some(time_delta) => Some(-(time_delta.as_secs() as i64)),
+                        None => None
+                    };
+
+                    let mut chat_message = protos::ChatChannel::ChatMessage::default();
+                    chat_message.message_text = message_text;
+                    chat_message.message_id = message_id;
+                    chat_message.time_delta = time_delta;
+
+                    pb.chat_message = Some(chat_message).into();
+                }
+                Packet::ChatAcknowledge(chat_acknowledge) => {
+                    let message_id = Some(chat_acknowledge.message_id());
+                    let accepted = Some(chat_acknowledge.accepted());
+
+                    let mut chat_acknowledge = protos::ChatChannel::ChatAcknowledge::default();
+                    chat_acknowledge.message_id = message_id;
+                    chat_acknowledge.accepted = accepted;
+
+                    pb.chat_acknowledge = Some(chat_acknowledge).into();
+                }
+            }
+            pb.write_to_vec(v).map_err(crate::Error::ProtobufError)?;
+            Ok(())
+        }
+    }
+
     impl TryFrom<&[u8]> for Packet {
         type Error = crate::Error;
 
@@ -645,7 +685,7 @@ pub mod chat_channel {
                         None => None
                     };
 
-                    let chat_message = ChatMessage{message_text, message_id, time_delta};
+                    let chat_message = ChatMessage::new(message_text, message_id, time_delta)?;
                     Ok(Packet::ChatMessage(chat_message))
                 },
                 (None, Some(chat_acknowledge)) => {
@@ -670,6 +710,34 @@ pub mod chat_channel {
         // - 0 or negative
         // - if not present, assumed to be 0
         time_delta: Option<std::time::Duration>,
+    }
+
+    impl ChatMessage {
+        pub fn new(
+            message_text: MessageText,
+            message_id: u32,
+            time_delta: Option<std::time::Duration>) -> Result<Self, crate::Error> {
+
+            if let Some(time_delta) = time_delta {
+                if time_delta.as_secs() > i64::MAX as u64 {
+                    return Err(crate::Error::PacketConstructionFailed("time_delta in seconds must be less than or equal to i64::MAX".to_string()));
+                }
+            }
+
+            Ok(Self{message_text, message_id, time_delta})
+        }
+
+        pub fn message_text(&self) -> &MessageText {
+            &self.message_text
+        }
+
+        pub fn message_id(&self) -> u32 {
+            self.message_id
+        }
+
+        pub fn time_delta(&self) -> &Option<std::time::Duration> {
+            &self.time_delta
+        }
     }
 
     #[derive(Debug, PartialEq)]
@@ -711,8 +779,24 @@ pub mod chat_channel {
         // TODO: behaviour undefined in spec
         // - acking without a message_id results in closing the associated channel
         // - in practice, it is always set
-        pub message_id: u32,
-        pub accepted: bool,
+        message_id: u32,
+        accepted: bool,
+    }
+
+    impl ChatAcknowledge {
+        pub fn new(
+            message_id: u32,
+            accepted: bool) -> Result<Self, crate::Error> {
+            Ok(Self{message_id, accepted})
+        }
+
+        pub fn message_id(&self) -> u32 {
+            self.message_id
+        }
+
+        pub fn accepted(&self) -> bool {
+            self.accepted
+        }
     }
 }
 
@@ -1394,6 +1478,71 @@ fn test_round_trip() -> anyhow::Result<()> {
 
         assert_eq!(packet_src, packet_dest);
     }
+
+
+    // ChatChannel ChatMessage
+    {
+        println!("---");
+
+        let message_text: chat_channel::MessageText = "hello world".to_string().try_into()?;
+        let message_id = 12u32;
+        let time_delta = Some(std::time::Duration::from_secs(2));
+
+        let chat_message = chat_channel::ChatMessage::new(message_text, message_id, time_delta)?;
+
+        println!("{chat_message:?}");
+
+        let packet_src = chat_channel::Packet::ChatMessage(chat_message);
+
+        println!("{packet_src:?}");
+
+        let mut bytes: Vec<u8> = Vec::default();
+        packet_src.write_to_vec(&mut bytes)?;
+
+        println!("{bytes:?}");
+
+        let packet_dest: chat_channel::Packet = bytes.as_slice().try_into()?;
+
+        println!("{packet_dest:?}");
+        let mut bytes: Vec<u8> = Vec::default();
+        packet_dest.write_to_vec(&mut bytes)?;
+
+        println!("{bytes:?}");
+
+        assert_eq!(packet_src, packet_dest);
+    }
+
+    // ChatChannel ChatAcknowledge
+    {
+        println!("---");
+
+        let message_id = 12u32;
+        let accepted = true;
+
+        let chat_acknowledge = chat_channel::ChatAcknowledge::new(message_id, accepted)?;
+
+        println!("{chat_acknowledge:?}");
+
+        let packet_src = chat_channel::Packet::ChatAcknowledge(chat_acknowledge);
+
+        println!("{packet_src:?}");
+
+        let mut bytes: Vec<u8> = Vec::default();
+        packet_src.write_to_vec(&mut bytes)?;
+
+        println!("{bytes:?}");
+
+        let packet_dest: chat_channel::Packet = bytes.as_slice().try_into()?;
+
+        println!("{packet_dest:?}");
+        let mut bytes: Vec<u8> = Vec::default();
+        packet_dest.write_to_vec(&mut bytes)?;
+
+        println!("{bytes:?}");
+
+        assert_eq!(packet_src, packet_dest);
+    }
+
 
     anyhow::bail!("test over");
 }
