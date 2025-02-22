@@ -57,7 +57,7 @@ pub enum Error {
 
 pub mod introduction {
 
-    #[derive(Debug)]
+    #[derive(Debug, PartialEq)]
     pub struct IntroductionPacket {
         versions: Vec<Version>,
     }
@@ -130,7 +130,7 @@ pub mod introduction {
         }
     }
 
-    #[derive(Debug)]
+    #[derive(Debug, PartialEq)]
     pub struct IntroductionResponsePacket {
         pub version: Option<Version>,
     }
@@ -162,7 +162,7 @@ pub mod introduction {
         }
     }
 
-    #[derive(Debug)]
+    #[derive(Debug, PartialEq)]
     pub enum Version {
         Ricochet1_0,
         Ricochet1_1,
@@ -201,7 +201,7 @@ pub mod control_channel {
     // this isn't actually used in the protocol but useful for debugging
     pub(crate) const CHANNEL_TYPE: &'static str = "im.ricochet.control";
 
-    #[derive(Debug)]
+    #[derive(Debug, PartialEq)]
     pub enum Packet {
         OpenChannel(OpenChannel),
         ChannelResult(ChannelResult),
@@ -212,6 +212,115 @@ pub mod control_channel {
         KeepAlive(KeepAlive),
         EnableFeatures(EnableFeatures),
         FeaturesEnabled(FeaturesEnabled),
+    }
+
+    impl Packet {
+        pub fn write_to_vec(&self, v: &mut Vec<u8>) -> Result<(), crate::Error> {
+            use protobuf::Message;
+            use crate::v3::protos;
+
+            // construct our protobuf message
+            let mut pb: protos::ControlChannel::Packet = Default::default();
+            match self {
+                Packet::OpenChannel(open_channel) => {
+                    let channel_identifier = Some(open_channel.channel_identifier());
+                    let channel_type = open_channel.channel_type();
+                    let channel_type: &str = channel_type.into();
+                    let channel_type = Some(channel_type.to_string());
+                    let extension = open_channel.extension();
+
+                    // construct OpenChannel packet
+                    let mut open_channel = protos::ControlChannel::OpenChannel::default();
+                    open_channel.channel_identifier = channel_identifier;
+                    open_channel.channel_type = channel_type;
+
+                    // set extensions
+                    match extension {
+                        Some(OpenChannelExtension::ContactRequestChannel(extension)) => {
+                            let contact_request = &extension.contact_request;
+                            let nickname = &contact_request.nickname;
+                            let nickname: String = nickname.into();
+                            let nickname = Some(nickname);
+                            let message_text = &contact_request.message_text;
+                            let message_text: String = message_text.into();
+                            let message_text = Some(message_text);
+
+                            let mut contact_request = protos::ContactRequestChannel::ContactRequest::default();
+                            contact_request.nickname = nickname;
+                            contact_request.message_text = message_text;
+
+                            let field_number = crate::contact_request_channel::OpenChannel::CONTACT_REQUEST_FIELD_NUMBER;
+
+                            open_channel.mut_unknown_fields().add_length_delimited(field_number, contact_request.write_to_bytes().unwrap());
+                        },
+                        Some(OpenChannelExtension::AuthHiddenService(extension)) => {
+                            let client_cookie = &extension.client_cookie;
+
+                            let field_number = crate::auth_hidden_service::OpenChannel::CLIENT_COOKIE_FIELD_NUMBER;
+
+                            open_channel.mut_unknown_fields().add_length_delimited(field_number, client_cookie.into());
+                        },
+                        None => (),
+                    }
+                    pb.open_channel = Some(open_channel).into();
+                },
+                Packet::ChannelResult(channel_result) => {
+                    let channel_identifier = Some(channel_result.channel_identifier);
+                    let opened = Some(channel_result.opened);
+                    let common_error = &channel_result.common_error;
+                    let common_error = match common_error {
+                        CommonError::GenericError => protos::ControlChannel::channel_result::CommonError::GenericError,
+                        CommonError::UnknownTypeError => protos::ControlChannel::channel_result::CommonError::UnknownTypeError,
+                        CommonError::UnauthorizedError => protos::ControlChannel::channel_result::CommonError::UnauthorizedError,
+                        CommonError::BadUsageError => protos::ControlChannel::channel_result::CommonError::BadUsageError,
+                        CommonError::FailedError => protos::ControlChannel::channel_result::CommonError::FailedError,
+                    };
+                    let common_error = Some(protobuf::EnumOrUnknown::new(common_error));
+                    let extension = channel_result.extension();
+
+                    // construct ChannelResult packet
+                    let mut channel_result = protos::ControlChannel::ChannelResult::default();
+                    channel_result.channel_identifier = channel_identifier;
+                    channel_result.opened = opened;
+                    channel_result.common_error = common_error;
+
+                    match extension {
+                        Some(ChannelResultExtension::ContactRequestChannel(extension)) => {
+                            let status = &extension.response.status;
+                            let status = match status {
+                                crate::contact_request_channel::Status::Undefined => protos::ContactRequestChannel::response::Status::Undefined,
+                                crate::contact_request_channel::Status::Pending => protos::ContactRequestChannel::response::Status::Pending,
+                                crate::contact_request_channel::Status::Accepted => protos::ContactRequestChannel::response::Status::Accepted,
+                                crate::contact_request_channel::Status::Rejected => protos::ContactRequestChannel::response::Status::Rejected,
+                                crate::contact_request_channel::Status::Error => protos::ContactRequestChannel::response::Status::Error,
+                            };
+
+                            let mut response = protos::ContactRequestChannel::Response::default();
+                            response.status = Some(protobuf::EnumOrUnknown::new(status));
+
+                            let field_number = crate::contact_request_channel::ChannelResult::RESPONSE_FIELD_NUMBER;
+
+                            channel_result.mut_unknown_fields().add_length_delimited(field_number, response.write_to_bytes().unwrap());
+                        },
+                        Some(ChannelResultExtension::AuthHiddenService(extension)) => {
+                            let server_cookie = &extension.server_cookie;
+
+                            let field_number = crate::auth_hidden_service::ChannelResult::SERVER_COOKIE_FIELD_NUMBER;
+
+                            channel_result.mut_unknown_fields().add_length_delimited(field_number, server_cookie.into());
+                        },
+                        None => (),
+                    }
+                    pb.channel_result = Some(channel_result).into();
+                },
+                // TODO: we don't care about KeepAlive, EnableFeatures, or FeaturesEnabled
+                _ => return Err(crate::Error::NotImplemented),
+            }
+
+            // serialise
+            pb.write_to_vec(v).map_err(crate::Error::ProtobufError)?;
+            Ok(())
+        }
     }
 
     impl TryFrom<&[u8]> for Packet {
@@ -248,7 +357,7 @@ pub mod control_channel {
                 let contact_request = protos::ContactRequestChannel::exts::contact_request.get(&open_channel);
                 let client_cookie = protos::AuthHiddenService::exts::client_cookie.get(&open_channel);
 
-                let derived: Option<OpenChannelDerived> = match channel_type {
+                let extension: Option<OpenChannelExtension> = match channel_type {
                     // contact request channel open channel
                     ChannelType::ContactRequest => {
                         let mut contact_request = contact_request.ok_or(Self::Error::InvalidProtobufMessage)?;
@@ -264,7 +373,7 @@ pub mod control_channel {
 
                         let contact_request = crate::contact_request_channel::ContactRequest{nickname, message_text};
 
-                        Some(OpenChannelDerived::ContactRequestChannel(crate::contact_request_channel::OpenChannel{contact_request}))
+                        Some(OpenChannelExtension::ContactRequestChannel(crate::contact_request_channel::OpenChannel{contact_request}))
                     },
                     // auth hidden service open channel
                     ChannelType::AuthHiddenService => {
@@ -278,12 +387,12 @@ pub mod control_channel {
                             Err(_) => return Err(Self::Error::InvalidProtobufMessage),
                         };
 
-                        Some(OpenChannelDerived::AuthHiddenService(crate::auth_hidden_service::OpenChannel{client_cookie}))
+                        Some(OpenChannelExtension::AuthHiddenService(crate::auth_hidden_service::OpenChannel{client_cookie}))
                     },
                     _ => None,
                 };
 
-                let open_channel = OpenChannel{channel_identifier, channel_type, derived};
+                let open_channel = OpenChannel::new(channel_identifier, channel_type, extension)?;
                 Ok(Packet::OpenChannel(open_channel))
             } else if let Some(channel_result) = pb.channel_result.into_option() {
                 // base fields
@@ -305,7 +414,7 @@ pub mod control_channel {
                 let response = protos::ContactRequestChannel::exts::response.get(&channel_result);
                 let server_cookie = protos::AuthHiddenService::exts::server_cookie.get(&channel_result);
 
-                let derived: Option<ChannelResultDerived> = match (response, server_cookie) {
+                let extension: Option<ChannelResultExtension> = match (response, server_cookie) {
                     // contact request channel channel result
                     (Some(response), None) => {
                         let status = response.status.ok_or(Self::Error::InvalidProtobufMessage)?;
@@ -320,7 +429,7 @@ pub mod control_channel {
                         };
 
                         let response = crate::contact_request_channel::Response{status};
-                        Some(ChannelResultDerived::ContactRequestChannel(crate::contact_request_channel::ChannelResult{response}))
+                        Some(ChannelResultExtension::ContactRequestChannel(crate::contact_request_channel::ChannelResult{response}))
                     },
                     // auth hidden service channel result
                     (None, Some(server_cookie)) => {
@@ -329,12 +438,12 @@ pub mod control_channel {
                             Err(_) => return Err(Self::Error::InvalidProtobufMessage),
                         };
 
-                        Some(ChannelResultDerived::AuthHiddenService(crate::auth_hidden_service::ChannelResult{server_cookie}))
+                        Some(ChannelResultExtension::AuthHiddenService(crate::auth_hidden_service::ChannelResult{server_cookie}))
                     },
                     _ => return Err(Self::Error::InvalidProtobufMessage),
                 };
 
-                let channel_result = ChannelResult{channel_identifier, opened, common_error, derived};
+                let channel_result = ChannelResult::new(channel_identifier, opened, common_error, extension)?;
                 Ok(Packet::ChannelResult(channel_result))
             } else {
                 // TODO: skip unused packets for now
@@ -343,14 +452,44 @@ pub mod control_channel {
         }
     }
 
-    #[derive(Debug)]
+    #[derive(Debug, PartialEq)]
     pub struct OpenChannel {
-        pub channel_identifier: i32,
-        pub channel_type: ChannelType,
-        pub derived: Option<OpenChannelDerived>,
+        // TODO: spec needs updating, channel_identifier must be positive and non-zero, and less than u16::MAX
+        channel_identifier: i32,
+        channel_type: ChannelType,
+        extension: Option<OpenChannelExtension>,
     }
 
-    #[derive(Debug)]
+    impl OpenChannel {
+        pub fn new(
+            channel_identifier: i32,
+            channel_type: ChannelType,
+            extension: Option<OpenChannelExtension>) -> Result<Self, crate::Error> {
+            if channel_identifier < 1 ||
+               channel_identifier > u16::MAX as i32 {
+                Err(crate::Error::PacketConstructionFailed("channel_identifier must be postive, non-zero, and less than u16::MAX".to_string()))
+            } else if channel_type == ChannelType::Control {
+                Err(crate::Error::PacketConstructionFailed("channel_type may not be ChannelType::Control".to_string()))
+            } else {
+                Ok(Self{channel_identifier, channel_type, extension})
+            }
+        }
+
+        pub fn channel_identifier(&self) -> i32 {
+            self.channel_identifier
+        }
+
+        pub fn channel_type(&self) -> &ChannelType {
+            &self.channel_type
+        }
+
+        pub fn extension(&self) -> &Option<OpenChannelExtension> {
+            &self.extension
+        }
+    }
+
+
+    #[derive(Debug, PartialEq)]
     pub enum ChannelType {
         Control,
         Chat,
@@ -376,8 +515,8 @@ pub mod control_channel {
     }
 
 
-    impl From<ChannelType> for &'static str {
-        fn from(value: ChannelType) -> &'static str {
+    impl From<&ChannelType> for &'static str {
+        fn from(value: &ChannelType) -> &'static str {
             match value {
                 ChannelType::Control => crate::control_channel::CHANNEL_TYPE,
                 ChannelType::Chat => crate::chat_channel::CHANNEL_TYPE,
@@ -388,27 +527,59 @@ pub mod control_channel {
         }
     }
 
-    #[derive(Debug)]
-    enum OpenChannelDerived {
+    #[derive(Debug, PartialEq)]
+    pub enum OpenChannelExtension {
         ContactRequestChannel(crate::contact_request_channel::OpenChannel),
         AuthHiddenService(crate::auth_hidden_service::OpenChannel),
     }
 
-    #[derive(Debug)]
+    #[derive(Debug, PartialEq)]
     pub struct ChannelResult {
-        pub channel_identifier: i32,
-        pub opened: bool,
-        pub common_error: CommonError,
-        pub derived: Option<ChannelResultDerived>,
+        // TODO: spec needs updating, channel_identifier must be positive and non-zero, and less than u16::MAX
+        channel_identifier: i32,
+        opened: bool,
+        common_error: CommonError,
+        extension: Option<ChannelResultExtension>,
     }
 
-    #[derive(Debug)]
-    enum ChannelResultDerived {
+    impl ChannelResult {
+        pub fn new(
+            channel_identifier: i32,
+            opened: bool,
+            common_error: CommonError,
+            extension: Option<ChannelResultExtension>) -> Result<Self, crate::Error> {
+            if channel_identifier < 1 ||
+               channel_identifier > u16::MAX as i32 {
+                Err(crate::Error::PacketConstructionFailed("channel_identifier must be postive, non-zero, and less than u16::MAX".to_string()))
+            } else {
+                Ok(Self{channel_identifier, opened, common_error, extension})
+            }
+        }
+
+        pub fn channel_identifier(&self) -> i32 {
+            self.channel_identifier
+        }
+
+        pub fn opened(&self) -> bool {
+            self.opened
+        }
+
+        pub fn common_error(&self) -> &CommonError {
+            &self.common_error
+        }
+
+        pub fn extension(&self) -> &Option<ChannelResultExtension> {
+            &self.extension
+        }
+    }
+
+    #[derive(Debug, PartialEq)]
+    pub enum ChannelResultExtension {
         ContactRequestChannel(crate::contact_request_channel::ChannelResult),
         AuthHiddenService(crate::auth_hidden_service::ChannelResult),
     }
 
-    #[derive(Debug)]
+    #[derive(Debug, PartialEq)]
     pub enum CommonError {
         GenericError,
         UnknownTypeError,
@@ -417,17 +588,17 @@ pub mod control_channel {
         FailedError,
     }
 
-    #[derive(Debug)]
+    #[derive(Debug, PartialEq)]
     pub struct KeepAlive {
         response_requested: bool,
     }
 
-    #[derive(Debug)]
+    #[derive(Debug, PartialEq)]
     pub struct EnableFeatures {
         feature: Vec<String>,
     }
 
-    #[derive(Debug)]
+    #[derive(Debug, PartialEq)]
     pub struct FeaturesEnabled {
         feature: Vec<String>,
     }
@@ -440,7 +611,7 @@ pub mod control_channel {
 pub mod chat_channel {
     pub(crate) const CHANNEL_TYPE: &'static str = "im.ricochet.chat";
 
-    #[derive(Debug)]
+    #[derive(Debug, PartialEq)]
     pub enum Packet {
         ChatMessage(ChatMessage),
         ChatAcknowledge(ChatAcknowledge),
@@ -489,7 +660,7 @@ pub mod chat_channel {
         }
     }
 
-    #[derive(Debug)]
+    #[derive(Debug, PartialEq)]
     pub struct ChatMessage {
         message_text: MessageText,
         // TODO: in practice message id is always set
@@ -501,14 +672,14 @@ pub mod chat_channel {
         time_delta: Option<std::time::Duration>,
     }
 
-    #[derive(Debug)]
+    #[derive(Debug, PartialEq)]
     pub struct MessageText {
         value: String
     }
 
-    impl From<MessageText> for String {
-        fn from(message_text: MessageText) -> String {
-            message_text.value
+    impl From<&MessageText> for String {
+        fn from(message_text: &MessageText) -> String {
+            message_text.value.clone()
         }
     }
 
@@ -535,7 +706,7 @@ pub mod chat_channel {
         }
     }
 
-    #[derive(Debug)]
+    #[derive(Debug, PartialEq)]
     pub struct ChatAcknowledge {
         // TODO: behaviour undefined in spec
         // - acking without a message_id results in closing the associated channel
@@ -552,25 +723,29 @@ pub mod chat_channel {
 pub mod contact_request_channel {
     pub(crate) const CHANNEL_TYPE: &'static str = "im.ricochet.contact.request";
 
-    #[derive(Debug)]
+    #[derive(Debug, PartialEq)]
     pub struct OpenChannel {
         pub contact_request: ContactRequest,
     }
 
-    #[derive(Debug)]
+    impl OpenChannel {
+        pub(crate) const CONTACT_REQUEST_FIELD_NUMBER: u32 = 200u32;
+    }
+
+    #[derive(Debug, PartialEq)]
     pub struct ContactRequest {
         pub nickname: Nickname,
         pub message_text: MessageText,
     }
 
-    #[derive(Debug)]
+    #[derive(Debug, PartialEq)]
     pub struct MessageText {
         value: String
     }
 
-    impl From<MessageText> for String {
-        fn from(message_text: MessageText) -> String {
-            message_text.value
+    impl From<&MessageText> for String {
+        fn from(message_text: &MessageText) -> String {
+            message_text.value.clone()
         }
     }
 
@@ -593,14 +768,14 @@ pub mod contact_request_channel {
         }
     }
 
-    #[derive(Debug)]
+    #[derive(Debug, PartialEq)]
     pub struct Nickname {
         value: String
     }
 
-    impl From<Nickname> for String {
-        fn from(nickname: Nickname) -> String {
-            nickname.value
+    impl From<&Nickname> for String {
+        fn from(nickname: &Nickname) -> String {
+            nickname.value.clone()
         }
     }
 
@@ -668,17 +843,21 @@ pub mod contact_request_channel {
         }
     }
 
-    #[derive(Debug)]
+    #[derive(Debug, PartialEq)]
     pub struct ChannelResult {
         pub response: Response,
     }
 
-    #[derive(Debug)]
+    impl ChannelResult {
+        pub(crate) const RESPONSE_FIELD_NUMBER: u32 = 201u32;
+    }
+
+    #[derive(Debug, PartialEq)]
     pub struct Response {
         pub status: Status,
     }
 
-    #[derive(Debug)]
+    #[derive(Debug, PartialEq)]
     pub enum Status {
         Undefined,
         Pending,
@@ -698,7 +877,7 @@ pub mod auth_hidden_service {
     pub(crate) const SERVER_COOKIE_SIZE: usize = 16;
     pub(crate) const PROOF_SIGNATURE_SIZE: usize = 64;
 
-    #[derive(Debug)]
+    #[derive(Debug, PartialEq)]
     pub enum Packet {
         Proof(Proof),
         Result(Result),
@@ -752,24 +931,32 @@ pub mod auth_hidden_service {
         }
     }
 
-    #[derive(Debug)]
+    #[derive(Debug, PartialEq)]
     pub struct OpenChannel {
         pub client_cookie: [u8; CLIENT_COOKIE_SIZE],
     }
 
-    #[derive(Debug)]
+    impl OpenChannel {
+        pub(crate) const CLIENT_COOKIE_FIELD_NUMBER: u32 = 7200;
+    }
+
+    #[derive(Debug, PartialEq)]
     pub struct ChannelResult {
         pub server_cookie: [u8; SERVER_COOKIE_SIZE],
     }
 
-    #[derive(Debug)]
+    impl ChannelResult {
+        pub(crate) const SERVER_COOKIE_FIELD_NUMBER: u32 = 7200;
+    }
+
+    #[derive(Debug, PartialEq)]
     pub struct Proof {
         // TODO: spec doesn't explicitly say how many bytes the proof's signature is
         pub signature: [u8; PROOF_SIGNATURE_SIZE],
         pub service_id: tor_interface::tor_crypto::V3OnionServiceId,
     }
 
-    #[derive(Debug)]
+    #[derive(Debug, PartialEq)]
     pub struct Result {
         pub accepted: bool,
         // TODO: is_known_contact must be present if accepted is true
@@ -786,7 +973,7 @@ pub mod file_channel {
     pub const FILE_HASH_SIZE: usize = 64;
     pub const MAX_FILE_CHUNK_SIZE: usize = 63*1024;
 
-    #[derive(Debug)]
+    #[derive(Debug, PartialEq)]
     pub enum Packet {
         FileHeader(FileHeader),
         FileHeaderAck(FileHeaderAck),
@@ -893,7 +1080,7 @@ pub mod file_channel {
         }
     }
 
-    #[derive(Debug)]
+    #[derive(Debug, PartialEq)]
     pub struct FileHeader {
         file_id: u32,
         // TODO: file_size requirements are not defined in spec
@@ -909,31 +1096,31 @@ pub mod file_channel {
         file_hash: [u8; FILE_HASH_SIZE],
     }
 
-    #[derive(Debug)]
+    #[derive(Debug, PartialEq)]
     pub struct FileHeaderAck {
         file_id:  u32,
         accepted: bool,
     }
 
-    #[derive(Debug)]
+    #[derive(Debug, PartialEq)]
     pub struct FileHeaderResponse {
         file_id: u32,
         response: Response,
     }
 
-    #[derive(Debug)]
+    #[derive(Debug, PartialEq)]
     pub enum Response {
         Accept,
         Reject,
     }
 
-    #[derive(Debug)]
+    #[derive(Debug, PartialEq)]
     pub struct FileChunk {
         file_id: u32,
         chunk_data: ChunkData,
     }
 
-    #[derive(Debug)]
+    #[derive(Debug, PartialEq)]
     pub struct ChunkData {
         value: Vec<u8>,
     }
@@ -956,20 +1143,20 @@ pub mod file_channel {
         }
     }
 
-    #[derive(Debug)]
+    #[derive(Debug, PartialEq)]
     pub struct FileChunkAck {
         file_id: u32,
         // TODO: bytes_received param is not defined in spec
         bytes_received: u64,
     }
 
-    #[derive(Debug)]
+    #[derive(Debug, PartialEq)]
     pub struct FileTransferCompleteNotification {
         file_id: u32,
         result: FileTransferResult,
     }
 
-    #[derive(Debug)]
+    #[derive(Debug, PartialEq)]
     pub enum FileTransferResult {
         Success,
         Failure,
@@ -980,7 +1167,7 @@ pub mod file_channel {
 //
 // Ricochet Protocol Packet
 //
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Packet {
     // sent by client to begin Ricochet-Refresh handshake
     IntroductionPacket(introduction::IntroductionPacket),
@@ -1010,6 +1197,8 @@ pub enum Packet {
 // on success returns a (packet, bytes read) tuple
 // consumers should drop the returned number of bytes from their
 // read buffer
+// TODO: should return an Result<Option<(Packet, usize)>, Error> instead
+// of using an Error for 'needs more bytes'
 pub fn next_packet(bytes: &[u8], channel_map: BTreeMap<u16, control_channel::ChannelType>) -> Result<(Packet, usize), Error> {
 
     if channel_map.is_empty() {
@@ -1076,5 +1265,135 @@ pub fn next_packet(bytes: &[u8], channel_map: BTreeMap<u16, control_channel::Cha
             Err(Error::NeedMoreBytes)
         }
     }
+}
 
+#[test]
+fn test_round_trip() -> anyhow::Result<()> {
+
+    // OpenChannel ContactRequestChannel
+    {
+        println!("---");
+        let nickname: contact_request_channel::Nickname = "alice".to_string().try_into()?;
+        let message_text: contact_request_channel::MessageText = "hello world".to_string().try_into()?;
+
+        println!("{nickname:?}: {message_text:?}");
+
+        let contact_request = contact_request_channel::ContactRequest{nickname, message_text};
+
+        println!("{contact_request:?}");
+
+        let open_channel = control_channel::OpenChannel::new(1, control_channel::ChannelType::ContactRequest, Some(control_channel::OpenChannelExtension::ContactRequestChannel(contact_request_channel::OpenChannel{contact_request})))?;
+
+        println!("{open_channel:?}");
+
+        let packet_src = control_channel::Packet::OpenChannel(open_channel);
+
+        println!("{packet_src:?}");
+
+        let mut bytes: Vec<u8> = Vec::default();
+        packet_src.write_to_vec(&mut bytes)?;
+
+        println!("{bytes:?}");
+
+        let packet_dest: control_channel::Packet = bytes.as_slice().try_into()?;
+
+        println!("{packet_dest:?}");
+        let mut bytes: Vec<u8> = Vec::default();
+        packet_dest.write_to_vec(&mut bytes)?;
+
+        println!("{bytes:?}");
+
+        assert_eq!(packet_src, packet_dest);
+
+    }
+
+    // OpenChannel AuthHiddenService
+    {
+        println!("---");
+        let client_cookie: [u8; 16] = Default::default();
+        let open_channel = control_channel::OpenChannel::new(1i32, control_channel::ChannelType::AuthHiddenService, Some(control_channel::OpenChannelExtension::AuthHiddenService(auth_hidden_service::OpenChannel{client_cookie})))?;
+
+        println!("{open_channel:?}");
+
+        let packet_src = control_channel::Packet::OpenChannel(open_channel);
+
+        println!("{packet_src:?}");
+
+        let mut bytes: Vec<u8> = Vec::default();
+        packet_src.write_to_vec(&mut bytes)?;
+
+        println!("{bytes:?}");
+
+        let packet_dest: control_channel::Packet = bytes.as_slice().try_into()?;
+
+        println!("{packet_dest:?}");
+        let mut bytes: Vec<u8> = Vec::default();
+        packet_dest.write_to_vec(&mut bytes)?;
+
+        println!("{bytes:?}");
+
+        assert_eq!(packet_src, packet_dest);
+
+    }
+    // ChannelResult ContactRequestChanel
+    {
+        println!("---");
+
+        let response = contact_request_channel::Response{status: contact_request_channel::Status::Pending};
+
+        let channel_result = control_channel::ChannelResult::new(1i32, false, control_channel::CommonError::GenericError, Some(control_channel::ChannelResultExtension::ContactRequestChannel(contact_request_channel::ChannelResult{response})))?;
+
+        println!("{channel_result:?}");
+
+        let packet_src = control_channel::Packet::ChannelResult(channel_result);
+
+        println!("{packet_src:?}");
+
+        let mut bytes: Vec<u8> = Vec::default();
+        packet_src.write_to_vec(&mut bytes)?;
+
+        println!("{bytes:?}");
+
+        let packet_dest: control_channel::Packet = bytes.as_slice().try_into()?;
+
+        println!("{packet_dest:?}");
+        let mut bytes: Vec<u8> = Vec::default();
+        packet_dest.write_to_vec(&mut bytes)?;
+
+        println!("{bytes:?}");
+
+        assert_eq!(packet_src, packet_dest);
+    }
+
+    // ChannelResult AuthHiddenService
+    {
+        println!("---");
+
+        let server_cookie: [u8; 16] = Default::default();
+
+        let channel_result = control_channel::ChannelResult::new(1i32, false, control_channel::CommonError::GenericError, Some(control_channel::ChannelResultExtension::AuthHiddenService(auth_hidden_service::ChannelResult{server_cookie})))?;
+
+        println!("{channel_result:?}");
+
+        let packet_src = control_channel::Packet::ChannelResult(channel_result);
+
+        println!("{packet_src:?}");
+
+        let mut bytes: Vec<u8> = Vec::default();
+        packet_src.write_to_vec(&mut bytes)?;
+
+        println!("{bytes:?}");
+
+        let packet_dest: control_channel::Packet = bytes.as_slice().try_into()?;
+
+        println!("{packet_dest:?}");
+        let mut bytes: Vec<u8> = Vec::default();
+        packet_dest.write_to_vec(&mut bytes)?;
+
+        println!("{bytes:?}");
+
+        assert_eq!(packet_src, packet_dest);
+    }
+
+    anyhow::bail!("test over");
 }
