@@ -4,6 +4,13 @@ set(rico_protocol_depends
     src/lib.rs
     src/v3/message.rs
     src/v3/mod.rs
+    src/v3/message/auth_hidden_service.rs
+    src/v3/message/chat_channel.rs
+    src/v3/message/contact_request_channel.rs
+    src/v3/message/control_channel.rs
+    src/v3/message/file_channel.rs
+    src/v3/message/introduction.rs
+    src/v3/message/mod.rs
     src/v3/protos/ChatChannel.proto
     src/v3/protos/ContactRequestChannel.proto
     src/v3/protos/AuthHiddenService.proto
