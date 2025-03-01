@@ -32,3 +32,13 @@ add_custom_command(
 
 add_custom_target(rico_protocol_target
     DEPENDS ${rico_protocol_outputs})
+
+#
+# cargo test target
+#
+if (ENABLE_LIBTEGO_TESTS)
+    add_test(NAME rico_protocol_cargo_test
+        COMMAND env CARGO_TARGET_DIR=${CARGO_TARGET_DIR} RUSTFLAGS=${RUSTFLAGS} RUST_BACKTRACE=full cargo test ${CARGO_FLAGS} -- --nocapture
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+endif()
