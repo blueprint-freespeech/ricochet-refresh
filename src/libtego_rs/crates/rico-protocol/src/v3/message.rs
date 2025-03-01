@@ -1131,6 +1131,92 @@ pub mod file_channel {
         FileTransferCompleteNotification(FileTransferCompleteNotification),
     }
 
+    impl Packet {
+        pub fn write_to_vec(&self, v:& mut Vec<u8>) -> Result<(), crate::Error> {
+            use protobuf::Message;
+            use crate::v3::protos;
+
+            let mut pb: protos::FileChannel::Packet = Default::default();
+
+            match self {
+                Packet::FileHeader(file_header) => {
+                    let file_id = file_header.file_id();
+                    let file_size = file_header.file_size();
+                    let name = file_header.name().to_string();
+                    let file_hash = file_header.file_hash().clone();
+
+                    let mut file_header = protos::FileChannel::FileHeader::default();
+                    file_header.file_id = Some(file_id);
+                    file_header.file_size = Some(file_size);
+                    file_header.name = Some(name);
+                    file_header.file_hash = Some(file_hash.into());
+
+                    pb.file_header = Some(file_header).into();
+                },
+                Packet::FileHeaderAck(file_header_ack) => {
+                    let file_id = file_header_ack.file_id();
+                    let accepted = file_header_ack.accepted();
+
+                    let mut file_header_ack = protos::FileChannel::FileHeaderAck::default();
+                    file_header_ack.file_id = Some(file_id);
+                    file_header_ack.accepted = Some(accepted);
+
+                    pb.file_header_ack = Some(file_header_ack).into();
+                },
+                Packet::FileHeaderResponse(file_header_response) => {
+                    let file_id = file_header_response.file_id();
+                    let response: i32 = file_header_response.response().into();
+
+                    let mut file_header_response = protos::FileChannel::FileHeaderResponse::default();
+                    file_header_response.file_id = Some(file_id);
+                    file_header_response.response = Some(response);
+
+                    pb.file_header_response = Some(file_header_response).into();
+                },
+                Packet::FileChunk(file_chunk) => {
+                    let file_id = file_chunk.file_id();
+                    let chunk_data = file_chunk.chunk_data();
+
+                    let mut file_chunk = protos::FileChannel::FileChunk::default();
+                    file_chunk.file_id = Some(file_id);
+                    file_chunk.chunk_data = Some(chunk_data.into());
+
+                    pb.file_chunk = Some(file_chunk).into();
+                },
+                Packet::FileChunkAck(file_chunk_ack) => {
+                    let file_id = file_chunk_ack.file_id();
+                    let bytes_received = file_chunk_ack.bytes_received();
+
+                    let mut file_chunk_ack = protos::FileChannel::FileChunkAck::default();
+                    file_chunk_ack.file_id = Some(file_id);
+                    file_chunk_ack.bytes_received = Some(bytes_received);
+
+                    pb.file_chunk_ack = Some(file_chunk_ack).into();
+                },
+                Packet::FileTransferCompleteNotification(file_transfer_complete_notification) => {
+                    let file_id = file_transfer_complete_notification.file_id();
+                    let result = file_transfer_complete_notification.result();
+                    let result = match result {
+                        FileTransferResult::Success => protos::FileChannel::FileTransferResult::Success,
+                        FileTransferResult::Failure => protos::FileChannel::FileTransferResult::Failure,
+                        FileTransferResult::Cancelled => protos::FileChannel::FileTransferResult::Cancelled,
+                    };
+                    let result = protobuf::EnumOrUnknown::new(result);
+
+                    let mut file_transfer_complete_notification = protos::FileChannel::FileTransferCompleteNotification::default();
+                    file_transfer_complete_notification.file_id = Some(file_id);
+                    file_transfer_complete_notification.result = Some(result);
+
+                    pb.file_transfer_complete_notification = Some(file_transfer_complete_notification).into();
+                },
+            }
+
+            // serialise
+            pb.write_to_vec(v).map_err(crate::Error::ProtobufError)?;
+            Ok(())
+        }
+    }
+
     impl TryFrom<&[u8]> for Packet {
         type Error = crate::Error;
 
@@ -1244,10 +1330,54 @@ pub mod file_channel {
         file_hash: [u8; FILE_HASH_SIZE],
     }
 
+    impl FileHeader {
+        pub fn new(
+            file_id: u32,
+            file_size: u64,
+            name: String,
+            file_hash: [u8; FILE_HASH_SIZE]) -> Result<Self, crate::Error> {
+            if name.contains("..") || name.contains("/") {
+                Err(crate::Error::PacketConstructionFailed("name contains forbidden substring".to_string()))
+            } else {
+                Ok(Self{file_id, file_size, name, file_hash})
+            }
+        }
+
+        pub fn file_id(&self) -> u32 {
+            self.file_id
+        }
+
+        pub fn file_size(&self) -> u64 {
+            self.file_size
+        }
+
+        pub fn name(&self) -> &str {
+            self.name.as_str()
+        }
+
+        pub fn file_hash(&self) -> &[u8; FILE_HASH_SIZE] {
+            &self.file_hash
+        }
+    }
+
     #[derive(Debug, PartialEq)]
     pub struct FileHeaderAck {
         file_id:  u32,
         accepted: bool,
+    }
+
+    impl FileHeaderAck {
+        pub fn new(file_id: u32, accepted: bool) -> Result<Self, crate::Error> {
+            Ok(Self{file_id, accepted})
+        }
+
+        pub fn file_id(&self) -> u32 {
+            self.file_id
+        }
+
+        pub fn accepted(&self) -> bool {
+            self.accepted
+        }
     }
 
     #[derive(Debug, PartialEq)]
@@ -1256,10 +1386,44 @@ pub mod file_channel {
         response: Response,
     }
 
+    impl FileHeaderResponse {
+        pub fn new(file_id: u32, response: Response) -> Result<Self, crate::Error> {
+            Ok(Self{file_id, response})
+        }
+
+        pub fn file_id(&self) -> u32 {
+            self.file_id
+        }
+
+        pub fn response(&self) -> &Response {
+            &self.response
+        }
+    }
+
     #[derive(Debug, PartialEq)]
     pub enum Response {
         Accept,
         Reject,
+    }
+
+    impl From<&Response> for i32 {
+        fn from(response: &Response) -> i32 {
+            match response {
+                Response::Accept => 0i32,
+                Response::Reject => 1i32,
+            }
+        }
+    }
+
+    impl TryFrom<i32> for Response {
+        type Error = crate::Error;
+        fn try_from(value: i32) -> Result<Response, Self::Error> {
+            match value {
+                0i32 => Ok(Response::Accept),
+                1i32 => Ok(Response::Reject),
+                _ => Err(Self::Error::PacketConstructionFailed("response must be 0 or 1".to_string())),
+            }
+        }
     }
 
     #[derive(Debug, PartialEq)]
@@ -1268,26 +1432,50 @@ pub mod file_channel {
         chunk_data: ChunkData,
     }
 
-    #[derive(Debug, PartialEq)]
-    pub struct ChunkData {
-        value: Vec<u8>,
+    impl FileChunk {
+        pub fn new(file_id: u32, chunk_data: ChunkData) -> Result<Self, crate::Error> {
+            Ok(Self{file_id, chunk_data})
+        }
+
+        pub fn file_id(&self) -> u32 {
+            self.file_id
+        }
+
+        pub fn chunk_data(&self) -> &ChunkData {
+            &self.chunk_data
+        }
     }
 
-    impl From<ChunkData> for Vec<u8> {
-        fn from(chunk_data: ChunkData) -> Vec<u8> {
-            chunk_data.value
+    #[derive(Debug, PartialEq)]
+    pub struct ChunkData {
+        data: Vec<u8>,
+    }
+
+    impl ChunkData {
+        pub fn new(data: Vec<u8>) -> Result<ChunkData, crate::Error> {
+            let data_len = data.len();
+            if data_len > MAX_FILE_CHUNK_SIZE {
+                Err(crate::Error::PacketConstructionFailed(format!("chunk data must be less than {MAX_FILE_CHUNK_SIZE} bytes")))
+            } else {
+                Ok(Self{data})
+            }
+        }
+
+        fn data(&self) -> &[u8] {
+            self.data.as_slice()
+        }
+    }
+
+    impl From<&ChunkData> for Vec<u8> {
+        fn from(chunk_data: &ChunkData) -> Vec<u8> {
+            chunk_data.data.clone()
         }
     }
 
     impl TryFrom<Vec<u8>> for ChunkData {
         type Error = crate::Error;
         fn try_from(value: Vec<u8>) -> Result<Self, Self::Error> {
-            let value_len = value.len();
-            if value_len > MAX_FILE_CHUNK_SIZE {
-                Err(Self::Error::InvalidFileChunkDataTooLarge(value_len))
-            } else {
-                Ok(ChunkData{value})
-            }
+            ChunkData::new(value)
         }
     }
 
@@ -1298,10 +1486,38 @@ pub mod file_channel {
         bytes_received: u64,
     }
 
+    impl FileChunkAck {
+        pub fn new(file_id: u32, bytes_received: u64) -> Result<Self, crate::Error> {
+            Ok(Self{file_id, bytes_received})
+        }
+
+        pub fn file_id(&self) -> u32 {
+            self.file_id
+        }
+
+        pub fn bytes_received(&self) -> u64 {
+            self.bytes_received
+        }
+    }
+
     #[derive(Debug, PartialEq)]
     pub struct FileTransferCompleteNotification {
         file_id: u32,
         result: FileTransferResult,
+    }
+
+    impl FileTransferCompleteNotification {
+        pub fn new(file_id: u32, result: FileTransferResult) -> Result<Self, crate::Error> {
+            Ok(Self{file_id, result})
+        }
+
+        pub fn file_id(&self) -> u32 {
+            self.file_id
+        }
+
+        pub fn result(&self) -> &FileTransferResult {
+            &self.result
+        }
     }
 
     #[derive(Debug, PartialEq)]
@@ -1660,6 +1876,195 @@ fn test_round_trip() -> anyhow::Result<()> {
         println!("{bytes:?}");
 
         let packet_dest: auth_hidden_service::Packet = bytes.as_slice().try_into()?;
+
+        println!("{packet_dest:?}");
+        let mut bytes: Vec<u8> = Vec::default();
+        packet_dest.write_to_vec(&mut bytes)?;
+
+        println!("{bytes:?}");
+
+        assert_eq!(packet_src, packet_dest);
+    }
+
+    // FileChannel FileHeader
+    {
+        println!("---");
+
+        let file_id = 12u32;
+        let file_size = 128u64;
+        let name = "file.txt".to_string();
+        let file_hash = [0u8; file_channel::FILE_HASH_SIZE];
+
+
+        let file_header = file_channel::FileHeader::new(file_id, file_size, name, file_hash)?;
+
+        println!("{file_header:?}");
+
+        let packet_src = file_channel::Packet::FileHeader(file_header);
+
+        println!("{packet_src:?}");
+
+        let mut bytes: Vec<u8> = Vec::default();
+        packet_src.write_to_vec(&mut bytes)?;
+
+        println!("{bytes:?}");
+
+        let packet_dest: file_channel::Packet = bytes.as_slice().try_into()?;
+
+        println!("{packet_dest:?}");
+        let mut bytes: Vec<u8> = Vec::default();
+        packet_dest.write_to_vec(&mut bytes)?;
+
+        println!("{bytes:?}");
+
+        assert_eq!(packet_src, packet_dest);
+    }
+
+    // FileChannel FileHeaderAck
+    {
+        println!("---");
+
+        let file_id = 12u32;
+        let accepted = false;
+
+        let file_header_ack = file_channel::FileHeaderAck::new(file_id, accepted)?;
+
+        println!("{file_header_ack:?}");
+
+        let packet_src = file_channel::Packet::FileHeaderAck(file_header_ack);
+
+        println!("{packet_src:?}");
+
+        let mut bytes: Vec<u8> = Vec::default();
+        packet_src.write_to_vec(&mut bytes)?;
+
+        println!("{bytes:?}");
+
+        let packet_dest: file_channel::Packet = bytes.as_slice().try_into()?;
+
+        println!("{packet_dest:?}");
+        let mut bytes: Vec<u8> = Vec::default();
+        packet_dest.write_to_vec(&mut bytes)?;
+
+        println!("{bytes:?}");
+
+        assert_eq!(packet_src, packet_dest);
+    }
+
+    // FileChannel FileHeaderResponse
+    {
+        println!("---");
+
+        let file_id = 12u32;
+        let response = file_channel::Response::Reject;
+
+        let file_header_response = file_channel::FileHeaderResponse::new(file_id, response)?;
+
+        println!("{file_header_response:?}");
+
+        let packet_src = file_channel::Packet::FileHeaderResponse(file_header_response);
+
+        println!("{packet_src:?}");
+
+        let mut bytes: Vec<u8> = Vec::default();
+        packet_src.write_to_vec(&mut bytes)?;
+
+        println!("{bytes:?}");
+
+        let packet_dest: file_channel::Packet = bytes.as_slice().try_into()?;
+
+        println!("{packet_dest:?}");
+        let mut bytes: Vec<u8> = Vec::default();
+        packet_dest.write_to_vec(&mut bytes)?;
+
+        println!("{bytes:?}");
+
+        assert_eq!(packet_src, packet_dest);
+    }
+
+    // FileChannel FileChunk
+    {
+        println!("---");
+
+        let file_id = 12u32;
+        let chunk_data: file_channel::ChunkData = vec![0u8, 1u8, 2u8].try_into()?;
+
+        let file_chunk = file_channel::FileChunk::new(file_id, chunk_data)?;
+
+        println!("{file_chunk:?}");
+
+        let packet_src = file_channel::Packet::FileChunk(file_chunk);
+
+        println!("{packet_src:?}");
+
+        let mut bytes: Vec<u8> = Vec::default();
+        packet_src.write_to_vec(&mut bytes)?;
+
+        println!("{bytes:?}");
+
+        let packet_dest: file_channel::Packet = bytes.as_slice().try_into()?;
+
+        println!("{packet_dest:?}");
+        let mut bytes: Vec<u8> = Vec::default();
+        packet_dest.write_to_vec(&mut bytes)?;
+
+        println!("{bytes:?}");
+
+        assert_eq!(packet_src, packet_dest);
+    }
+
+    // FileChannel FileChunAck
+    {
+        println!("---");
+
+        let file_id = 12u32;
+        let bytes_received = 48u64;
+
+        let file_chunk_ack = file_channel::FileChunkAck::new(file_id, bytes_received)?;
+
+        println!("{file_chunk_ack:?}");
+
+        let packet_src = file_channel::Packet::FileChunkAck(file_chunk_ack);
+
+        println!("{packet_src:?}");
+
+        let mut bytes: Vec<u8> = Vec::default();
+        packet_src.write_to_vec(&mut bytes)?;
+
+        println!("{bytes:?}");
+
+        let packet_dest: file_channel::Packet = bytes.as_slice().try_into()?;
+
+        println!("{packet_dest:?}");
+        let mut bytes: Vec<u8> = Vec::default();
+        packet_dest.write_to_vec(&mut bytes)?;
+
+        println!("{bytes:?}");
+
+        assert_eq!(packet_src, packet_dest);
+    }
+
+    // FileChannel FileTransferCompleteNotification
+    {
+        println!("---");
+
+        let file_id = 12u32;
+        let result = file_channel::FileTransferResult::Failure;
+
+        let file_transfer_complete_notification = file_channel::FileTransferCompleteNotification::new(file_id, result)?;
+
+        println!("{file_transfer_complete_notification:?}");
+
+        let packet_src = file_channel::Packet::FileTransferCompleteNotification(file_transfer_complete_notification);
+
+        println!("{packet_src:?}");
+
+        let mut bytes: Vec<u8> = Vec::default();
+        packet_src.write_to_vec(&mut bytes)?;
+
+        println!("{bytes:?}");
+
+        let packet_dest: file_channel::Packet = bytes.as_slice().try_into()?;
 
         println!("{packet_dest:?}");
         let mut bytes: Vec<u8> = Vec::default();
