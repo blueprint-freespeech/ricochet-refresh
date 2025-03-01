@@ -1539,6 +1539,8 @@ pub enum Packet {
     IntroductionResponsePacket(introduction::IntroductionResponsePacket),
     // used to open various channel types
     ControlChannelPacket(control_channel::Packet),
+    // used to close a channel
+    CloseChannelPacket{channel: u16},
     // used to send/ack messages
     ChatChannelPacket{
         channel: u16,
@@ -1554,8 +1556,63 @@ pub enum Packet {
         channel: u16,
         packet: file_channel::Packet,
     },
-    // used to close a channel
-    CloseChannelPacket{channel: u16},
+}
+
+impl Packet {
+    pub fn write_to_vec(&self, v:& mut Vec<u8>) -> Result<(), crate::Error> {
+        match self {
+            Packet::IntroductionPacket(packet) => packet.write_to_vec(v)?,
+            Packet::IntroductionResponsePacket(packet) => packet.write_to_vec(v)?,
+            packet => {
+                let packet_begin = v.len();
+
+                let header_begin = packet_begin;
+                let size_hi = header_begin + 0usize;
+                let size_lo = header_begin + 1usize;
+                let channel_hi = header_begin + 2usize;
+                let channel_lo = header_begin + 3usize;
+
+                let header_size = 4usize;
+
+                v.resize(v.len() + header_size, 0xffu8);
+
+                let data_begin = v.len();
+                let channel = match packet {
+                    Packet::ControlChannelPacket(packet) => {
+                        packet.write_to_vec(v)?;
+                        0u16
+                    },
+                    Packet::CloseChannelPacket{channel} => {
+                        *channel
+                    },
+                    Packet::ChatChannelPacket{channel, packet} => {
+                        packet.write_to_vec(v)?;
+                        *channel
+                    },
+                    Packet::AuthHiddenServicePacket{channel, packet} => {
+                        packet.write_to_vec(v)?;
+                        *channel
+                    },
+                    Packet::FileChannelPacket{channel, packet} => {
+                        packet.write_to_vec(v)?;
+                        *channel
+                    },
+                    _ => unreachable!(),
+                };
+                let data_end = v.len();
+                let data_size = data_end - data_begin;
+                let packet_size = header_size + data_size;
+                assert!(packet_size <= u16::MAX as usize);
+                let size = (packet_size & 0xffffusize) as u16;
+
+                v[size_hi] = ((size & 0xff00u16) >> 8) as u8;
+                v[size_lo] = (size & 0xffu16) as u8;
+                v[channel_hi] = ((channel & 0xff00u16) >> 8) as u8;
+                v[channel_lo] = (channel & 0xffu16) as u8;
+            }
+        }
+        Ok(())
+    }
 }
 
 // on success returns a (packet, bytes read) tuple
