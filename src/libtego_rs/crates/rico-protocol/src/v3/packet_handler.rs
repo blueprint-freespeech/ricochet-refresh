@@ -99,18 +99,17 @@ pub enum Channel {
     FileTransfer,
 }
 
-// on success returns a (packet, bytes read) tuple
-// consumers should drop the returned number of bytes from their
+// On successful packet read returns a (packet, bytes read) tuple
+// If needs more bytes, returns Ok(None)
+// Consumers must drop the returned number of bytes from the start of their
 // read buffer
-// TODO: should return an Result<Option<(Packet, usize)>, Error> instead
-// of using an Error for 'needs more bytes'
-pub fn next_packet(bytes: &[u8], channel_map: BTreeMap<u16, Channel>) -> Result<(Packet, usize), Error> {
+pub fn next_packet(bytes: &[u8], channel_map: BTreeMap<u16, Channel>) -> Result<Option<(Packet, usize)>, Error> {
 
     if channel_map.is_empty() {
         match TryInto::<introduction::IntroductionPacket>::try_into(bytes) {
             Ok(packet) => {
                 let offset = 3 + packet.versions().len();
-                return Ok((Packet::IntroductionPacket(packet), offset));
+                return Ok(Some((Packet::IntroductionPacket(packet), offset)));
             },
             Err(Error::NeedMoreBytes) => return Err(Error::NeedMoreBytes),
             _ => (),
@@ -119,7 +118,7 @@ pub fn next_packet(bytes: &[u8], channel_map: BTreeMap<u16, Channel>) -> Result<
         match TryInto::<introduction::IntroductionResponsePacket>::try_into(bytes) {
             Ok(packet) => {
                 let offset = 1;
-                return Ok((Packet::IntroductionResponsePacket(packet), offset));
+                return Ok(Some((Packet::IntroductionResponsePacket(packet), offset)));
             },
             Err(Error::NeedMoreBytes) => return Err(Error::NeedMoreBytes),
             _ => (),
@@ -140,7 +139,7 @@ pub fn next_packet(bytes: &[u8], channel_map: BTreeMap<u16, Channel>) -> Result<
             } else if bytes.len() < size {
                 Err(Error::NeedMoreBytes)
             } else if size == 4 {
-                Ok((Packet::CloseChannelPacket{channel}, 4))
+                Ok(Some((Packet::CloseChannelPacket{channel}, 4)))
             } else {
                 let bytes = &bytes[4..];
                 let packet = match channel_map.get(&channel) {
@@ -162,10 +161,10 @@ pub fn next_packet(bytes: &[u8], channel_map: BTreeMap<u16, Channel>) -> Result<
                     },
                     None => return Err(Error::TargetChannelDoesNotExist(channel)),
                 };
-                Ok((packet, size))
+                Ok(Some((packet, size)))
             }
         } else {
-            Err(Error::NeedMoreBytes)
+            Ok(None)
         }
     }
 }
