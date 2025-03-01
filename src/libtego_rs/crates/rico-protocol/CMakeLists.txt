@@ -4,6 +4,7 @@ set(rico_protocol_depends
     src/lib.rs
     src/v3/message.rs
     src/v3/mod.rs
+    src/v3/packet_handler.rs
     src/v3/message/auth_hidden_service.rs
     src/v3/message/chat_channel.rs
     src/v3/message/contact_request_channel.rs
