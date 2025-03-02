@@ -36,6 +36,9 @@ pub enum Error {
     NeedMoreBytes,
     #[error("target channel does not exist: {0}")]
     TargetChannelDoesNotExist(u16),
+    #[error("target connection does not exist: {0}")]
+    TargetConnectionDoesNotExist(u32),
+
     // received bytes cannot be parsed or understood
     #[error("bad data stream")]
     BadDataStream,
@@ -53,4 +56,7 @@ pub enum Error {
     // failed to convert type
     #[error("type conversion failed: {0}")]
     TypeConversionFailed(String),
+
+    #[error("not implemented")]
+    NotImplemented,
 }

@@ -1,11 +1,14 @@
 // std
 use std::collections::BTreeMap;
 
+// extern
+use tor_interface::tor_crypto::V3OnionServiceId;
+
 //
 use crate::v3::message::*;
 
 //
-// Ricochet Protocol Packet
+// Ricochet-Refresh Protocol Packet
 //
 #[derive(Debug, PartialEq)]
 pub enum Packet {
@@ -99,72 +102,191 @@ pub enum Channel {
     FileTransfer,
 }
 
-// On successful packet read returns a (packet, bytes read) tuple
-// If needs more bytes, returns Ok(None)
-// Consumers must drop the returned number of bytes from the start of their
-// read buffer
-pub fn next_packet(bytes: &[u8], channel_map: BTreeMap<u16, Channel>) -> Result<Option<(Packet, usize)>, Error> {
+enum Direction {
+    Incoming,
+    Outgoing,
+}
 
-    if channel_map.is_empty() {
-        match TryInto::<introduction::IntroductionPacket>::try_into(bytes) {
-            Ok(packet) => {
-                let offset = 3 + packet.versions().len();
-                return Ok(Some((Packet::IntroductionPacket(packet), offset)));
-            },
-            Err(Error::NeedMoreBytes) => return Err(Error::NeedMoreBytes),
-            _ => (),
-        }
+struct Connection {
+    channel_map: BTreeMap<u16, Channel>,
+    target: Option<V3OnionServiceId>,
+    direction: Direction,
+}
 
-        match TryInto::<introduction::IntroductionResponsePacket>::try_into(bytes) {
-            Ok(packet) => {
-                let offset = 1;
-                return Ok(Some((Packet::IntroductionResponsePacket(packet), offset)));
-            },
-            Err(Error::NeedMoreBytes) => return Err(Error::NeedMoreBytes),
-            _ => (),
-        }
+type ConnectionHandle = u32;
+pub const INVALID_CONNECTION_HANDLE: ConnectionHandle = 0xffffffffu32;
 
-        return Err(Error::BadDataStream);
-    } else {
-        if bytes.len() >= 4 {
-            // size is encoded as big-endian u16
-            let size: u16 = (bytes[0] as u16) << 8 + bytes[1] as u16;
-            let size = size as usize;
-            // channel id is encoded as big-endian u16
-            let channel: u16 = (bytes[2] as u16) << 8 + bytes[3] as u16;
+enum Event {
+    IntroductionReceived{
+        reply: Packet,
+    },
+    IntroductionResponseReceived{
+        reply: Packet,
+    },
 
-            // size must be at least
-            if size < 4 {
-                Err(Error::BadDataStream)
-            } else if bytes.len() < size {
-                Err(Error::NeedMoreBytes)
-            } else if size == 4 {
-                Ok(Some((Packet::CloseChannelPacket{channel}, 4)))
-            } else {
-                let bytes = &bytes[4..];
-                let packet = match channel_map.get(&channel) {
-                    Some(Channel::Control) => {
-                        let packet = control_channel::Packet::try_from(bytes)?;
-                        Packet::ControlChannelPacket(packet)
-                    },
-                    Some(Channel::Chat) => {
-                        let packet = chat_channel::Packet::try_from(bytes)?;
-                        Packet::ChatChannelPacket{channel, packet}
-                    },
-                    Some(Channel::AuthHiddenService) => {
-                        let packet = auth_hidden_service::Packet::try_from(bytes)?;
-                        Packet::AuthHiddenServicePacket{channel, packet}
-                    },
-                    Some(Channel::FileTransfer) => {
-                        let packet = file_channel::Packet::try_from(bytes)?;
-                        Packet::FileChannelPacket{channel, packet}
-                    },
-                    None => return Err(Error::TargetChannelDoesNotExist(channel)),
-                };
-                Ok(Some((packet, size)))
+    ProtocolFailure{
+        fatal: bool,
+    },
+}
+
+#[derive(Default)]
+pub struct PacketHandler {
+    connections: BTreeMap<ConnectionHandle, Connection>,
+}
+
+
+impl PacketHandler {
+    // On successful packet read returns a (packet, bytes read) tuple
+    // If needs more bytes, returns Ok(None)
+    // Consumers must drop the returned number of bytes from the start of their
+    // read buffer
+    pub fn try_parse_packet(
+        &self,
+        connection_handle: ConnectionHandle,
+        bytes: &[u8]) -> Result<Option<(Packet, usize)>, Error> {
+
+        let connection = self.connections.get(&connection_handle).ok_or(Error::TargetConnectionDoesNotExist(connection_handle))?;
+        let channel_map = &connection.channel_map;
+
+        if channel_map.is_empty() {
+            match TryInto::<introduction::IntroductionPacket>::try_into(bytes) {
+                Ok(packet) => {
+                    let offset = 3 + packet.versions().len();
+                    return Ok(Some((Packet::IntroductionPacket(packet), offset)));
+                },
+                Err(Error::NeedMoreBytes) => return Err(Error::NeedMoreBytes),
+                _ => (),
             }
+
+            match TryInto::<introduction::IntroductionResponsePacket>::try_into(bytes) {
+                Ok(packet) => {
+                    let offset = 1;
+                    return Ok(Some((Packet::IntroductionResponsePacket(packet), offset)));
+                },
+                Err(Error::NeedMoreBytes) => return Err(Error::NeedMoreBytes),
+                _ => (),
+            }
+
+            return Err(Error::BadDataStream);
         } else {
-            Ok(None)
+            if bytes.len() >= 4 {
+                // size is encoded as big-endian u16
+                let size: u16 = (bytes[0] as u16) << 8 + bytes[1] as u16;
+                let size = size as usize;
+                // channel id is encoded as big-endian u16
+                let channel: u16 = (bytes[2] as u16) << 8 + bytes[3] as u16;
+
+                // size must be at least
+                if size < 4 {
+                    Err(Error::BadDataStream)
+                } else if bytes.len() < size {
+                    Err(Error::NeedMoreBytes)
+                } else if size == 4 {
+                    Ok(Some((Packet::CloseChannelPacket{channel}, 4)))
+                } else {
+                    let bytes = &bytes[4..size];
+                    let packet = match channel_map.get(&channel) {
+                        Some(Channel::Control) => {
+                            let packet = control_channel::Packet::try_from(bytes)?;
+                            Packet::ControlChannelPacket(packet)
+                        },
+                        Some(Channel::Chat) => {
+                            let packet = chat_channel::Packet::try_from(bytes)?;
+                            Packet::ChatChannelPacket{channel, packet}
+                        },
+                        Some(Channel::AuthHiddenService) => {
+                            let packet = auth_hidden_service::Packet::try_from(bytes)?;
+                            Packet::AuthHiddenServicePacket{channel, packet}
+                        },
+                        Some(Channel::FileTransfer) => {
+                            let packet = file_channel::Packet::try_from(bytes)?;
+                            Packet::FileChannelPacket{channel, packet}
+                        },
+                        None => return Err(Error::TargetChannelDoesNotExist(channel)),
+                    };
+                    Ok(Some((packet, size)))
+                }
+            } else {
+                Ok(None)
+            }
         }
+    }
+
+    // Handle a received packet and returns an event which needs to be handled by
+    // the caller
+    pub fn handle_packet(
+        &mut self,
+        connection_handle: ConnectionHandle,
+        packet: Packet) -> Result<Option<Event>, Error> {
+
+        match packet {
+            Packet::IntroductionPacket(packet) => self.handle_introduction_packet(connection_handle, packet),
+            Packet::IntroductionResponsePacket(packet) => self.handle_introduction_response_packet(connection_handle, packet),
+            Packet::ControlChannelPacket(packet) => self.handle_control_channel_packet(connection_handle, packet),
+            Packet::CloseChannelPacket{channel} => self.handle_close_channel_packet(connection_handle, channel),
+            Packet::ChatChannelPacket{channel, packet} => self.handle_chat_channel_packet(connection_handle, channel, packet),
+            Packet::AuthHiddenServicePacket{channel, packet} => self.handle_auth_hidden_service_packet(connection_handle, channel, packet),
+            Packet::FileChannelPacket{channel, packet} => self.handle_file_channel_packet(connection_handle, channel, packet),
+        }
+    }
+
+    fn handle_introduction_packet(
+        &mut self,
+        connection_handle: ConnectionHandle,
+        packet: introduction::IntroductionPacket) -> Result<Option<Event>, Error> {
+        Err(Error::NotImplemented)
+    }
+
+    fn handle_introduction_response_packet(
+        &mut self,
+        connection_handle: ConnectionHandle,
+        packet: introduction::IntroductionResponsePacket) -> Result<Option<Event>, Error> {
+        Err(Error::NotImplemented)
+    }
+
+    fn handle_control_channel_packet(
+        &mut self,
+        connection_handle: ConnectionHandle,
+        packet: control_channel::Packet) -> Result<Option<Event>, Error> {
+        Err(Error::NotImplemented)
+    }
+
+    fn handle_close_channel_packet(
+        &mut self,
+        connection_handle: ConnectionHandle,
+        channel: u16) -> Result<Option<Event>, Error> {
+        Err(Error::NotImplemented)
+    }
+
+    fn handle_chat_channel_packet(
+        &mut self,
+        connection_handle: ConnectionHandle,
+        channel: u16,
+        packet: chat_channel::Packet) -> Result<Option<Event>, Error> {
+        Err(Error::NotImplemented)
+    }
+
+    fn handle_auth_hidden_service_packet(
+        &mut self,
+        connection_handle: ConnectionHandle,
+        channel: u16,
+        packet: auth_hidden_service::Packet) -> Result<Option<Event>, Error> {
+        Err(Error::NotImplemented)
+    }
+
+    fn handle_file_channel_packet(
+        &mut self,
+        connection_handle: ConnectionHandle,
+        channel: u16,
+        packet: file_channel::Packet) -> Result<Option<Event>, Error> {
+        Err(Error::NotImplemented)
+    }
+
+    pub fn new_outgoing_connection(service_id: V3OnionServiceId) -> ConnectionHandle {
+        INVALID_CONNECTION_HANDLE
+    }
+
+    pub fn new_incoming_connection() -> ConnectionHandle {
+        INVALID_CONNECTION_HANDLE
     }
 }
