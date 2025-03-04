@@ -1,0 +1,13 @@
+[package]
+name = "tego-rs"
+authors = ["morgan@blueprintforfreespeech.net"]
+version = "0.1.0"
+rust-version = "1.70"
+edition = "2021"
+license = "BSD-3-Clause"
+description = "Rust re-implementation of the libtego library"
+repository = "https://github.com/blueprint-freespeech/ricochet-refresh"
+
+[lib]
+name = "tego_rs"
+crate-type = ["staticlib"]
