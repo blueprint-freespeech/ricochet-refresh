@@ -33,6 +33,7 @@ cmake_minimum_required(VERSION 3.18)
 
 project(tego)
 
+
 if (ENABLE_LIBTEGO_TESTS)
     # this needs to go in the root source folder because CTest expects the
     # config in the root build folder
@@ -87,6 +88,12 @@ find_package(OpenSSL 3.0.0 REQUIRED)
 if (USE_SUBMODULE_FMT)
     add_subdirectory(extern/fmt)
 endif ()
+
+# experimental Rust backend
+option(ENABLE_LIBTEGO_RS "Enable experimental Rust backend" OFF)
+if (ENABLE_LIBTEGO_RS)
+    add_subdirectory(libtego_rs)
+endif()
 
 add_subdirectory(libtego)
 add_subdirectory(libtego_ui)
