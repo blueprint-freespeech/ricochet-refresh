@@ -8,6 +8,9 @@ license = "BSD-3-Clause"
 description = "Rust re-implementation of the libtego library"
 repository = "https://github.com/blueprint-freespeech/ricochet-refresh"
 
+[build-dependencies]
+cbindgen = { version = "0.28" }
+
 [lib]
 name = "tego_rs"
 crate-type = ["staticlib"]

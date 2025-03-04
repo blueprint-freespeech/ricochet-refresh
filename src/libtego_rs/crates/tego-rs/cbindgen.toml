@@ -1,0 +1,18 @@
+# see https://github.com/eqrion/cbindgen/blob/master/docs.md
+
+tab_width = 4
+language = "C"
+cpp_compat = true
+no_includes = true
+usize_is_size_t = true
+documentation = true
+documentation_style = "c99"
+line_length = 80
+only_target_dependencies = true
+include_guard = "TEGO_H"
+
+[parse]
+parse_deps = false
+
+[fn]
+args = "horizontal"
