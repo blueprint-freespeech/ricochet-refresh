@@ -137,7 +137,11 @@ target_compile_features(tego_ui PRIVATE cxx_std_20)
 target_include_directories(tego_ui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(tego_ui SYSTEM PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
-target_link_libraries(tego_ui PUBLIC tego)
+if (ENABLE_LIBTEGO_RS)
+    target_link_libraries(tego_ui PUBLIC tego_rs)
+else()
+    target_link_libraries(tego_ui PUBLIC tego)
+endif()
 
 if (NOT USE_SUBMODULE_FMT)
     find_package(fmt REQUIRED)
