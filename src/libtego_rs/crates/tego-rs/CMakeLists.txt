@@ -2,6 +2,7 @@ set(tego_rs_sources
     build.rs
     Cargo.toml
     cbindgen.toml
+    src/ffi.rs
     src/lib.rs
 )
 
@@ -9,7 +10,10 @@ set(tego_rs_static_filename "${CMAKE_STATIC_LIBRARY_PREFIX}tego_rs${CMAKE_STATIC
 )
 set(tego_rs_static ${CARGO_TARGET_DIR}/${CARGO_TARGET_TRIPLE}/${CARGO_PROFILE}/${tego_rs_static_filename})
 set(tego_rs_include_dir
-    ${CARGO_TARGET_DIR}/${CARGO_PROFILE}/include/tego
+    ${CARGO_TARGET_DIR}/${CARGO_PROFILE}/include
+)
+set(tego_include_dir
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../libtego/include
 )
 
 set(tego_rs_outputs
@@ -17,7 +21,11 @@ set(tego_rs_outputs
     ${tego_rs_include_dir}/tego.h
 )
 
-make_directory(${tego_rs_include_dir})
+make_directory(${tego_rs_include_dir}/tego)
+# hard-link our authord tego headers to tego-rs' include directory
+file(CREATE_LINK ${tego_include_dir}/tego/tego.hpp ${tego_rs_include_dir}/tego/tego.hpp)
+file(CREATE_LINK ${tego_include_dir}/tego/utilities.hpp ${tego_rs_include_dir}/tego/utilities.hpp)
+file(CREATE_LINK ${tego_include_dir}/tego/logger.hpp ${tego_rs_include_dir}/tego/logger.hpp)
 
 #
 # build tego-rs static lib
@@ -26,7 +34,7 @@ make_directory(${tego_rs_include_dir})
 add_custom_command(
     DEPENDS ${tego_rs_sources}
     OUTPUT ${tego_rs_outputs}
-    COMMAND ${CMAKE_COMMAND} -E touch ${tego_rs_include_dir}/tego.h
+    COMMAND ${CMAKE_COMMAND} -E touch build.rs
     COMMAND env CARGO_TARGET_DIR=${CARGO_TARGET_DIR} RUSTFLAGS=${RUSTFLAGS} cargo build ${CARGO_FLAGS}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )

@@ -1,5 +1,2 @@
-
-#[no_mangle]
-pub fn hello_world() -> () {
-    println!("hello world")
-}
+#[allow(non_camel_case_types)]
+pub mod ffi;

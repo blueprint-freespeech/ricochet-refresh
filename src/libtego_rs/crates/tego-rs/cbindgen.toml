@@ -10,9 +10,10 @@ documentation_style = "c99"
 line_length = 80
 only_target_dependencies = true
 include_guard = "TEGO_H"
+includes = ["stddef.h", "stdint.h"]
 
 [parse]
 parse_deps = false
 
 [fn]
-args = "horizontal"
+args = "vertical"
