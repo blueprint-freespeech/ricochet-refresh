@@ -102,6 +102,7 @@ pub enum Channel {
     FileTransfer,
 }
 
+#[derive(Debug, PartialEq)]
 enum Direction {
     Incoming,
     Outgoing,
@@ -116,17 +117,13 @@ struct Connection {
 type ConnectionHandle = u32;
 pub const INVALID_CONNECTION_HANDLE: ConnectionHandle = 0xffffffffu32;
 
-enum Event {
+pub enum Event {
     IntroductionReceived{
         reply: Packet,
     },
-    IntroductionResponseReceived{
-        reply: Packet,
-    },
-
-    ProtocolFailure{
-        fatal: bool,
-    },
+    IntroductionResponseReceived,
+    ProtocolFailure,
+    FatalProtocolFailure,
 }
 
 #[derive(Default)]
@@ -230,18 +227,87 @@ impl PacketHandler {
         }
     }
 
+    fn connection(
+        &self,
+        connection_handle: ConnectionHandle) -> Result<&Connection, Error> {
+        self.connections
+            .get(&connection_handle)
+            .ok_or(Error::TargetConnectionDoesNotExist(connection_handle))
+    }
+
+    fn connection_mut(
+        &mut self,
+        connection_handle: ConnectionHandle) -> Result<&mut Connection, Error> {
+        self.connections
+            .get_mut(&connection_handle)
+            .ok_or(Error::TargetConnectionDoesNotExist(connection_handle))
+    }
+
     fn handle_introduction_packet(
         &mut self,
         connection_handle: ConnectionHandle,
         packet: introduction::IntroductionPacket) -> Result<Option<Event>, Error> {
-        Err(Error::NotImplemented)
+
+        use introduction::*;
+
+        let protocol_failure = {
+            let connection = self.connection(connection_handle)?;
+
+            // we should not be receiving an introduction packet if we already have channels
+            !connection.channel_map.is_empty() ||
+            // we should also only receive an introduction packet from a client
+            connection.direction != Direction::Incoming
+        };
+
+        if protocol_failure {
+            let _ = self.connections.remove(&connection_handle);
+            Ok(Some(Event::FatalProtocolFailure))
+        } else {
+            let version = if packet.versions().contains(&Version::RicochetRefresh3) {
+                let mut connection = self.connection_mut(connection_handle)?;
+                let _ = connection.channel_map.insert(0u16, Channel::Control);
+                Some(Version::RicochetRefresh3)
+            } else {
+                // version not supported
+                let _ = self.connections.remove(&connection_handle);
+                None
+            };
+
+            let reply = Packet::IntroductionResponsePacket(IntroductionResponsePacket{version});
+            Ok(Some(Event::IntroductionReceived{reply}))
+        }
     }
 
     fn handle_introduction_response_packet(
         &mut self,
         connection_handle: ConnectionHandle,
         packet: introduction::IntroductionResponsePacket) -> Result<Option<Event>, Error> {
-        Err(Error::NotImplemented)
+
+        use introduction::*;
+
+        let protocol_failure = {
+            let connection = self.connection(connection_handle)?;
+
+            // we should not be receiving an introduction response packet if we already have channels
+            !connection.channel_map.is_empty() ||
+            // we should only receive an introduction response packet from a server
+            connection.direction != Direction::Outgoing
+        };
+
+        if protocol_failure {
+            let _ = self.connections.remove(&connection_handle);
+            Ok(Some(Event::FatalProtocolFailure))
+        } else {
+            if let Some(Version::RicochetRefresh3) = packet.version {
+                let mut connection = self.connection_mut(connection_handle)?;
+                let _ = connection.channel_map.insert(0u16, Channel::Control);
+                Ok(Some(Event::IntroductionResponseReceived))
+            } else {
+                // version not supported
+                let _ = self.connections.remove(&connection_handle);
+                Ok(Some(Event::FatalProtocolFailure))
+            }
+        }
     }
 
     fn handle_control_channel_packet(
