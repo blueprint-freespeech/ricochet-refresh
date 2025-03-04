@@ -57,8 +57,8 @@ public:
     bool verifyData(const QByteArray &data, QByteArray signature) const;
 
 private:
-    std::shared_ptr<tego_ed25519_private_key_t> privateKey_;
-    std::shared_ptr<tego_ed25519_public_key_t> publicKey_;
+    std::shared_ptr<tego_ed25519_private_key> privateKey_;
+    std::shared_ptr<tego_ed25519_public_key> publicKey_;
 };
 
 QByteArray torControlHashedPassword(const QByteArray &password);

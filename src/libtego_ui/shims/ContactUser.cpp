@@ -106,20 +106,20 @@ namespace shims
         return this->conversationModel->exportConversation();
     }
 
-    std::unique_ptr<tego_user_id_t> ContactUser::toTegoUserId() const
+    std::unique_ptr<tego_user_id> ContactUser::toTegoUserId() const
     {
         logger::println("serviceId : {}", this->serviceId);
 
         auto serviceIdRaw = this->serviceId.toUtf8();
 
         // ensure valid service id
-        std::unique_ptr<tego_v3_onion_service_id_t> onionServiceId;
+        std::unique_ptr<tego_v3_onion_service_id> onionServiceId;
         tego_v3_onion_service_id_from_string(tego::out(onionServiceId), serviceIdRaw.data(), static_cast<size_t>(serviceIdRaw.size()), tego::throw_on_error());
 
         logger::trace();
 
         // create user id object from service id
-        std::unique_ptr<tego_user_id_t> userId;
+        std::unique_ptr<tego_user_id> userId;
         tego_user_id_from_v3_onion_service_id(tego::out(userId), onionServiceId.get(), tego::throw_on_error());
 
         return userId;

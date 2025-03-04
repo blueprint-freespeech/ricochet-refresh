@@ -27,7 +27,7 @@ namespace shims
             HostOnionServiceState_Published,
         };
 
-        UserIdentity(tego_context_t* context);
+        UserIdentity(tego_context* context);
 
         void createIncomingContactRequest(const QString& hostname, const QString& message);
         void removeIncomingContactRequest(shims::IncomingContactRequest* incomingContactRequest);
@@ -40,9 +40,9 @@ namespace shims
         static shims::UserIdentity* userIdentity;
         shims::ContactsManager contacts;
 
-        tego_context_t* getContext() { return context; }
+        tego_context* getContext() { return context; }
 
-        void setHostOnionServiceState(tego_host_onion_service_state_t state);
+        void setHostOnionServiceState(tego_host_onion_service_state state);
         HostOnionServiceState getHostOnionServiceState() const {return this->hostOnionServiceState;}
 
     signals:
@@ -58,7 +58,7 @@ namespace shims
     private:
         QList<shims::IncomingContactRequest*> requests;
 
-        tego_context_t *context;
+        tego_context *context;
         HostOnionServiceState hostOnionServiceState = HostOnionServiceState_None;
     };
 }

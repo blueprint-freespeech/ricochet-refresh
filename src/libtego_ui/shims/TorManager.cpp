@@ -5,7 +5,7 @@ namespace shims
 {
     TorManager* TorManager::torManager = nullptr;
 
-    TorManager::TorManager(tego_context_t* context)
+    TorManager::TorManager(tego_context* context)
     : m_context(context)
     { }
 

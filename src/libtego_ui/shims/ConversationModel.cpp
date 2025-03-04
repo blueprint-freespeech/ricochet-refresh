@@ -197,7 +197,7 @@ namespace shims
         }
 
         const auto userId = this->contactUser->toTegoUserId();
-        tego_message_id_t messageId = 0;
+        tego_message_id messageId = 0;
 
         // send message and save off the id associated with it
         tego_context_send_message(
@@ -237,9 +237,9 @@ namespace shims
             auto context = userIdentity->getContext();
             const auto path = filePath.toUtf8();
             const auto userId = this->contactUser->toTegoUserId();
-            tego_file_transfer_id_t id;
-            std::unique_ptr<tego_file_hash_t> fileHash;
-            tego_file_size_t fileSize = 0;
+            tego_file_transfer_id id;
+            std::unique_ptr<tego_file_hash> fileHash;
+            tego_file_size fileSize = 0;
 
             try
             {
@@ -548,7 +548,7 @@ namespace shims
         this->addEventFromMessage(row);
     }
 
-    void ConversationModel::fileTransferRequestReceived(tego_file_transfer_id_t id, QString fileName, QString fileHash, quint64 fileSize)
+    void ConversationModel::fileTransferRequestReceived(tego_file_transfer_id id, QString fileName, QString fileHash, quint64 fileSize)
     {
         MessageData md;
         md.type = TransferMessage;
@@ -570,7 +570,7 @@ namespace shims
         this->addEventFromMessage(indexOfIncomingMessage(id));
     }
 
-    void ConversationModel::fileTransferRequestAcknowledged(tego_file_transfer_id_t id, bool accepted)
+    void ConversationModel::fileTransferRequestAcknowledged(tego_file_transfer_id id, bool accepted)
     {
         auto row = this->indexOfOutgoingMessage(id);
         Q_ASSERT(row >= 0);
@@ -580,7 +580,7 @@ namespace shims
         emitDataChanged(row);
     }
 
-    void ConversationModel::fileTransferRequestResponded(tego_file_transfer_id_t id, tego_file_transfer_response_t response)
+    void ConversationModel::fileTransferRequestResponded(tego_file_transfer_id id, tego_file_transfer_response response)
     {
         auto row = this->indexOfOutgoingMessage(id);
         Q_ASSERT(row >= 0);
@@ -602,7 +602,7 @@ namespace shims
         this->addEventFromMessage(row);
     }
 
-    void ConversationModel::fileTransferRequestProgressUpdated(tego_file_transfer_id_t id, quint64 bytesTransferred)
+    void ConversationModel::fileTransferRequestProgressUpdated(tego_file_transfer_id id, quint64 bytesTransferred)
     {
         auto row = this->indexOfMessage(id);
         if (row >= 0)
@@ -616,7 +616,7 @@ namespace shims
     }
 
     void ConversationModel::fileTransferRequestCompleted(
-        tego_file_transfer_id_t id,  tego_file_transfer_result_t result)
+        tego_file_transfer_id id,  tego_file_transfer_result result)
     {
         auto row = this->indexOfMessage(id);
         if (row >= 0)
@@ -668,7 +668,7 @@ namespace shims
         resetUnreadCount();
     }
 
-    void ConversationModel::messageReceived(tego_message_id_t messageId, QDateTime timestamp, const QString& text)
+    void ConversationModel::messageReceived(tego_message_id messageId, QDateTime timestamp, const QString& text)
     {
         MessageData md;
         md.type = TextMessage;
@@ -685,7 +685,7 @@ namespace shims
         this->addEventFromMessage(indexOfIncomingMessage(messageId));
     }
 
-    void ConversationModel::messageAcknowledged(tego_message_id_t messageId, bool accepted)
+    void ConversationModel::messageAcknowledged(tego_message_id messageId, bool accepted)
     {
         if (messages.size() == 0) {
             // Reached when the model is cleared after an outgoing message was sent,

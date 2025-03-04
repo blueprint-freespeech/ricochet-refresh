@@ -82,7 +82,7 @@ tego_v3_onion_service_id::tego_v3_onion_service_id(
         this->data);
 }
 
-tego_bool_t tego_v3_onion_service_id::is_valid(
+tego_bool tego_v3_onion_service_id::is_valid(
     std::string_view &serviceIdString)
 {
     if (serviceIdString.size() != TEGO_V3_ONION_SERVICE_ID_LENGTH)
@@ -131,10 +131,10 @@ tego_bool_t tego_v3_onion_service_id::is_valid(
 extern "C"
 {
     void tego_ed25519_private_key_from_ed25519_keyblob(
-        tego_ed25519_private_key_t** out_privateKey,
+        tego_ed25519_private_key** out_privateKey,
         const char* keyBlob,
         size_t keyBlobLength,
-        tego_error_t** error)
+        tego_error** error)
     {
         return tego::translateExceptions([&]() -> void
         {
@@ -170,8 +170,8 @@ extern "C"
     size_t tego_ed25519_keyblob_from_ed25519_private_key(
         char* out_keyBlob,
         size_t keyBlobSize,
-        const tego_ed25519_private_key_t* privateKey,
-        tego_error_t** error)
+        const tego_ed25519_private_key* privateKey,
+        tego_error** error)
     {
         return tego::translateExceptions([&]() -> size_t
         {
@@ -204,9 +204,9 @@ extern "C"
     }
 
     void tego_ed25519_public_key_from_ed25519_private_key(
-        tego_ed25519_public_key_t** out_publicKey,
-        const tego_ed25519_private_key_t* privateKey,
-        tego_error_t** error)
+        tego_ed25519_public_key** out_publicKey,
+        const tego_ed25519_private_key* privateKey,
+        tego_error** error)
     {
         return tego::translateExceptions([&]() -> void
         {
@@ -227,12 +227,12 @@ extern "C"
         }, error);
     }
 
-    tego_bool_t tego_v3_onion_service_id_string_is_valid(
+    tego_bool tego_v3_onion_service_id_string_is_valid(
         const char* serviceIdString,
         size_t serviceIdStringLength,
-        tego_error_t** error)
+        tego_error** error)
     {
-        return tego::translateExceptions([&]() -> tego_bool_t
+        return tego::translateExceptions([&]() -> tego_bool
         {
             TEGO_THROW_IF_NULL(serviceIdString);
             TEGO_THROW_IF_FALSE(serviceIdStringLength >= TEGO_V3_ONION_SERVICE_ID_LENGTH);
@@ -243,10 +243,10 @@ extern "C"
     }
 
     void tego_v3_onion_service_id_from_string(
-        tego_v3_onion_service_id_t** out_serviceId,
+        tego_v3_onion_service_id** out_serviceId,
         const char* serviceIdString,
         size_t serviceIdStringLength,
-        tego_error_t** error)
+        tego_error** error)
     {
         return tego::translateExceptions([&]() -> void
         {
@@ -259,10 +259,10 @@ extern "C"
     }
 
     size_t tego_v3_onion_service_id_to_string(
-        const tego_v3_onion_service_id_t* serviceId,
+        const tego_v3_onion_service_id* serviceId,
         char* out_serviceIdString,
         size_t serviceIdStringSize,
-        tego_error_t** error)
+        tego_error** error)
     {
         return tego::translateExceptions([&]() -> size_t
         {
@@ -281,9 +281,9 @@ extern "C"
     }
 
     void tego_ed25519_public_key_from_v3_onion_service_id(
-        tego_ed25519_public_key_t** out_publicKey,
-        const tego_v3_onion_service_id_t* serviceId,
-        tego_error_t** error)
+        tego_ed25519_public_key** out_publicKey,
+        const tego_v3_onion_service_id* serviceId,
+        tego_error** error)
     {
         return tego::translateExceptions([&]() -> void
         {
@@ -317,9 +317,9 @@ extern "C"
     }
 
     void tego_v3_onion_service_id_from_ed25519_public_key(
-        tego_v3_onion_service_id_t** out_serviceId,
-        const tego_ed25519_public_key_t* publicKey,
-        tego_error_t** error)
+        tego_v3_onion_service_id** out_serviceId,
+        const tego_ed25519_public_key* publicKey,
+        tego_error** error)
     {
         return tego::translateExceptions([&]() -> void
         {
@@ -358,10 +358,10 @@ extern "C"
     }
 
     void tego_ed25519_signature_from_bytes(
-        tego_ed25519_signature_t** out_signature,
+        tego_ed25519_signature** out_signature,
         const uint8_t* buffer,
         size_t bufferSize,
-        tego_error_t** error)
+        tego_error** error)
     {
         return tego::translateExceptions([&]() -> void
         {
@@ -381,10 +381,10 @@ extern "C"
     }
 
     size_t tego_ed25519_signature_to_bytes(
-        const tego_ed25519_signature_t* signature,
+        const tego_ed25519_signature* signature,
         uint8_t* out_buffer,
         size_t bufferSize,
-        tego_error_t** error)
+        tego_error** error)
     {
         return tego::translateExceptions([&]() -> size_t
         {
@@ -401,10 +401,10 @@ extern "C"
     void tego_message_ed25519_sign(
         const uint8_t* message,
         size_t messageSize,
-        const tego_ed25519_private_key_t* privateKey,
-        const tego_ed25519_public_key_t* publicKey,
-        tego_ed25519_signature_t** out_signature,
-        tego_error_t** error)
+        const tego_ed25519_private_key* privateKey,
+        const tego_ed25519_public_key* publicKey,
+        tego_ed25519_signature** out_signature,
+        tego_error** error)
     {
         return tego::translateExceptions([&]() -> void
         {
@@ -434,11 +434,11 @@ extern "C"
     }
 
     int tego_ed25519_signature_verify(
-        const tego_ed25519_signature_t* signature,
+        const tego_ed25519_signature* signature,
         const uint8_t* message,
         size_t messageSize,
-        const tego_ed25519_public_key_t* publicKey,
-        tego_error_t** error)
+        const tego_ed25519_public_key* publicKey,
+        tego_error** error)
     {
         return tego::translateExceptions([&]() -> int
         {

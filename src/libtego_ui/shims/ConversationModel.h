@@ -3,13 +3,13 @@
 #include "ContactUser.h"
 
 // verify our used qt uint type has same properties as tego_* types
-static_assert(std::numeric_limits<quint64>::is_signed == std::numeric_limits<tego_message_id_t>::is_signed);
-static_assert(std::numeric_limits<quint64>::lowest() == std::numeric_limits<tego_message_id_t>::lowest());
-static_assert(std::numeric_limits<quint64>::max() == std::numeric_limits<tego_message_id_t>::max());
+static_assert(std::numeric_limits<quint64>::is_signed == std::numeric_limits<tego_message_id>::is_signed);
+static_assert(std::numeric_limits<quint64>::lowest() == std::numeric_limits<tego_message_id>::lowest());
+static_assert(std::numeric_limits<quint64>::max() == std::numeric_limits<tego_message_id>::max());
 
-static_assert(std::numeric_limits<quint64>::is_signed == std::numeric_limits<tego_file_transfer_id_t>::is_signed);
-static_assert(std::numeric_limits<quint64>::lowest() == std::numeric_limits<tego_file_transfer_id_t>::lowest());
-static_assert(std::numeric_limits<quint64>::max() == std::numeric_limits<tego_file_transfer_id_t>::max());
+static_assert(std::numeric_limits<quint64>::is_signed == std::numeric_limits<tego_file_transfer_id>::is_signed);
+static_assert(std::numeric_limits<quint64>::lowest() == std::numeric_limits<tego_file_transfer_id>::lowest());
+static_assert(std::numeric_limits<quint64>::max() == std::numeric_limits<tego_file_transfer_id>::max());
 
 
 namespace shims
@@ -110,14 +110,14 @@ namespace shims
 
         void setStatus(ContactUser::Status status);
 
-        void fileTransferRequestReceived(tego_file_transfer_id_t id, QString fileName, QString fileHash, quint64 fileSize);
-        void fileTransferRequestAcknowledged(tego_file_transfer_id_t id, bool accepted);
-        void fileTransferRequestResponded(tego_file_transfer_id_t id, tego_file_transfer_response_t response);
-        void fileTransferRequestProgressUpdated(tego_file_transfer_id_t id, quint64 bytesTransferred);
-        void fileTransferRequestCompleted(tego_file_transfer_id_t id, tego_file_transfer_result_t result);
+        void fileTransferRequestReceived(tego_file_transfer_id id, QString fileName, QString fileHash, quint64 fileSize);
+        void fileTransferRequestAcknowledged(tego_file_transfer_id id, bool accepted);
+        void fileTransferRequestResponded(tego_file_transfer_id id, tego_file_transfer_response response);
+        void fileTransferRequestProgressUpdated(tego_file_transfer_id id, quint64 bytesTransferred);
+        void fileTransferRequestCompleted(tego_file_transfer_id id, tego_file_transfer_result result);
 
-        void messageReceived(tego_message_id_t messageId, QDateTime timestamp, const QString& text);
-        void messageAcknowledged(tego_message_id_t messageId, bool accepted);
+        void messageReceived(tego_message_id messageId, QDateTime timestamp, const QString& text);
+        void messageAcknowledged(tego_message_id messageId, bool accepted);
 
     public slots:
         void sendMessage(const QString &text);

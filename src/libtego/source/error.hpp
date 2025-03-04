@@ -8,7 +8,7 @@ struct tego_error
 namespace tego
 {
     template<typename FUNC>
-    auto translateExceptions(FUNC&& fn, tego_error_t** out_error) noexcept(true) -> void
+    auto translateExceptions(FUNC&& fn, tego_error** out_error) noexcept(true) -> void
     {
         static_assert(std::is_same<void, decltype(fn())>::value);
 
@@ -27,7 +27,7 @@ namespace tego
     }
 
     template<typename FUNC>
-    auto translateExceptions(FUNC&& fn, tego_error_t** out_error, decltype(fn()) onErrorReturn) noexcept(true) -> decltype(fn())
+    auto translateExceptions(FUNC&& fn, tego_error** out_error, decltype(fn()) onErrorReturn) noexcept(true) -> decltype(fn())
     {
         try
         {

@@ -7,7 +7,7 @@ namespace shims
 {
     TorControl* TorControl::torControl = nullptr;
 
-    TorControl::TorControl(tego_context_t* context_)
+    TorControl::TorControl(tego_context* context_)
     : context(context_)
     { }
 
@@ -23,7 +23,7 @@ namespace shims
     {
         Q_ASSERT(this->m_setConfigurationCommand == nullptr);
 
-        std::unique_ptr<tego_tor_daemon_config_t> daemonConfig;
+        std::unique_ptr<tego_tor_daemon_config> daemonConfig;
         tego_tor_daemon_config_initialize(
             tego::out(daemonConfig),
             tego::throw_on_error());
@@ -347,7 +347,7 @@ namespace shims
 
     TorControl::Status TorControl::status() const
     {
-        tego_tor_control_status_t status;
+        tego_tor_control_status status;
         tego_context_get_tor_control_status(
             context,
             &status,
@@ -359,7 +359,7 @@ namespace shims
 
     TorControl::TorStatus TorControl::torStatus() const
     {
-        tego_tor_network_status_t status;
+        tego_tor_network_status status;
         tego_context_get_tor_network_status(
             context,
             &status,
@@ -420,7 +420,7 @@ namespace shims
         this->setStatus(TorControl::Error);
     }
 
-    void TorControl::setBootstrapStatus(int32_t progress, tego_tor_bootstrap_tag_t tag, QString&& summary)
+    void TorControl::setBootstrapStatus(int32_t progress, tego_tor_bootstrap_tag tag, QString&& summary)
     {
         TEGO_THROW_IF_FALSE(progress >= 0 && progress <= 100);
         this->m_bootstrapProgress = static_cast<int>(progress);

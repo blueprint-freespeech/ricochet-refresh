@@ -15,13 +15,13 @@ typedef enum
     tego_proxy_type_socks4,
     tego_proxy_type_socks5,
     tego_proxy_type_https,
-} tego_proxy_type_t;
+} tego_proxy_type;
 
 struct tego_tor_daemon_config
 {
     struct
     {
-        tego_proxy_type_t type = tego_proxy_type_none;
+        tego_proxy_type type = tego_proxy_type_none;
         std::string address;
         uint16_t port;
         std::string username;

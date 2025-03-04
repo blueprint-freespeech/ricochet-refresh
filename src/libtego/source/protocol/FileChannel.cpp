@@ -63,7 +63,7 @@ static void logTransferStats(qint64 bytes, std::chrono::time_point<std::chrono::
 FileChannel::outgoing_transfer_record::outgoing_transfer_record(
     FileId transferId,
     const std::string& filePath,
-    tego_file_size_t fileSize)
+    tego_file_size fileSize)
 : id(transferId)
 , size(fileSize)
 , offset(0)
@@ -76,7 +76,7 @@ FileChannel::outgoing_transfer_record::outgoing_transfer_record(
 
 FileChannel::incoming_transfer_record::incoming_transfer_record(
     FileId transferId,
-    tego_file_size_t fileSize,
+    tego_file_size fileSize,
     const std::string& fileHash)
 : id(transferId)
 , size(fileSize)
@@ -265,7 +265,7 @@ void FileChannel::onConnectionClosed()
 // Error Handling
 //
 
-void FileChannel::emitFatalError(std::string&& message, tego_file_transfer_result_t error, bool shouldCloseChannel)
+void FileChannel::emitFatalError(std::string&& message, tego_file_transfer_result error, bool shouldCloseChannel)
 {
     qWarning() << message.data();
 
@@ -297,7 +297,7 @@ void FileChannel::emitFatalError(std::string&& message, tego_file_transfer_resul
     }
 }
 
-void FileChannel::emitNonFatalError(std::string&& message, FileId id, tego_file_transfer_result_t error)
+void FileChannel::emitNonFatalError(std::string&& message, FileId id, tego_file_transfer_result error)
 {
     // log error message to console
     qWarning() << message.data();
@@ -415,7 +415,7 @@ void FileChannel::handleFileHeaderResponse(const Data::File::FileHeaderResponse 
     }
 
     const auto response = message.response();
-    emit this->fileTransferRequestResponded(message.file_id(), static_cast<tego_file_transfer_response_t>(response));
+    emit this->fileTransferRequestResponded(message.file_id(), static_cast<tego_file_transfer_response>(response));
 
     if (response == tego_file_transfer_response_accept)
     {
@@ -484,7 +484,7 @@ void FileChannel::handleFileChunk(const Data::File::FileChunk &message)
             return;
         }
 
-        const auto bytesWritten = static_cast<tego_file_size_t>(streamOffset);
+        const auto bytesWritten = static_cast<tego_file_size>(streamOffset);
         const auto& bytesTotal = itr.size;
 
         emit this->fileTransferProgress(id, tego_file_transfer_direction_receiving, bytesWritten, bytesTotal);
@@ -584,14 +584,14 @@ void FileChannel::handleFileChunkAck(const Data::File::FileChunkAck &message)
     }
 }
 
-// statically verify that our tego_file_transfer_result_t enum matches the FileTransferResult enum
+// statically verify that our tego_file_transfer_result enum matches the FileTransferResult enum
 typedef int file_transfer_result_underlying_t;
-constexpr bool operator==(Protocol::Data::File::FileTransferResult left, tego_file_transfer_result_t right)
+constexpr bool operator==(Protocol::Data::File::FileTransferResult left, tego_file_transfer_result right)
 {
     return static_cast<file_transfer_result_underlying_t>(left) == static_cast<file_transfer_result_underlying_t>(right);
 }
 
-constexpr bool operator==(tego_file_transfer_result_t left, Protocol::Data::File::FileTransferResult right)
+constexpr bool operator==(tego_file_transfer_result left, Protocol::Data::File::FileTransferResult right)
 {
     return right == left;
 }
@@ -612,7 +612,7 @@ void FileChannel::handleFileTransferCompleteNotification(const Data::File::FileT
         if( auto it = incomingTransfers.find(id); it != incomingTransfers.end())
         {
             incomingTransfers.erase(it);
-            emit fileTransferFinished(id, tego_file_transfer_direction_receiving, static_cast<tego_file_transfer_result_t>(message.result()));
+            emit fileTransferFinished(id, tego_file_transfer_direction_receiving, static_cast<tego_file_transfer_result>(message.result()));
             return;
         }
         break;
@@ -626,7 +626,7 @@ void FileChannel::handleFileTransferCompleteNotification(const Data::File::FileT
             }
 
             outgoingTransfers.erase(it);
-            emit fileTransferFinished(id, tego_file_transfer_direction_sending, static_cast<tego_file_transfer_result_t>(message.result()));
+            emit fileTransferFinished(id, tego_file_transfer_direction_sending, static_cast<tego_file_transfer_result>(message.result()));
             return;
         }
         break;
@@ -638,7 +638,7 @@ void FileChannel::handleFileTransferCompleteNotification(const Data::File::FileT
 }
 
 bool FileChannel::sendFileWithId(QString file_uri,
-                                 tego_file_hash_t const& file_hash,
+                                 tego_file_hash const& file_hash,
                                  QDateTime,
                                  FileId file_id)
 {
@@ -662,7 +662,7 @@ bool FileChannel::sendFileWithId(QString file_uri,
     Q_ASSERT(!canonicalFilePath.isEmpty());
 
     // file size must be positive, QFileInfo::size() returns signed 64 bit int, so so long as
-    // we are positive we'll fit into a tego_file_size_t which is a 64 bit unsigned int
+    // we are positive we'll fit into a tego_file_size which is a 64 bit unsigned int
     Q_ASSERT(fi.size() > 0);
 
     // ensure this file's size can be represented as a std::streamoff (the integer type of our offset into a std::ofstream)
@@ -672,7 +672,7 @@ bool FileChannel::sendFileWithId(QString file_uri,
         TEGO_THROW_IF_FALSE(fi.size() <= std::numeric_limits<std::streamoff>::max());
     }
 
-    const auto fileSize = static_cast<tego_file_size_t>(fi.size());
+    const auto fileSize = static_cast<tego_file_size>(fi.size());
 
     // create our record
     const auto filePath = canonicalFilePath.toStdString();
@@ -795,7 +795,7 @@ void FileChannel::sendNextChunk(FileId id)
 
         // make sure our offset and the stream offset agree
         Q_ASSERT(otr.finished() == false);
-        Q_ASSERT(otr.offset == static_cast<tego_file_size_t>(otr.stream.tellg()));
+        Q_ASSERT(otr.offset == static_cast<tego_file_size>(otr.stream.tellg()));
 
         // read the next chunk to our buffer, and update our offset
         otr.stream.read(this->chunkBuffer, FileMaxChunkSize);
@@ -818,7 +818,7 @@ void FileChannel::sendNextChunk(FileId id)
 
             return;
         }
-        Q_ASSERT(static_cast<tego_file_size_t>(chunkSize) <= FileMaxChunkSize);
+        Q_ASSERT(static_cast<tego_file_size>(chunkSize) <= FileMaxChunkSize);
 
         otr.offset += static_cast<unsigned long>(chunkSize);
 

@@ -58,10 +58,10 @@ IncomingRequestManager::IncomingRequestManager(ContactsManager *c)
         const auto hostname = request->hostname();
         auto serviceIdRaw = hostname.chopped(tego::static_strlen(".onion"));
 
-        std::unique_ptr<tego_v3_onion_service_id_t> serviceId;
+        std::unique_ptr<tego_v3_onion_service_id> serviceId;
         tego_v3_onion_service_id_from_string(tego::out(serviceId), serviceIdRaw.data(), static_cast<size_t>(serviceIdRaw.size()), tego::throw_on_error());
 
-        std::unique_ptr<tego_user_id_t> userId;
+        std::unique_ptr<tego_user_id> userId;
         tego_user_id_from_v3_onion_service_id(tego::out(userId), serviceId.get(), tego::throw_on_error());
 
         auto message = request->message().toUtf8();

@@ -11,7 +11,7 @@ using namespace tego;
 
 extern "C"
 {
-    void tego_initialize(tego_context_t** out_context, tego_error_t** error)
+    void tego_initialize(tego_context** out_context, tego_error** error)
     {
         return tego::translateExceptions([=]() -> void
         {
@@ -45,7 +45,7 @@ extern "C"
         }, error);
     }
 
-    void tego_uninitialize(tego_context_t* context, tego_error_t** error)
+    void tego_uninitialize(tego_context* context, tego_error** error)
     {
         return tego::translateExceptions([=]() -> void
         {

@@ -134,7 +134,7 @@ namespace
         return QStringLiteral("ricochet:%1").arg(serviceId);
     }
 
-    QString tegoUserIdToServiceId(const tego_user_id_t* user)
+    QString tegoUserIdToServiceId(const tego_user_id* user)
     {
         std::unique_ptr<tego_v3_onion_service_id> serviceId;
         tego_user_id_get_v3_onion_service_id(user, tego::out(serviceId), tego::throw_on_error());
@@ -146,8 +146,8 @@ namespace
         return contactId;
     }
 
-    // converts the our tego_user_id_t to ricochet's contactId in the form ricochet:serviceidserviceidserviceid...
-    QString tegoUserIdToContactId(const tego_user_id_t* user)
+    // converts the our tego_user_id to ricochet's contactId in the form ricochet:serviceidserviceidserviceid...
+    QString tegoUserIdToContactId(const tego_user_id* user)
     {
         return serviceIdToContactId(tegoUserIdToServiceId(user));
     }
@@ -166,9 +166,9 @@ namespace
     //
 
     void on_tor_error_occurred(
-        tego_context_t*,
-        tego_tor_error_origin_t origin,
-        const tego_error_t* error)
+        tego_context*,
+        tego_tor_error_origin origin,
+        const tego_error* error)
     {
         // route the error message to the appropriate component
         QString errorMsg = tego_error_get_message(error);
@@ -192,8 +192,8 @@ namespace
     }
 
     void on_update_tor_daemon_config_succeeded(
-        tego_context_t*,
-        tego_bool_t success)
+        tego_context*,
+        tego_bool success)
     {
         push_task([=]() -> void
         {
@@ -208,8 +208,8 @@ namespace
     }
 
     void on_tor_control_status_changed(
-        tego_context_t*,
-        tego_tor_control_status_t status)
+        tego_context*,
+        tego_tor_control_status status)
     {
         push_task([=]() -> void
         {
@@ -219,8 +219,8 @@ namespace
     }
 
     void on_tor_process_status_changed(
-        tego_context_t*,
-        tego_tor_process_status_t status)
+        tego_context*,
+        tego_tor_process_status status)
     {
         push_task([=]() -> void
         {
@@ -242,8 +242,8 @@ namespace
     }
 
     void on_tor_network_status_changed(
-        tego_context_t*,
-        tego_tor_network_status_t status)
+        tego_context*,
+        tego_tor_network_status status)
     {
         push_task([=]() -> void
         {
@@ -265,9 +265,9 @@ namespace
     }
 
     void on_tor_bootstrap_status_changed(
-        tego_context_t*,
+        tego_context*,
         int32_t progress,
-        tego_tor_bootstrap_tag_t tag)
+        tego_tor_bootstrap_tag tag)
     {
         push_task([=]() -> void
         {
@@ -284,7 +284,7 @@ namespace
     }
 
     void on_tor_log_received(
-        tego_context_t*,
+        tego_context*,
         const char* message,
         size_t messageLength)
     {
@@ -297,8 +297,8 @@ namespace
     }
 
     void on_host_onion_service_state_changed(
-        tego_context_t*,
-        tego_host_onion_service_state_t state)
+        tego_context*,
+        tego_host_onion_service_state state)
     {
         push_task([=]() -> void
         {
@@ -308,8 +308,8 @@ namespace
     }
 
     void on_chat_request_received(
-        tego_context_t*,
-        const tego_user_id_t* userId,
+        tego_context*,
+        const tego_user_id* userId,
         const char* message,
         size_t messageLength)
     {
@@ -327,9 +327,9 @@ namespace
     }
 
     void on_chat_request_response_received(
-        tego_context_t*,
-        const tego_user_id_t* userId,
-        tego_bool_t requestAccepted)
+        tego_context*,
+        const tego_user_id* userId,
+        tego_bool requestAccepted)
     {
         logger::trace();
 
@@ -357,9 +357,9 @@ namespace
     }
 
     void on_user_status_changed(
-        tego_context_t*,
-        const tego_user_id_t* userId,
-        tego_user_status_t status)
+        tego_context*,
+        const tego_user_id* userId,
+        tego_user_status status)
     {
         logger::trace();
         auto serviceId = tegoUserIdToServiceId(userId);
@@ -394,10 +394,10 @@ namespace
     }
 
     void on_message_received(
-        tego_context_t*,
-        const tego_user_id_t* sender,
-        tego_time_t timestamp,
-        tego_message_id_t messageId,
+        tego_context*,
+        const tego_user_id* sender,
+        tego_time timestamp,
+        tego_message_id messageId,
         const char* message,
         size_t messageLength)
     {
@@ -416,10 +416,10 @@ namespace
     }
 
     void on_message_acknowledged(
-        tego_context_t*,
-        const tego_user_id_t* userId,
-        tego_message_id_t messageId,
-        tego_bool_t messageAccepted)
+        tego_context*,
+        const tego_user_id* userId,
+        tego_message_id messageId,
+        tego_bool messageAccepted)
     {
         logger::trace();
         logger::println(" userId : {}", static_cast<const void*>(userId));
@@ -438,13 +438,13 @@ namespace
     }
 
     void on_file_transfer_request_received(
-        tego_context_t*,
-        tego_user_id_t const* sender,
-        tego_file_transfer_id_t id,
+        tego_context*,
+        tego_user_id const* sender,
+        tego_file_transfer_id id,
         char const* fileName,
         size_t fileNameLength,
-        tego_file_size_t fileSize,
-        tego_file_hash_t const* fileHash)
+        tego_file_size fileSize,
+        tego_file_hash const* fileHash)
     {
         auto contactId = tegoUserIdToContactId(sender);
         QString fileNameCopy = QString::fromUtf8(fileName, safe_cast<int>(fileNameLength));
@@ -462,10 +462,10 @@ namespace
     }
 
     void on_file_transfer_request_acknowledged(
-        tego_context_t*,
-        tego_user_id_t const* receiver,
-        tego_file_transfer_id_t id,
-        tego_bool_t ack)
+        tego_context*,
+        tego_user_id const* receiver,
+        tego_file_transfer_id id,
+        tego_bool ack)
     {
         auto contactId = tegoUserIdToContactId(receiver);
 
@@ -481,10 +481,10 @@ namespace
     }
 
     void on_file_transfer_request_response_received(
-        tego_context_t*,
-        tego_user_id_t const* receiver,
-        tego_file_transfer_id_t id,
-        tego_file_transfer_response_t response)
+        tego_context*,
+        tego_user_id const* receiver,
+        tego_file_transfer_id id,
+        tego_file_transfer_response response)
     {
         auto contactId = tegoUserIdToContactId(receiver);
 
@@ -500,12 +500,12 @@ namespace
     }
 
     void on_file_transfer_progress(
-        tego_context_t*,
-        const tego_user_id_t* userId,
-        tego_file_transfer_id_t id,
-        tego_file_transfer_direction_t direction,
-        tego_file_size_t bytesComplete,
-        tego_file_size_t bytesTotal)
+        tego_context*,
+        const tego_user_id* userId,
+        tego_file_transfer_id id,
+        tego_file_transfer_direction direction,
+        tego_file_size bytesComplete,
+        tego_file_size bytesTotal)
     {
         auto contactId = tegoUserIdToContactId(userId);
 
@@ -529,11 +529,11 @@ namespace
     }
 
     void on_file_transfer_complete(
-        tego_context_t*,
-        const tego_user_id_t* userId,
-        tego_file_transfer_id_t id,
-        tego_file_transfer_direction_t,
-        tego_file_transfer_result_t result)
+        tego_context*,
+        const tego_user_id* userId,
+        tego_file_transfer_id id,
+        tego_file_transfer_direction,
+        tego_file_transfer_result result)
     {
         auto contactId = tegoUserIdToContactId(userId);
 
@@ -549,8 +549,8 @@ namespace
     }
 
     void on_new_identity_created(
-        tego_context_t*,
-        const tego_ed25519_private_key_t* privateKey)
+        tego_context*,
+        const tego_ed25519_private_key* privateKey)
     {
         // convert privateKey to KeyBlob
         char rawKeyBlob[TEGO_ED25519_KEYBLOB_SIZE] = {0};
@@ -570,7 +570,7 @@ namespace
     }
 }
 
-void init_libtego_callbacks(tego_context_t* context)
+void init_libtego_callbacks(tego_context* context)
 {
     // start triggering our consume queue
     QTimer::singleShot(consumeInterval, &consume_tasks);

@@ -439,7 +439,7 @@ void ContactUser::clearConnection()
     m_connection.clear();
 }
 
-std::unique_ptr<tego_user_id_t> ContactUser::toTegoUserId() const
+std::unique_ptr<tego_user_id> ContactUser::toTegoUserId() const
 {
     // convert our hostname to just the service id raw string
     auto serviceIdString = this->hostname().chopped(tego::static_strlen(".onion")).toUtf8();

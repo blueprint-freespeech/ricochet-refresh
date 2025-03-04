@@ -17,53 +17,53 @@ struct tego_context
 public:
     tego_context();
 
-    void start_tor(const tego_tor_launch_config_t* config);
+    void start_tor(const tego_tor_launch_config* config);
     bool get_tor_daemon_configured() const;
     size_t get_tor_logs_size() const;
     const std::vector<std::string>& get_tor_logs() const;
     const char* get_tor_version_string() const;
-    tego_tor_control_status_t get_tor_control_status() const;
-    tego_tor_process_status_t get_tor_process_status() const;
-    tego_tor_network_status_t get_tor_network_status() const;
+    tego_tor_control_status get_tor_control_status() const;
+    tego_tor_process_status get_tor_process_status() const;
+    tego_tor_network_status get_tor_network_status() const;
     int32_t get_tor_bootstrap_progress() const;
-    tego_tor_bootstrap_tag_t get_tor_bootstrap_tag() const;
+    tego_tor_bootstrap_tag get_tor_bootstrap_tag() const;
     void start_service(
-        tego_ed25519_private_key_t const* hostPrivateKey,
-        tego_user_id_t const* const* userBuffer,
-        tego_user_type_t* const userTypeBuffer,
+        tego_ed25519_private_key const* hostPrivateKey,
+        tego_user_id const* const* userBuffer,
+        tego_user_type* const userTypeBuffer,
         size_t userCount);
     void start_service();
-    void update_tor_daemon_config(const tego_tor_daemon_config_t* config);
+    void update_tor_daemon_config(const tego_tor_daemon_config* config);
     void update_disable_network_flag(bool disableNetwork);
     void save_tor_daemon_config();
-    void set_host_onion_service_state(tego_host_onion_service_state_t state);
-    std::unique_ptr<tego_user_id_t> get_host_user_id() const;
-    tego_host_onion_service_state_t get_host_onion_service_state() const;
+    void set_host_onion_service_state(tego_host_onion_service_state state);
+    std::unique_ptr<tego_user_id> get_host_user_id() const;
+    tego_host_onion_service_state get_host_onion_service_state() const;
     void send_chat_request(
-        const tego_user_id_t* user,
+        const tego_user_id* user,
         const char* message,
         size_t messageLength);
     void acknowledge_chat_request(
-        const tego_user_id_t* user,
-        tego_chat_acknowledge_t response);
-    tego_message_id_t send_message(
-        const tego_user_id_t* user,
+        const tego_user_id* user,
+        tego_chat_acknowledge response);
+    tego_message_id send_message(
+        const tego_user_id* user,
         const std::string& message);
-    tego_user_type_t get_user_type(tego_user_id_t const* user) const;
+    tego_user_type get_user_type(tego_user_id const* user) const;
     size_t get_user_count() const;
-    std::vector<tego_user_id_t*> get_users() const;
-    void forget_user(const tego_user_id_t* user);
-    std::tuple<tego_file_transfer_id_t, std::unique_ptr<tego_file_hash_t>, tego_file_size_t> send_file_transfer_request(
-        tego_user_id_t const* user,
+    std::vector<tego_user_id*> get_users() const;
+    void forget_user(const tego_user_id* user);
+    std::tuple<tego_file_transfer_id, std::unique_ptr<tego_file_hash>, tego_file_size> send_file_transfer_request(
+        tego_user_id const* user,
         std::string const& filePath);
     void respond_file_transfer_request(
-        tego_user_id_t const* user,
-        tego_file_transfer_id_t fileTransfer,
-        tego_file_transfer_response_t response,
+        tego_user_id const* user,
+        tego_file_transfer_id fileTransfer,
+        tego_file_transfer_response response,
         std::string const& destPath);
     void cancel_file_transfer_transfer(
-        tego_user_id_t const* user,
-        tego_file_transfer_id_t);
+        tego_user_id const* user,
+        tego_file_transfer_id);
 
     tego::callback_registry callback_registry_;
     tego::callback_queue callback_queue_;
@@ -83,9 +83,9 @@ public:
     // event loop, which in our case is the thread the context is created on)
     std::thread::id threadId;
 private:
-    class ContactUser* getContactUser(const tego_user_id_t*) const;
+    class ContactUser* getContactUser(const tego_user_id*) const;
 
     mutable std::string torVersion;
     mutable std::vector<std::string> torLogs;
-    tego_host_onion_service_state_t hostUserState = tego_host_onion_service_state_none;
+    tego_host_onion_service_state hostUserState = tego_host_onion_service_state_none;
 };

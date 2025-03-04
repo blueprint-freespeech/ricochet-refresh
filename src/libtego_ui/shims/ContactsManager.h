@@ -9,7 +9,7 @@ namespace shims
         Q_OBJECT
         Q_DISABLE_COPY(ContactsManager)
     public:
-        ContactsManager(tego_context_t* context);
+        ContactsManager(tego_context* context);
 
         Q_INVOKABLE shims::ContactUser* createContactRequest(
             const QString &contactID,
@@ -28,7 +28,7 @@ namespace shims
         void unreadCountChanged(shims::ContactUser *user, int unreadCount);
         void contactStatusChanged(shims::ContactUser* user, int status);
     private:
-        tego_context_t* context;
+        tego_context* context;
         mutable QList<shims::ContactUser*> contactsList;
     };
 }

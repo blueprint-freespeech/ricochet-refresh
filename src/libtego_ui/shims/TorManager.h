@@ -12,7 +12,7 @@ namespace shims
         Q_PROPERTY(QString errorMessage READ errorMessage NOTIFY errorChanged)
 
     public:
-        TorManager(tego_context_t*);
+        TorManager(tego_context*);
         static TorManager* torManager;
 
         QStringList logMessages() const;
@@ -27,7 +27,7 @@ namespace shims
         void errorChanged();
 
     private:
-        tego_context_t* m_context;
+        tego_context* m_context;
         QString m_errorMessage;
         QString m_running;
     };

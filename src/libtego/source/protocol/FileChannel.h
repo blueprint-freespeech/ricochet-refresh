@@ -51,17 +51,17 @@ public:
 
     explicit FileChannel(Direction direction, Connection *connection);
 
-    bool sendFileWithId(QString file_url, const tego_file_hash_t& fileHash, QDateTime time, FileId id);
+    bool sendFileWithId(QString file_url, const tego_file_hash& fileHash, QDateTime time, FileId id);
     void acceptFile(FileId id, const std::string& dest);
     void rejectFile(FileId id);
     bool cancelTransfer(FileId id);
     // signals bubble up to the ConversationModel object that owns this FileChannel
 signals:
-    void fileTransferRequestReceived(FileId id, QString fileName, tego_file_size_t fileSize, tego_file_hash_t);
+    void fileTransferRequestReceived(FileId id, QString fileName, tego_file_size fileSize, tego_file_hash);
     void fileTransferAcknowledged(FileId id, bool ack);
-    void fileTransferRequestResponded(FileId id, tego_file_transfer_response_t response);
-    void fileTransferProgress(FileId id, tego_file_transfer_direction_t direction, tego_file_size_t bytesTransmitted, tego_file_size_t bytesTotal);
-    void fileTransferFinished(FileId id, tego_file_transfer_direction_t direction, tego_file_transfer_result_t);
+    void fileTransferRequestResponded(FileId id, tego_file_transfer_response response);
+    void fileTransferProgress(FileId id, tego_file_transfer_direction direction, tego_file_size bytesTransmitted, tego_file_size bytesTotal);
+    void fileTransferFinished(FileId id, tego_file_transfer_direction direction, tego_file_transfer_result);
 
 protected:
     virtual bool allowInboundChannelRequest(const Data::Control::OpenChannel *request, Data::Control::ChannelResult *result);
@@ -71,10 +71,10 @@ private:
     // when our socket goes away
     void onConnectionClosed();
 
-    // we need runtime checks to ensure that sizes stored as tego_file_size_t are representable as
+    // we need runtime checks to ensure that sizes stored as tego_file_size are representable as
     // std::streamoff too where appropriate
     // verify that std::streamoff is representable as a tego_file_size_t
-    static_assert(std::numeric_limits<std::streamoff>::max() <= std::numeric_limits<tego_file_size_t>::max());
+    static_assert(std::numeric_limits<std::streamoff>::max() <= std::numeric_limits<tego_file_size>::max());
     // verify the QFileInfo::size() method returns a qint64
     static_assert(std::is_same_v<decltype(QFileInfo().size()), qint64>);
     // verify that std::streamoff is representable as qint64 (type used by Qt File APIs for sizes)
@@ -85,13 +85,13 @@ private:
         outgoing_transfer_record(
             FileId id,
             const std::string& filePath,
-            tego_file_size_t fileSize);
+            tego_file_size fileSize);
 
         std::chrono::time_point<std::chrono::system_clock> beginTime;
 
         const FileId id;
-        const tego_file_size_t size;
-        tego_file_size_t offset;
+        const tego_file_size size;
+        tego_file_size offset;
         std::ifstream stream;
 
         inline bool finished() const { return offset == size; }
@@ -101,7 +101,7 @@ private:
 	{
         incoming_transfer_record(
             FileId id,
-            tego_file_size_t fileSize,
+            tego_file_size fileSize,
             const std::string& fileHash);
         // explicit destructor defined, so we need to explicitly define a move constructor
 		// for usage with std::map
@@ -112,7 +112,7 @@ private:
         std::chrono::time_point<std::chrono::system_clock> beginTime;
 
         const FileId id;
-        const tego_file_size_t size;
+        const tego_file_size size;
         std::string dest; // destination to save to
         const std::string hash;
 
@@ -123,7 +123,7 @@ private:
         void open_stream(const std::string& dest);
     };
     // 63 kb, max packet size is UINT16_MAX (ak 65535, 64k - 1) so leave space for other data
-    constexpr static tego_file_size_t FileMaxChunkSize = 63*1024; // bytes
+    constexpr static tego_file_size FileMaxChunkSize = 63*1024; // bytes
     // intermediate buffer we load chunks from disk into
     // each access to this buffer happens on the same thread, and only within the scope of a function
     // so no need to worry about synchronization or sharing between file transfers
@@ -136,9 +136,9 @@ private:
 
     // called when something unrecoverable occurs, or contact is sending us bad packets, or we get in
     // some other allegedly impossible state; kills all our transfers and disconnect the channel
-    void emitFatalError(std::string&& msg, tego_file_transfer_result_t error, bool shouldCloseChannel);
+    void emitFatalError(std::string&& msg, tego_file_transfer_result error, bool shouldCloseChannel);
     // called when some error occurs that does not affect other transfers
-    void emitNonFatalError(std::string&& msg, FileId id, tego_file_transfer_result_t error);
+    void emitNonFatalError(std::string&& msg, FileId id, tego_file_transfer_result error);
 
     bool verifyPacket(Data::File::Packet const& message);
     bool verifyFileHeader(Data::File::FileHeader const& message);

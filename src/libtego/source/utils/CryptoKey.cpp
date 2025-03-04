@@ -39,7 +39,7 @@ bool CryptoKey::loadFromServiceId(const QByteArray& data)
 {
     this->clear();
     // convert string to service id
-    std::unique_ptr<tego_v3_onion_service_id_t> serviceId;
+    std::unique_ptr<tego_v3_onion_service_id> serviceId;
     tego_v3_onion_service_id_from_string(
         tego::out(serviceId),
         data.data(),
@@ -47,7 +47,7 @@ bool CryptoKey::loadFromServiceId(const QByteArray& data)
         tego::throw_on_error());
 
     // extract public key from service id
-    std::unique_ptr<tego_ed25519_public_key_t> publicKey;
+    std::unique_ptr<tego_ed25519_public_key> publicKey;
     tego_ed25519_public_key_from_v3_onion_service_id(
         tego::out(publicKey),
         serviceId.get(),
@@ -62,7 +62,7 @@ bool CryptoKey::loadFromKeyBlob(const QByteArray& keyBlob)
     this->clear();
 
     // convert keyblob to private key
-    std::unique_ptr<tego_ed25519_private_key_t> privateKey;
+    std::unique_ptr<tego_ed25519_private_key> privateKey;
     tego_ed25519_private_key_from_ed25519_keyblob(
         tego::out(privateKey),
         keyBlob.data(),
@@ -71,7 +71,7 @@ bool CryptoKey::loadFromKeyBlob(const QByteArray& keyBlob)
     this->privateKey_ = std::move(privateKey);
 
     // claculate public key from private
-    std::unique_ptr<tego_ed25519_public_key_t> publicKey;
+    std::unique_ptr<tego_ed25519_public_key> publicKey;
     tego_ed25519_public_key_from_ed25519_private_key(
         tego::out(publicKey),
         this->privateKey_.get(),
@@ -105,7 +105,7 @@ QByteArray CryptoKey::encodedKeyBlob() const
 QByteArray CryptoKey::torServiceID() const
 {
     // convert public key to service id
-    std::unique_ptr<tego_v3_onion_service_id_t> serviceId;
+    std::unique_ptr<tego_v3_onion_service_id> serviceId;
     tego_v3_onion_service_id_from_ed25519_public_key(
         tego::out(serviceId),
         this->publicKey_.get(),
@@ -126,7 +126,7 @@ QByteArray CryptoKey::torServiceID() const
 QByteArray CryptoKey::signData(const QByteArray &msg) const
 {
     // calculate signature
-    std::unique_ptr<tego_ed25519_signature_t> signature;
+    std::unique_ptr<tego_ed25519_signature> signature;
     tego_message_ed25519_sign(
         reinterpret_cast<const uint8_t*>(msg.data()),
         static_cast<size_t>(msg.size()),
@@ -149,7 +149,7 @@ QByteArray CryptoKey::signData(const QByteArray &msg) const
 bool CryptoKey::verifyData(const QByteArray &msg, QByteArray signatureBytes) const
 {
     // load signature from buffer
-    std::unique_ptr<tego_ed25519_signature_t> signature;
+    std::unique_ptr<tego_ed25519_signature> signature;
     tego_ed25519_signature_from_bytes(
         tego::out(signature),
         reinterpret_cast<const uint8_t*>(signatureBytes.data()),

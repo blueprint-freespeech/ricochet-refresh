@@ -8,8 +8,8 @@ extern "C"
     //
 
     void tego_tor_launch_config_initialize(
-        tego_tor_launch_config_t** out_launchConfig,
-        tego_error_t** error)
+        tego_tor_launch_config** out_launchConfig,
+        tego_error** error)
     {
         return tego::translateExceptions([=]() -> void
         {
@@ -22,10 +22,10 @@ extern "C"
     }
 
     void tego_tor_launch_config_set_data_directory(
-        tego_tor_launch_config_t* launchConfig,
+        tego_tor_launch_config* launchConfig,
         const char* dataDirectory,
         size_t dataDirectoryLength,
-        tego_error_t** error)
+        tego_error** error)
     {
         return tego::translateExceptions([=]() -> void
         {
@@ -43,8 +43,8 @@ extern "C"
     //
 
     void tego_tor_daemon_config_initialize(
-        tego_tor_daemon_config_t** out_daemonConfig,
-        tego_error_t** error)
+        tego_tor_daemon_config** out_daemonConfig,
+        tego_error** error)
     {
         return tego::translateExceptions([=]() -> void
         {
@@ -57,11 +57,11 @@ extern "C"
     }
 
     void tego_tor_daemon_config_set_proxy_socks4(
-        tego_tor_daemon_config_t* config,
+        tego_tor_daemon_config* config,
         const char* address,
         size_t addressLength,
         uint16_t port,
-        tego_error_t** error)
+        tego_error** error)
     {
         return tego::translateExceptions([=]() -> void
         {
@@ -77,7 +77,7 @@ extern "C"
     }
 
     void tego_tor_daemon_config_set_proxy_socks5(
-        tego_tor_daemon_config_t* config,
+        tego_tor_daemon_config* config,
         const char* address,
         size_t addressLength,
         uint16_t port,
@@ -85,7 +85,7 @@ extern "C"
         size_t usernameLength,
         const char* password,
         size_t passwordLength,
-        tego_error_t** error)
+        tego_error** error)
     {
         return tego::translateExceptions([=]() -> void
         {
@@ -112,7 +112,7 @@ extern "C"
     }
 
     void tego_tor_daemon_config_set_proxy_https(
-        tego_tor_daemon_config_t* config,
+        tego_tor_daemon_config* config,
         const char* address,
         size_t addressLength,
         uint16_t port,
@@ -120,7 +120,7 @@ extern "C"
         size_t usernameLength,
         const char* password,
         size_t passwordLength,
-        tego_error_t** error)
+        tego_error** error)
     {
         return tego::translateExceptions([=]() -> void
         {
@@ -147,10 +147,10 @@ extern "C"
     }
 
      void tego_tor_daemon_config_set_allowed_ports(
-        tego_tor_daemon_config_t* config,
+        tego_tor_daemon_config* config,
         const uint16_t* ports,
         size_t portsCount,
-        tego_error_t** error)
+        tego_error** error)
      {
         return tego::translateExceptions([=]() -> void
         {
@@ -182,11 +182,11 @@ extern "C"
      }
 
     void tego_tor_daemon_config_set_bridges(
-        tego_tor_daemon_config_t* config,
+        tego_tor_daemon_config* config,
         const char** bridges,
         size_t* bridgeLengths,
         size_t bridgeCount,
-        tego_error_t** error)
+        tego_error** error)
     {
         return tego::translateExceptions([=]() -> void
         {

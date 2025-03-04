@@ -6,7 +6,7 @@ shims::UserIdentity* shims::UserIdentity::userIdentity = nullptr;
 
 namespace shims
 {
-    UserIdentity::UserIdentity(tego_context_t* context_)
+    UserIdentity::UserIdentity(tego_context* context_)
     : contacts(context_)
     , context(context_)
     { }
@@ -46,10 +46,10 @@ namespace shims
     QString UserIdentity::contactID() const try
     {
         // get host user id and convert to the ricochet:blahlah format
-        std::unique_ptr<tego_user_id_t> userId;
+        std::unique_ptr<tego_user_id> userId;
         tego_context_get_host_user_id(this->context, tego::out(userId), tego::throw_on_error());
 
-        std::unique_ptr<tego_v3_onion_service_id_t> serviceId;
+        std::unique_ptr<tego_v3_onion_service_id> serviceId;
         tego_user_id_get_v3_onion_service_id(userId.get(), tego::out(serviceId), tego::throw_on_error());
 
         char serviceIdString[TEGO_V3_ONION_SERVICE_ID_SIZE] = {0};
@@ -70,7 +70,7 @@ namespace shims
         return &contacts;
     }
 
-    void UserIdentity::setHostOnionServiceState(tego_host_onion_service_state_t state) {
+    void UserIdentity::setHostOnionServiceState(tego_host_onion_service_state state) {
         TEGO_THROW_IF_FALSE(
             state == tego_host_onion_service_state_none ||
             state == tego_host_onion_service_state_service_added ||

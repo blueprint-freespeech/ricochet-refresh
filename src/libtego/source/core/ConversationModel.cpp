@@ -122,19 +122,19 @@ template<typename T> T *findOrCreateChannelForContact(ContactUser *contact, Prot
 }
 
 
-std::tuple<tego_file_transfer_id_t, std::unique_ptr<tego_file_hash_t>, tego_file_size_t> ConversationModel::sendFile(const QString &file_uri)
+std::tuple<tego_file_transfer_id, std::unique_ptr<tego_file_hash>, tego_file_size> ConversationModel::sendFile(const QString &file_uri)
 {
     logger::println("Sending file: {}", file_uri);
 
     MessageData message(File, file_uri, QDateTime::currentDateTime(), lastMessageId++, Queued);
     message.type = ConversationModel::MessageType::File;
 
-    std::unique_ptr<tego_file_hash_t> fileHash;
+    std::unique_ptr<tego_file_hash> fileHash;
 
     // calculate our file hash
     if(std::ifstream file(file_uri.toStdString(), std::ios::in | std::ios::binary); file.is_open())
     {
-        fileHash = std::make_unique<tego_file_hash_t>(file);
+        fileHash = std::make_unique<tego_file_hash>(file);
         // copy for our message
         message.fileHash = *fileHash;
     }
@@ -144,7 +144,7 @@ std::tuple<tego_file_transfer_id_t, std::unique_ptr<tego_file_hash_t>, tego_file
     }
 
 	// calculate file size
-    const tego_file_size_t fileSize = static_cast<tego_file_size_t>(QFileInfo(file_uri).size());
+    const tego_file_size fileSize = static_cast<tego_file_size>(QFileInfo(file_uri).size());
 
     if (m_contact->connection())
     {
@@ -179,7 +179,7 @@ std::tuple<tego_file_transfer_id_t, std::unique_ptr<tego_file_hash_t>, tego_file
     return {message.identifier, std::move(fileHash), fileSize};
 }
 
-tego_message_id_t ConversationModel::sendMessage(const QString &text)
+tego_message_id ConversationModel::sendMessage(const QString &text)
 {
     if (text.isEmpty())
         return 0;
@@ -211,9 +211,9 @@ tego_message_id_t ConversationModel::sendMessage(const QString &text)
     return message.identifier;
 }
 
-void ConversationModel::acceptFile(tego_file_transfer_id_t id, const std::string& dest)
+void ConversationModel::acceptFile(tego_file_transfer_id id, const std::string& dest)
 {
-    MessageId message_id = static_cast<MessageId>(id & static_cast<tego_file_transfer_id_t>(UINT32_MAX));
+    MessageId message_id = static_cast<MessageId>(id & static_cast<tego_file_transfer_id>(UINT32_MAX));
 
     TEGO_THROW_IF_FALSE(m_contact->connection());
     auto channel = findOrCreateChannelForContact<Protocol::FileChannel>(m_contact, Protocol::Channel::Inbound);
@@ -223,9 +223,9 @@ void ConversationModel::acceptFile(tego_file_transfer_id_t id, const std::string
     channel->acceptFile(message_id, dest);
 }
 
-void ConversationModel::rejectFile(tego_file_transfer_id_t id)
+void ConversationModel::rejectFile(tego_file_transfer_id id)
 {
-    MessageId message_id = static_cast<MessageId>(id & static_cast<tego_file_transfer_id_t>(UINT32_MAX));
+    MessageId message_id = static_cast<MessageId>(id & static_cast<tego_file_transfer_id>(UINT32_MAX));
 
     TEGO_THROW_IF_FALSE(m_contact->connection());
     auto channel = findOrCreateChannelForContact<Protocol::FileChannel>(m_contact, Protocol::Channel::Inbound);
@@ -235,9 +235,9 @@ void ConversationModel::rejectFile(tego_file_transfer_id_t id)
     channel->rejectFile(message_id);
 }
 
-void ConversationModel::cancelTransfer(tego_file_transfer_id_t id)
+void ConversationModel::cancelTransfer(tego_file_transfer_id id)
 {
-    MessageId message_id = static_cast<MessageId>(id & static_cast<tego_file_transfer_id_t>(UINT32_MAX));
+    MessageId message_id = static_cast<MessageId>(id & static_cast<tego_file_transfer_id>(UINT32_MAX));
 
     if(m_contact->connection())
     {
@@ -367,7 +367,7 @@ void ConversationModel::messageReceived(const QString &text, const QDateTime &ti
 
         logger::println("Received Message : {}", rawText.get());
 
-        g_globals.context->callback_registry_.emit_message_received(userId.release(), static_cast<tego_time_t>(time.toMSecsSinceEpoch()), id, rawText.release(), static_cast<size_t>(utf8Text.size()));
+        g_globals.context->callback_registry_.emit_message_received(userId.release(), static_cast<tego_time>(time.toMSecsSinceEpoch()), id, rawText.release(), static_cast<size_t>(utf8Text.size()));
     }
 }
 
@@ -434,7 +434,7 @@ void ConversationModel::onContactStatusChanged()
     emit dataChanged(index(0, 0), index(rowCount()-1, 0), QVector<int>() << SectionRole);
 }
 
-void ConversationModel::onFileTransferRequestReceived(tego_file_transfer_id_t id, const QString& filename, tego_file_size_t fileSize, tego_file_hash_t hash)
+void ConversationModel::onFileTransferRequestReceived(tego_file_transfer_id id, const QString& filename, tego_file_size fileSize, tego_file_hash hash)
 {
     // user id
     auto userId = this->contact()->toTegoUserId();
@@ -448,7 +448,7 @@ void ConversationModel::onFileTransferRequestReceived(tego_file_transfer_id_t id
     rawFilename[rawFilenameLength] = 0;
 
     // filehash
-    auto heapHash = std::make_unique<tego_file_hash_t>(hash);
+    auto heapHash = std::make_unique<tego_file_hash>(hash);
 
     g_globals.context->callback_registry_.emit_file_transfer_request_received(
         userId.release(),
@@ -459,9 +459,9 @@ void ConversationModel::onFileTransferRequestReceived(tego_file_transfer_id_t id
         heapHash.release());
 }
 
-void ConversationModel::onFileTransferAcknowledged(tego_file_transfer_id_t id, bool accepted)
+void ConversationModel::onFileTransferAcknowledged(tego_file_transfer_id id, bool accepted)
 {
-    MessageId message_id = static_cast<MessageId>(id & static_cast<tego_file_transfer_id_t>(UINT32_MAX));
+    MessageId message_id = static_cast<MessageId>(id & static_cast<tego_file_transfer_id>(UINT32_MAX));
 
     int row = indexOfIdentifier(message_id, true);
     if (row < 0)
@@ -478,7 +478,7 @@ void ConversationModel::onFileTransferAcknowledged(tego_file_transfer_id_t id, b
         accepted ? TEGO_TRUE : TEGO_FALSE);
 }
 
-void ConversationModel::onFileTransferRequestResponded(tego_file_transfer_id_t id, tego_file_transfer_response_t response)
+void ConversationModel::onFileTransferRequestResponded(tego_file_transfer_id id, tego_file_transfer_response response)
 {
     auto userId = this->contact()->toTegoUserId();
     g_globals.context->callback_registry_.emit_file_transfer_request_response_received(
@@ -487,7 +487,7 @@ void ConversationModel::onFileTransferRequestResponded(tego_file_transfer_id_t i
         response);
 }
 
-void ConversationModel::onFileTransferProgress(tego_file_transfer_id_t id, tego_file_transfer_direction_t direction, uint64_t bytesTransmitted, uint64_t bytesTotal)
+void ConversationModel::onFileTransferProgress(tego_file_transfer_id id, tego_file_transfer_direction direction, uint64_t bytesTransmitted, uint64_t bytesTotal)
 {
     auto userId = this->contact()->toTegoUserId();
     g_globals.context->callback_registry_.emit_file_transfer_progress(
@@ -498,7 +498,7 @@ void ConversationModel::onFileTransferProgress(tego_file_transfer_id_t id, tego_
         bytesTotal);
 }
 
-void ConversationModel::onFileTransferFinished(tego_file_transfer_id_t id, tego_file_transfer_direction_t direction, tego_file_transfer_result_t result)
+void ConversationModel::onFileTransferFinished(tego_file_transfer_id id, tego_file_transfer_direction direction, tego_file_transfer_result result)
 {
     auto userId = this->contact()->toTegoUserId();
     g_globals.context->callback_registry_.emit_file_transfer_complete(

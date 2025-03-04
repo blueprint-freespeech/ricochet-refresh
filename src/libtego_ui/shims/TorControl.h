@@ -48,7 +48,7 @@ namespace shims
         Q_INVOKABLE QList<QString> getBridgeTypes();
         std::vector<std::string> getBridgeStringsForType(const QString &bridgeType);
 
-        TorControl(tego_context_t* context);
+        TorControl(tego_context* context);
 
         /* Ownership means that tor is managed by this socket, and we
          * can shut it down, own its configuration, etc. */
@@ -64,7 +64,7 @@ namespace shims
         void setStatus(Status);
         void setTorStatus(TorStatus);
         void setErrorMessage(const QString&);
-        void setBootstrapStatus(int32_t progress, tego_tor_bootstrap_tag_t tag, QString&& summary);
+        void setBootstrapStatus(int32_t progress, tego_tor_bootstrap_tag tag, QString&& summary);
 
         static TorControl* torControl;
         TorControlCommand* m_setConfigurationCommand = nullptr;
@@ -72,7 +72,7 @@ namespace shims
         TorStatus m_torStatus = TorUnknown;
         QString m_errorMessage;
         int m_bootstrapProgress = 0;
-        tego_tor_bootstrap_tag_t m_bootstrapTag = tego_tor_bootstrap_tag_invalid;
+        tego_tor_bootstrap_tag m_bootstrapTag = tego_tor_bootstrap_tag_invalid;
         QString m_bootstrapSummary;
 
     signals:
@@ -81,6 +81,6 @@ namespace shims
         void bootstrapStatusChanged();
 
     private:
-        tego_context_t* context;
+        tego_context* context;
     };
 }

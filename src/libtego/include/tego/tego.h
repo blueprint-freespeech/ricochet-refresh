@@ -12,7 +12,7 @@ extern "C" {
 
 #define TEGO_TRUE  1
 #define TEGO_FALSE 0
-typedef int32_t tego_bool_t;
+typedef int32_t tego_bool;
 
 #define TEGO_FLAG(N) (1 << N)
 
@@ -27,7 +27,7 @@ typedef int32_t tego_bool_t;
 // length of an ed25519 keyblob string including null terminator
 #define TEGO_ED25519_KEYBLOB_SIZE (TEGO_ED25519_KEYBLOB_LENGTH + 1)
 
-typedef struct tego_error tego_error_t;
+typedef struct tego_error tego_error;
 
 /*
  * Get error message form tego_error
@@ -36,19 +36,19 @@ typedef struct tego_error tego_error_t;
  * @return : null terminated string with error message whose
  *  lifetime is tied to the source tego_error_t
  */
-const char* tego_error_get_message(const tego_error_t* error);
+const char* tego_error_get_message(const tego_error* error);
 
 // library init/uninit
 
-typedef struct tego_context tego_context_t;
+typedef struct tego_context tego_context;
 
 void tego_initialize(
-    tego_context_t** out_context,
-    tego_error_t** error);
+    tego_context** out_context,
+    tego_error** error);
 
 void tego_uninitialize(
-    tego_context_t* context,
-    tego_error_t** error);
+    tego_context* context,
+    tego_error** error);
 
 /*
  * Utility functions
@@ -63,19 +63,19 @@ void tego_uninitialize(
  * @param error: filled on error
  */
 void tego_get_random_bytes(
-    tego_context_t* context,
+    tego_context* context,
     uint8_t* dest,
     size_t count,
-    tego_error_t** error);
+    tego_error** error);
 
 /*
  * v3 onion/ed25519 functionality
  */
 
-typedef struct tego_ed25519_private_key tego_ed25519_private_key_t;
-typedef struct tego_ed25519_public_key tego_ed25519_public_key_t;
-typedef struct tego_ed25519_signature tego_ed25519_signature_t;
-typedef struct tego_v3_onion_service_id tego_v3_onion_service_id_t;
+typedef struct tego_ed25519_private_key tego_ed25519_private_key;
+typedef struct tego_ed25519_public_key tego_ed25519_public_key;
+typedef struct tego_ed25519_signature tego_ed25519_signature;
+typedef struct tego_v3_onion_service_id tego_v3_onion_service_id;
 
 /*
  * Conversion method for converting the KeyBlob string returned by
@@ -89,10 +89,10 @@ typedef struct tego_v3_onion_service_id tego_v3_onion_service_id_t;
  * @param error : filled on error
  */
 void tego_ed25519_private_key_from_ed25519_keyblob(
-    tego_ed25519_private_key_t** out_privateKey,
+    tego_ed25519_private_key** out_privateKey,
     const char* keyBlob,
     size_t keyBlobLength,
-    tego_error_t** error);
+    tego_error** error);
 
 /*
  * Conversion method for converting an ed25519 private key
@@ -111,8 +111,8 @@ void tego_ed25519_private_key_from_ed25519_keyblob(
 size_t tego_ed25519_keyblob_from_ed25519_private_key(
     char *out_keyBlob,
     size_t keyBlobSize,
-    const tego_ed25519_private_key_t* privateKey,
-    tego_error_t** error);
+    const tego_ed25519_private_key* privateKey,
+    tego_error** error);
 
 /*
  * Calculate ed25519 public key from ed25519 private key
@@ -122,9 +122,9 @@ size_t tego_ed25519_keyblob_from_ed25519_private_key(
  * @param error : filled on error
  */
 void tego_ed25519_public_key_from_ed25519_private_key(
-    tego_ed25519_public_key_t** out_publicKey,
-    const tego_ed25519_private_key_t* privateKey,
-    tego_error_t** error);
+    tego_ed25519_public_key** out_publicKey,
+    const tego_ed25519_private_key* privateKey,
+    tego_error** error);
 
 /*
  * Checks if a service id string is valid per tor rend spec:
@@ -135,10 +135,10 @@ void tego_ed25519_public_key_from_ed25519_private_key(
  *  null terminator
  * @param error : filled on error
  */
-tego_bool_t tego_v3_onion_service_id_string_is_valid(
+tego_bool tego_v3_onion_service_id_string_is_valid(
         const char* serviceIdString,
         size_t serviceIdStringLength,
-        tego_error_t** error);
+        tego_error** error);
 
 /*
  * Construct a service id object from string. Validates
@@ -152,10 +152,10 @@ tego_bool_t tego_v3_onion_service_id_string_is_valid(
  * @param error : filled on error
  */
 void tego_v3_onion_service_id_from_string(
-    tego_v3_onion_service_id_t** out_serviceId,
+    tego_v3_onion_service_id** out_serviceId,
     const char* serviceIdString,
     size_t serviceIdStringLength,
-    tego_error_t** error);
+    tego_error** error);
 
 /*
  * Serializes out a service id object as a null-terminated utf8 string
@@ -171,10 +171,10 @@ void tego_v3_onion_service_id_from_string(
  *  TEGO_V3_ONION_SERVICE_ID_SIZE (57) on success, 0 on failure
  */
 size_t tego_v3_onion_service_id_to_string(
-    const tego_v3_onion_service_id_t* serviceId,
+    const tego_v3_onion_service_id* serviceId,
     char* out_serviceIdString,
     size_t serviceIdStringSize,
-    tego_error_t** error);
+    tego_error** error);
 
 /*
  * Extract public key from v3 service id per
@@ -185,9 +185,9 @@ size_t tego_v3_onion_service_id_to_string(
  * @param error : filled on error
  */
 void tego_ed25519_public_key_from_v3_onion_service_id(
-    tego_ed25519_public_key_t** out_publicKey,
-    const tego_v3_onion_service_id_t* serviceId,
-    tego_error_t** error);
+    tego_ed25519_public_key** out_publicKey,
+    const tego_v3_onion_service_id* serviceId,
+    tego_error** error);
 
 /*
  * Derive an onion's service id from its ed25519 public key per
@@ -198,9 +198,9 @@ void tego_ed25519_public_key_from_v3_onion_service_id(
  * @param error : filled on error
  */
 void tego_v3_onion_service_id_from_ed25519_public_key(
-    tego_v3_onion_service_id_t** out_serviceId,
-    const tego_ed25519_public_key_t* publicKey,
-    tego_error_t** error);
+    tego_v3_onion_service_id** out_serviceId,
+    const tego_ed25519_public_key* publicKey,
+    tego_error** error);
 
 /*
  * Read in signature from length 64 byte buffer
@@ -211,10 +211,10 @@ void tego_v3_onion_service_id_from_ed25519_public_key(
  * @param error : filled on error
  */
 void tego_ed25519_signature_from_bytes(
-    tego_ed25519_signature_t** out_signature,
+    tego_ed25519_signature** out_signature,
     const uint8_t* buffer,
     size_t bufferSize,
-    tego_error_t** error);
+    tego_error** error);
 
 /*
  * Get the signature and place it in length 64 byte buffer
@@ -226,10 +226,10 @@ void tego_ed25519_signature_from_bytes(
  * @return : number of bytes written to out_buffer
  */
 size_t tego_ed25519_signature_to_bytes(
-    const tego_ed25519_signature_t* signature,
+    const tego_ed25519_signature* signature,
     uint8_t* out_buffer,
     size_t bufferSize,
-    tego_error_t** error);
+    tego_error** error);
 
 /*
  * Sign a message with an ed25519 key-pair
@@ -244,10 +244,10 @@ size_t tego_ed25519_signature_to_bytes(
 void tego_message_ed25519_sign(
     const uint8_t* message,
     size_t messageSize,
-    const tego_ed25519_private_key_t* privateKey,
-    const tego_ed25519_public_key_t* publicKey,
-    tego_ed25519_signature_t** out_signature,
-    tego_error_t** error);
+    const tego_ed25519_private_key* privateKey,
+    const tego_ed25519_public_key* publicKey,
+    tego_ed25519_signature** out_signature,
+    tego_error** error);
 
 /*
  * Verify a message's signature given a public key
@@ -261,11 +261,11 @@ void tego_message_ed25519_sign(
  *  verified or if an error occurs
  */
 int tego_ed25519_signature_verify(
-    const tego_ed25519_signature_t* signature,
+    const tego_ed25519_signature* signature,
     const uint8_t* message,
     size_t messageLength,
-    const tego_ed25519_public_key_t* publicKey,
-    tego_error_t** error);
+    const tego_ed25519_public_key* publicKey,
+    tego_error** error);
 
 /*
  * Chat protocol functionality
@@ -274,7 +274,7 @@ int tego_ed25519_signature_verify(
 /*
  * a unique identifier for a user, currently a v3 onion service id internally
  */
-typedef struct tego_user_id tego_user_id_t;
+typedef struct tego_user_id tego_user_id;
 
 // user id
 
@@ -287,9 +287,9 @@ typedef struct tego_user_id tego_user_id_t;
  * @param error : filled on error
  */
 void tego_user_id_copy(
-    tego_user_id_t const* userId,
-    tego_user_id_t** out_userId,
-    tego_error_t** error);
+    tego_user_id const* userId,
+    tego_user_id** out_userId,
+    tego_error** error);
 
 /*
  * Convert a v3 onion service id to a user id
@@ -299,9 +299,9 @@ void tego_user_id_copy(
  * @param error : filled on error
  */
 void tego_user_id_from_v3_onion_service_id(
-    tego_user_id_t** out_userId,
-    const tego_v3_onion_service_id_t* serviceId,
-    tego_error_t** error);
+    tego_user_id** out_userId,
+    const tego_v3_onion_service_id* serviceId,
+    tego_error** error);
 
 /*
  * Get the v3 onion service id from the user id
@@ -311,9 +311,9 @@ void tego_user_id_from_v3_onion_service_id(
  * @param error : filled on error
  */
 void tego_user_id_get_v3_onion_service_id(
-    const tego_user_id_t* userId,
-    tego_v3_onion_service_id_t** out_serviceId,
-    tego_error_t** error);
+    const tego_user_id* userId,
+    tego_v3_onion_service_id** out_serviceId,
+    tego_error** error);
 
 //
 // contacts/user methods
@@ -327,9 +327,9 @@ void tego_user_id_get_v3_onion_service_id(
  * @param error : filled on error
  */
 void tego_context_get_host_user_id(
-    const tego_context_t* context,
-    tego_user_id_t** out_hostUser,
-    tego_error_t** error);
+    const tego_context* context,
+    tego_user_id** out_hostUser,
+    tego_error** error);
 
 // state of the host user's onion service
 typedef enum
@@ -337,7 +337,7 @@ typedef enum
     tego_host_onion_service_state_none,
     tego_host_onion_service_state_service_added,
     tego_host_onion_service_state_service_published,
-} tego_host_onion_service_state_t;
+} tego_host_onion_service_state;
 
 /*
  * Get the current state of the host's onion service
@@ -347,9 +347,9 @@ typedef enum
  * @param error : filled  on error
  */
 void tego_context_get_host_onion_service_state(
-    const tego_context_t* context,
-    tego_host_onion_service_state_t* out_state,
-    tego_error_t** error);
+    const tego_context* context,
+    tego_host_onion_service_state* out_state,
+    tego_error** error);
 
 // TODO: figure out which statuses we need later
 typedef enum
@@ -357,7 +357,7 @@ typedef enum
     tego_user_status_none,
     tego_user_status_online,
     tego_user_status_offline,
-} tego_user_status_t;
+} tego_user_status;
 
 /*
  * Get a user's current user status
@@ -368,10 +368,10 @@ typedef enum
  * @param error : filled on error
  */
 void tego_context_get_user_status(
-    const tego_context_t* context,
-    const tego_user_id_t* user,
-    tego_user_status_t* out_status,
-    tego_error_t** error);
+    const tego_context* context,
+    const tego_user_id* user,
+    tego_user_status* out_status,
+    tego_error** error);
 
 // enum for user type
 typedef enum
@@ -382,7 +382,7 @@ typedef enum
     tego_user_type_blocked, // users who have added host but the host has rejected
     tego_user_type_pending, // users the host has added but who have not replied yet
     tego_user_type_rejected, // user the host has added but replied with rejection
-} tego_user_type_t;
+} tego_user_type;
 
 /*
  * Get the type of a given user
@@ -393,10 +393,10 @@ typedef enum
  * @param error : filled on error
  */
 void tego_context_get_user_type(
-    const tego_context_t* context,
-    const tego_user_id_t* user,
-    tego_user_type_t* out_type,
-    tego_error_t** error);
+    const tego_context* context,
+    const tego_user_id* user,
+    tego_user_type* out_type,
+    tego_error** error);
 
 /*
  * Get the number of users managed by our tego context
@@ -406,9 +406,9 @@ void tego_context_get_user_type(
  * @param error : filled on error
  */
 void tego_context_get_user_count(
-    const tego_context_t* context,
+    const tego_context* context,
     size_t* out_userCount,
-    tego_error_t** error);
+    tego_error** error);
 
 /*
  * Get all of our users of a given type
@@ -421,18 +421,18 @@ void tego_context_get_user_count(
  * @param error : filled on error
  */
 void tego_context_get_users(
-    const tego_context_t* context,
-    tego_user_id_t** out_usersBuffer,
+    const tego_context* context,
+    tego_user_id** out_usersBuffer,
     size_t usersBufferLength,
     size_t* out_userCount,
-    tego_error_t** error);
+    tego_error** error);
 
 //
 // Tor Config
 //
 
 // struct that will contain configuration information for running the tor daemon
-typedef struct tego_tor_launch_config tego_tor_launch_config_t;
+typedef struct tego_tor_launch_config tego_tor_launch_config;
 
 /*
  * Init a default tor configuration struct
@@ -441,8 +441,8 @@ typedef struct tego_tor_launch_config tego_tor_launch_config_t;
  * @apram error : filled on error
  */
 void tego_tor_launch_config_initialize(
-    tego_tor_launch_config_t** out_launchConfig,
-    tego_error_t** error);
+    tego_tor_launch_config** out_launchConfig,
+    tego_error** error);
 
 /*
  * Set the root directory for the tor daemon to save/read settings
@@ -454,10 +454,10 @@ void tego_tor_launch_config_initialize(
  * @param error : filled on error
  */
 void tego_tor_launch_config_set_data_directory(
-    tego_tor_launch_config_t* launchConfig,
+    tego_tor_launch_config* launchConfig,
     const char* dataDirectory,
     size_t dataDirectoryLength,
-    tego_error_t** error);
+    tego_error** error);
 
 /*
  * Start an instance of the tor daemon and associate it with the given context
@@ -467,11 +467,11 @@ void tego_tor_launch_config_set_data_directory(
  * @param error : filled on error
  */
 void tego_context_start_tor(
-    tego_context_t* context,
+    tego_context* context,
     const tego_tor_launch_config* torConfig,
-    tego_error_t** error);
+    tego_error** error);
 
-typedef struct tego_tor_daemon_config tego_tor_daemon_config_t;
+typedef struct tego_tor_daemon_config tego_tor_daemon_config;
 
 /*
  * Returns a tor daemon config struct with default params
@@ -480,8 +480,8 @@ typedef struct tego_tor_daemon_config tego_tor_daemon_config_t;
  * @param error : filled on error
  */
 void tego_tor_daemon_config_initialize(
-    tego_tor_daemon_config_t** out_config,
-    tego_error_t** error);
+    tego_tor_daemon_config** out_config,
+    tego_error** error);
 
 /*
  * Set up SOCKS4 proxy params, overwrites any existing
@@ -495,11 +495,11 @@ void tego_tor_daemon_config_initialize(
  * @param error : filled on error
  */
 void tego_tor_daemon_config_set_proxy_socks4(
-    tego_tor_daemon_config_t* config,
+    tego_tor_daemon_config* config,
     const char* address,
     size_t addressLength,
     uint16_t port,
-    tego_error_t** error);
+    tego_error** error);
 
 /*
  * Set up SOCKS5 proxy params, overwrites any existing
@@ -521,7 +521,7 @@ void tego_tor_daemon_config_set_proxy_socks4(
  * @param error : filled on error
  */
 void tego_tor_daemon_config_set_proxy_socks5(
-    tego_tor_daemon_config_t* config,
+    tego_tor_daemon_config* config,
     const char* address,
     size_t addressLength,
     uint16_t port,
@@ -529,7 +529,7 @@ void tego_tor_daemon_config_set_proxy_socks5(
     size_t usernameLength,
     const char* password,
     size_t passwordLength,
-    tego_error_t** error);
+    tego_error** error);
 
 /*
  * Set up HTTPS proxy params, overwrites any existing
@@ -551,7 +551,7 @@ void tego_tor_daemon_config_set_proxy_socks5(
  * @param error : filled on error
  */
 void tego_tor_daemon_config_set_proxy_https(
-    tego_tor_daemon_config_t* config,
+    tego_tor_daemon_config* config,
     const char* address,
     size_t addressLength,
     uint16_t port,
@@ -559,7 +559,7 @@ void tego_tor_daemon_config_set_proxy_https(
     size_t usernameLength,
     const char* password,
     size_t passwordLength,
-    tego_error_t** error);
+    tego_error** error);
 
 /*
  * Set the allowed ports the tor daemon may use
@@ -570,10 +570,10 @@ void tego_tor_daemon_config_set_proxy_https(
  * @param error : filled on error
  */
 void tego_tor_daemon_config_set_allowed_ports(
-    tego_tor_daemon_config_t* config,
+    tego_tor_daemon_config* config,
     const uint16_t* ports,
     size_t portsCount,
-    tego_error_t** error);
+    tego_error** error);
 
 /*
  * Set the list of bridges for tor to use
@@ -587,11 +587,11 @@ void tego_tor_daemon_config_set_allowed_ports(
  * @param error : filled on error
  */
 void tego_tor_daemon_config_set_bridges(
-    tego_tor_daemon_config_t* config,
+    tego_tor_daemon_config* config,
     const char** bridges,
     size_t* bridgeLengths,
     size_t bridgeCount,
-    tego_error_t** error);
+    tego_error** error);
 
 /*
  * Update the tor daemon settings of running instance of tor associated
@@ -602,9 +602,9 @@ void tego_tor_daemon_config_set_bridges(
  * @param error : filled on error
  */
 void tego_context_update_tor_daemon_config(
-    tego_context_t* context,
-    const tego_tor_daemon_config_t* torConfig,
-    tego_error_t** error);
+    tego_context* context,
+    const tego_tor_daemon_config* torConfig,
+    tego_error** error);
 
 /*
  * Set the DisableNetwork flag of running instance of tor associated
@@ -615,9 +615,9 @@ void tego_context_update_tor_daemon_config(
  * @param error : filled on error
  */
 void tego_context_update_disable_network_flag(
-    tego_context_t* context,
-    tego_bool_t disableNetwork,
-    tego_error_t** error);
+    tego_context* context,
+    tego_bool disableNetwork,
+    tego_error** error);
 
 /*
  * Stops tor daemon associated with a given tego context
@@ -626,8 +626,8 @@ void tego_context_update_disable_network_flag(
  * @param error: filled on error
  */
 void tego_context_stop_tor(
-    tego_context_t* context,
-    tego_error_t** error);
+    tego_context* context,
+    tego_error** error);
 
 /*
  * Start tego's onion service and try to connect to users
@@ -641,12 +641,12 @@ void tego_context_stop_tor(
  * @param error : filled on error
  */
 void tego_context_start_service(
-    tego_context_t* context,
-    tego_ed25519_private_key_t const* hostPrivateKey,
-    tego_user_id_t const* const* userBuffer,
-    tego_user_type_t* const userTypeBuffer,
+    tego_context* context,
+    tego_ed25519_private_key const* hostPrivateKey,
+    tego_user_id const* const* userBuffer,
+    tego_user_type* const userTypeBuffer,
     size_t userCount,
-    tego_error_t** error);
+    tego_error** error);
 
 /*
  * Stop tego's onion service associated with the given context
@@ -654,8 +654,8 @@ void tego_context_start_service(
  * @param context : the current tego context
  * @param error : filled on error */
 void tego_context_stop_service(
-    tego_context_t* context,
-    tego_error_t** error);
+    tego_context* context,
+    tego_error** error);
 
 /*
  * Returns the number of charactres required (including null) to
@@ -666,8 +666,8 @@ void tego_context_stop_service(
  * @return : the number of characters required
  */
 size_t tego_context_get_tor_logs_size(
-    const tego_context_t* context,
-    tego_error_t** error);
+    const tego_context* context,
+    tego_error** error);
 
 /*
  * Fill the passed in buffer with the tor daemon's logs, each entry delimitted
@@ -681,10 +681,10 @@ size_t tego_context_get_tor_logs_size(
  *  out_logBuffer
  */
 size_t tego_context_get_tor_logs(
-    const tego_context_t* context,
+    const tego_context* context,
     char* out_logBuffer,
     size_t logBufferSize,
-    tego_error_t** error);
+    tego_error** error);
 
 /*
  * Get the null-terminated tor version string
@@ -694,8 +694,8 @@ size_t tego_context_get_tor_logs(
  * @return : the version string for the context's running tor daemon
  */
 const char* tego_context_get_tor_version_string(
-    const tego_context_t* context,
-    tego_error_t** error);
+    const tego_context* context,
+    tego_error** error);
 
 // corresponds to Ricochet's Tor::TorControl::Status enum
 typedef enum
@@ -705,7 +705,7 @@ typedef enum
     tego_tor_control_status_connecting,
     tego_tor_control_status_authenticating,
     tego_tor_control_status_connected,
-} tego_tor_control_status_t;
+} tego_tor_control_status;
 
 /*
  * Get the current status of our tor control channel
@@ -715,9 +715,9 @@ typedef enum
  * @param error : filled on error
  */
 void tego_context_get_tor_control_status(
-    const tego_context_t* context,
-    tego_tor_control_status_t* out_status,
-    tego_error_t** error);
+    const tego_context* context,
+    tego_tor_control_status* out_status,
+    tego_error** error);
 
 typedef enum
 {
@@ -727,7 +727,7 @@ typedef enum
     tego_tor_process_status_starting,
     tego_tor_process_status_running,
     tego_tor_process_status_failed,
-} tego_tor_process_status_t;
+} tego_tor_process_status;
 
 /*
  * Get the current status of the tor daemon process
@@ -737,16 +737,16 @@ typedef enum
  * @param error : filled on error
  */
 void tego_context_get_tor_process_status(
-    const tego_context_t* context,
-    tego_tor_process_status_t* out_status,
-    tego_error_t** error);
+    const tego_context* context,
+    tego_tor_process_status* out_status,
+    tego_error** error);
 
 typedef enum
 {
     tego_tor_network_status_unknown,
     tego_tor_network_status_ready,
     tego_tor_network_status_offline,
-} tego_tor_network_status_t;
+} tego_tor_network_status;
 
 /*
  * Get the current status of the tor daemon's connection
@@ -757,9 +757,9 @@ typedef enum
  * @param error : filled on error
  */
 void tego_context_get_tor_network_status(
-    const tego_context_t* context,
-    tego_tor_network_status_t* out_status,
-    tego_error_t** error);
+    const tego_context* context,
+    tego_tor_network_status* out_status,
+    tego_error** error);
 
 // see https://gitweb.torproject.org/torspec.git/tree/control-spec.txt#n3867
 typedef enum
@@ -793,7 +793,7 @@ typedef enum
     tego_tor_bootstrap_tag_done,
 
     tego_tor_bootstrap_tag_count
-} tego_tor_bootstrap_tag_t;
+} tego_tor_bootstrap_tag;
 
 /*
  * Get the summary string associated with the given bootstrap tag
@@ -803,8 +803,8 @@ typedef enum
  * @return : utf8 null-terminated summary string, NULL on error
  */
 const char* tego_tor_bootstrap_tag_to_summary(
-    tego_tor_bootstrap_tag_t tag,
-    tego_error_t** error);
+    tego_tor_bootstrap_tag tag,
+    tego_error** error);
 
 /*
  * Get the current bootstrap status and progress
@@ -815,25 +815,25 @@ const char* tego_tor_bootstrap_tag_to_summary(
  * @param error : filled on error
  */
 void tego_context_get_tor_bootstrap_status(
-    const tego_context_t* context,
+    const tego_context* context,
     int32_t* out_progress,
-    tego_tor_bootstrap_tag_t* out_tag,
-    tego_error_t** error);
+    tego_tor_bootstrap_tag* out_tag,
+    tego_error** error);
 
 //
 // Tego Chat Methods
 //
 
 // milliseconds since 1970-01-01T00:00:00 utc.
-typedef uint64_t tego_time_t;
+typedef uint64_t tego_time;
 // unique (per user) message identifier
-typedef uint64_t tego_message_id_t;
+typedef uint64_t tego_message_id;
 // unique (per user) file transfer identifier
-typedef uint64_t tego_file_transfer_id_t;
+typedef uint64_t tego_file_transfer_id;
 // struct for file hash
-typedef struct tego_file_hash tego_file_hash_t;
+typedef struct tego_file_hash tego_file_hash;
 // integer type for file size
-typedef uint64_t tego_file_size_t;
+typedef uint64_t tego_file_size;
 
 /*
  * Calculates the number of bytes needed to serialize a file hash to
@@ -845,8 +845,8 @@ typedef uint64_t tego_file_size_t;
  *  the null-terinator
  */
 size_t tego_file_hash_string_size(
-    tego_file_hash_t const* fileHash,
-    tego_error_t** error);
+    tego_file_hash const* fileHash,
+    tego_error** error);
 
 /*
  * Serializes out a file hash as a null-terminated utf8 string to
@@ -860,10 +860,10 @@ size_t tego_file_hash_string_size(
  *  null-terminator
  */
 size_t tego_file_hash_to_string(
-    tego_file_hash_t const* fileHash,
+    tego_file_hash const* fileHash,
     char* out_hashString,
     size_t hashStringSize,
-    tego_error_t** error);
+    tego_error** error);
 
 /*
  * Send a text message from the host to the given user
@@ -876,12 +876,12 @@ size_t tego_file_hash_to_string(
  * @param error : filled on error
  */
 void tego_context_send_message(
-    tego_context_t* context,
-    const tego_user_id_t* user,
+    tego_context* context,
+    const tego_user_id* user,
     const char* message,
     size_t messageLength,
-    tego_message_id_t* out_id,
-    tego_error_t** error);
+    tego_message_id* out_id,
+    tego_error** error);
 
 /*
  * Request to send a file to the given user
@@ -896,20 +896,20 @@ void tego_context_send_message(
  * @param error : filled on error
  */
 void tego_context_send_file_transfer_request(
-    tego_context_t* context,
-    tego_user_id_t const*  user,
+    tego_context* context,
+    tego_user_id const*  user,
     char const* filePath,
     size_t filePathLength,
-    tego_file_transfer_id_t* out_id,
-    tego_file_hash_t** out_fileHash,
-    tego_file_size_t* out_fileSize,
-    tego_error_t** error);
+    tego_file_transfer_id* out_id,
+    tego_file_hash** out_fileHash,
+    tego_file_size* out_fileSize,
+    tego_error** error);
 
 typedef enum
 {
     tego_file_transfer_response_accept, // proceed with a file transfer
     tego_file_transfer_response_reject, // reject the file transfer
-} tego_file_transfer_response_t;
+} tego_file_transfer_response;
 
 /*
  * Acknowledges a request to send an file_transfer
@@ -923,13 +923,13 @@ typedef enum
  * @param error : filled on error
  */
 void tego_context_respond_file_transfer_request(
-    tego_context_t* context,
-    tego_user_id_t const* user,
-    tego_file_transfer_id_t id,
-    tego_file_transfer_response_t response,
+    tego_context* context,
+    tego_user_id const* user,
+    tego_file_transfer_id id,
+    tego_file_transfer_response response,
     char const* destPath,
     size_t destPathLength,
-    tego_error_t** error);
+    tego_error** error);
 
 /*
  * Cancel an in-progress file transfer
@@ -940,10 +940,10 @@ void tego_context_respond_file_transfer_request(
  * @param error: filled on error
  */
 void tego_context_cancel_file_transfer(
-    tego_context_t* context,
-    tego_user_id_t const* user,
-    tego_file_transfer_id_t id,
-    tego_error_t** error);
+    tego_context* context,
+    tego_user_id const* user,
+    tego_file_transfer_id id,
+    tego_error** error);
 
 /*
  * Sends a request to chat to a user
@@ -955,18 +955,18 @@ void tego_context_cancel_file_transfer(
  * @param error : filled on error
  */
 void tego_context_send_chat_request(
-    tego_context_t* context,
-    const tego_user_id_t* user,
+    tego_context* context,
+    const tego_user_id* user,
     const char* message,
     size_t messageLength,
-    tego_error_t** error);
+    tego_error** error);
 
 typedef enum
 {
     tego_chat_acknowledge_accept,   // allows the user to chat with us
     tego_chat_acknowledge_reject,   // do not allow the user to chat with us
     tego_chat_acknowledge_block,    // do not allow and reject all future requests
-} tego_chat_acknowledge_t;
+} tego_chat_acknowledge;
 
 /*
  * Acknowledges chat request sent from another user. Would be called after receiving
@@ -978,10 +978,10 @@ typedef enum
  * @param error : filled on error
  */
 void tego_context_acknowledge_chat_request(
-    tego_context_t* context,
-    const tego_user_id_t* user,
-    tego_chat_acknowledge_t response,
-    tego_error_t** error);
+    tego_context* context,
+    const tego_user_id* user,
+    tego_chat_acknowledge response,
+    tego_error** error);
 
 /*
  * Prevent the given user from message the host
@@ -991,9 +991,9 @@ void tego_context_acknowledge_chat_request(
  * @param error : filled on error
  */
 void tego_context_block_user(
-    tego_context_t* context,
-    const tego_user_id_t* user,
-    tego_error_t** error);
+    tego_context* context,
+    const tego_user_id* user,
+    tego_error** error);
 
 /*
  * Forget about a given user, said user will be removed
@@ -1006,14 +1006,14 @@ void tego_context_block_user(
  */
 
 void tego_context_forget_user(
-    tego_context_t* context,
-    const tego_user_id_t* user,
-    tego_error_t** error);
+    tego_context* context,
+    const tego_user_id* user,
+    tego_error** error);
 
 //
 // Callbacks for frontend to respond to events
 // Provides no guarantees on what thread they are running on or thread safety
-// All parameters (such as tego_error_t*) are automatically destroyed after user
+// All parameters (such as tego_error*) are automatically destroyed after user
 //  callback is invoked, so duplicate/marshall data as necessary
 //
 
@@ -1023,7 +1023,7 @@ typedef enum
 {
     tego_tor_error_origin_control,
     tego_tor_error_origin_manager,
-} tego_tor_error_origin_t;
+} tego_tor_error_origin;
 
 /*
  * Callback fired when an error relating to Tor occurs, unrelated to an existing
@@ -1033,10 +1033,10 @@ typedef enum
  * @param origin : which legacy Qt component the error came from
  * @param error : error containing our message
  */
-typedef void (*tego_tor_error_occurred_callback_t)(
-    tego_context_t* context,
-    tego_tor_error_origin_t origin,
-    const tego_error_t* error);
+typedef void (*tego_tor_error_occurred_callback)(
+    tego_context* context,
+    tego_tor_error_origin origin,
+    const tego_error* error);
 
 /*
  * TODO: this should go away and only exists for the ricochet Qt UI :(
@@ -1046,9 +1046,9 @@ typedef void (*tego_tor_error_occurred_callback_t)(
  * @param context : the current tego context
  * @param out_success : where the result is saved, TEGO_TRUE on success, else TEGO_FALSE
  */
-typedef void (*tego_update_tor_daemon_config_succeeded_callback_t)(
-    tego_context_t* context,
-    tego_bool_t success);
+typedef void (*tego_update_tor_daemon_config_succeeded_callback)(
+    tego_context* context,
+    tego_bool success);
 
 /*
  * Callback fired when the tor control port status has changed
@@ -1056,9 +1056,9 @@ typedef void (*tego_update_tor_daemon_config_succeeded_callback_t)(
  * @param context : the current tego context
  * @param status : the new control status
  */
-typedef void (*tego_tor_control_status_changed_callback_t)(
-    tego_context_t* contxt,
-    tego_tor_control_status_t status);
+typedef void (*tego_tor_control_status_changed_callback)(
+    tego_context* contxt,
+    tego_tor_control_status status);
 
 /*
  * Callback fired when the tor daemon process' status changes
@@ -1066,9 +1066,9 @@ typedef void (*tego_tor_control_status_changed_callback_t)(
  * @param context : the current tego context
  * @param status : the new process status
  */
-typedef void (*tego_tor_process_status_changed_callback_t)(
-    tego_context_t* context,
-    tego_tor_process_status_t status);
+typedef void (*tego_tor_process_status_changed_callback)(
+    tego_context* context,
+    tego_tor_process_status status);
 
 /*
  * Callback fired when the tor daemon's network status changes
@@ -1076,9 +1076,9 @@ typedef void (*tego_tor_process_status_changed_callback_t)(
  * @param context : the current tego context
  * @param status : the new network status
  */
-typedef void (*tego_tor_network_status_changed_callback_t)(
-    tego_context_t* context,
-    tego_tor_network_status_t status);
+typedef void (*tego_tor_network_status_changed_callback)(
+    tego_context* context,
+    tego_tor_network_status status);
 
 /*
  * Callback fired when tor's bootstrap status changes
@@ -1087,10 +1087,10 @@ typedef void (*tego_tor_network_status_changed_callback_t)(
  * @param progress : the bootstrap progress percent
  * @param tag : the bootstrap tag
  */
-typedef void (*tego_tor_bootstrap_status_changed_callback_t)(
-    tego_context_t* context,
+typedef void (*tego_tor_bootstrap_status_changed_callback)(
+    tego_context* context,
     int32_t progress,
-    tego_tor_bootstrap_tag_t tag);
+    tego_tor_bootstrap_tag tag);
 
 /*
  * Callback fired when a log entry is received from the tor daemon
@@ -1099,8 +1099,8 @@ typedef void (*tego_tor_bootstrap_status_changed_callback_t)(
  * @param message : a null-terminated log entry string
  * @param messageLength : length of the message not including null-terminator
  */
-typedef void (*tego_tor_log_received_callback_t)(
-    tego_context_t* context,
+typedef void (*tego_tor_log_received_callback)(
+    tego_context* context,
     const char* message,
     size_t messageLength);
 
@@ -1110,9 +1110,9 @@ typedef void (*tego_tor_log_received_callback_t)(
  * @param context : the current tego context
  * @param state : the current host user state
  */
-typedef void (*tego_host_onion_service_state_changed_callback_t)(
-    tego_context_t* context,
-    tego_host_onion_service_state_t state);
+typedef void (*tego_host_onion_service_state_changed_callback)(
+    tego_context* context,
+    tego_host_onion_service_state state);
 
 /*
  * Callback fired when the host receives a chat request from another user
@@ -1122,9 +1122,9 @@ typedef void (*tego_host_onion_service_state_changed_callback_t)(
  * @param message : null-terminated message string received from the requesting user
  * @param messageLength : length of the message not including null-terminator
  */
-typedef void (*tego_chat_request_received_callback_t)(
-    tego_context_t* context,
-    const tego_user_id_t* sender,
+typedef void (*tego_chat_request_received_callback)(
+    tego_context* context,
+    const tego_user_id* sender,
     const char* message,
     size_t messageLength);
 
@@ -1136,10 +1136,10 @@ typedef void (*tego_chat_request_received_callback_t)(
  * @param acceptedRequest : TEGO_TRUE if request accepted, TEGO_FALSE if rejected
  */
 
-typedef void (*tego_chat_request_response_received_callback_t)(
-    tego_context_t* context,
-    const tego_user_id_t* sender,
-    tego_bool_t acceptedRequest);
+typedef void (*tego_chat_request_response_received_callback)(
+    tego_context* context,
+    const tego_user_id* sender,
+    tego_bool acceptedRequest);
 
 
 /*
@@ -1152,11 +1152,11 @@ typedef void (*tego_chat_request_response_received_callback_t)(
  * @param message : null-terminated message string
  * @param messageLength : length of the message not including null-terminator
  */
-typedef void (*tego_message_received_callback_t)(
-    tego_context_t* context,
-    const tego_user_id_t* sender,
-    tego_time_t timestamp,
-    tego_message_id_t messageId,
+typedef void (*tego_message_received_callback)(
+    tego_context* context,
+    const tego_user_id* sender,
+    tego_time timestamp,
+    tego_message_id messageId,
     const char* message,
     size_t messageLength);
 
@@ -1169,11 +1169,11 @@ typedef void (*tego_message_received_callback_t)(
  * @param messageId : id of the message being acknowledged
  * @param messageAcked : TEGO_TRUE if acknowledged, TEGO_FALSE if error
  */
-typedef void (*tego_message_acknowledged_callback_t)(
-    tego_context_t* context,
-    const tego_user_id_t* userId,
-    tego_message_id_t messageId,
-    tego_bool_t messageAcked);
+typedef void (*tego_message_acknowledged_callback)(
+    tego_context* context,
+    const tego_user_id* userId,
+    tego_message_id messageId,
+    tego_bool messageAcked);
 
 
 /*
@@ -1187,14 +1187,14 @@ typedef void (*tego_message_acknowledged_callback_t)(
  * @param fileSize : size of the file in bytes
  * @param fileHash : hash of the file
  */
-typedef void (*tego_file_transfer_request_received_callback_t)(
+typedef void (*tego_file_transfer_request_received_callback)(
     tego_context* context,
-    tego_user_id_t const* sender,
-    tego_file_transfer_id_t id,
+    tego_user_id const* sender,
+    tego_file_transfer_id id,
     char const* fileName,
     size_t fileNameLength,
-    tego_file_size_t fileSize,
-    tego_file_hash_t const* fileHash);
+    tego_file_size fileSize,
+    tego_file_hash const* fileHash);
 
 /*
  * Callback fired when a file transfer request message is received and
@@ -1206,11 +1206,11 @@ typedef void (*tego_file_transfer_request_received_callback_t)(
  * @param id : the id of the file transfer that is being acknowledged
  * @param requestAcked : TEGO_TRUE if acknowledged, TEGO_FALSE if error
  */
-typedef void (*tego_file_transfer_request_acknowledged_callback_t)(
-    tego_context_t* context,
-    tego_user_id_t const* receiver,
-    tego_file_transfer_id_t id,
-    tego_bool_t requestAcked);
+typedef void (*tego_file_transfer_request_acknowledged_callback)(
+    tego_context* context,
+    tego_user_id const* receiver,
+    tego_file_transfer_id id,
+    tego_bool requestAcked);
 
 /*
  * Callback fired when the user responds to an file transfer request
@@ -1221,17 +1221,17 @@ typedef void (*tego_file_transfer_request_acknowledged_callback_t)(
  * @param response : TEGO_TRUE if the recipients wants to recevie
  *  our file, TEGO_FALSE otherwise
  */
-typedef void (*tego_file_transfer_request_response_received_callback_t)(
-    tego_context_t* context,
-    tego_user_id_t const* receiver,
-    tego_file_transfer_id_t id,
-    tego_file_transfer_response_t response);
+typedef void (*tego_file_transfer_request_response_received_callback)(
+    tego_context* context,
+    tego_user_id const* receiver,
+    tego_file_transfer_id id,
+    tego_file_transfer_response response);
 
 typedef enum
 {
     tego_file_transfer_direction_sending,
     tego_file_transfer_direction_receiving,
-} tego_file_transfer_direction_t;
+} tego_file_transfer_direction;
 
 /*
  * Callback fired when file transfer send or receive progress has changed
@@ -1244,13 +1244,13 @@ typedef enum
  * @param bytesComplete : number of bytes sent/received
  * @param bytesTotal : the total size of the file
  */
-typedef void (*tego_file_transfer_progress_callback_t)(
-    tego_context_t* context,
-    const tego_user_id_t* userId,
-    tego_file_transfer_id_t id,
-    tego_file_transfer_direction_t direction,
-    tego_file_size_t bytesComplete,
-    tego_file_size_t bytesTotal);
+typedef void (*tego_file_transfer_progress_callback)(
+    tego_context* context,
+    const tego_user_id* userId,
+    tego_file_transfer_id id,
+    tego_file_transfer_direction direction,
+    tego_file_size bytesComplete,
+    tego_file_size bytesTotal);
 
 typedef enum
 {
@@ -1261,7 +1261,7 @@ typedef enum
     tego_file_transfer_result_bad_hash,         // file transfer completed but final file's hash did not match the one advertised
     tego_file_transfer_result_network_error,    // file transfer failed due to connectivity problem
     tego_file_transfer_result_filesystem_error, // file transfer failed due to a file system error
-} tego_file_transfer_result_t;
+} tego_file_transfer_result;
 
 /*
  * Callback fired when a file transfer has completed
@@ -1273,12 +1273,12 @@ typedef enum
  * @param direction : the direction this file was going
  * @param result : how the transfer completed
  */
-typedef void (*tego_file_transfer_complete_callback_t)(
-    tego_context_t* context,
-    const tego_user_id_t* userId,
-    tego_file_transfer_id_t id,
-    tego_file_transfer_direction_t direction,
-    tego_file_transfer_result_t result);
+typedef void (*tego_file_transfer_complete_callback)(
+    tego_context* context,
+    const tego_user_id* userId,
+    tego_file_transfer_id id,
+    tego_file_transfer_direction direction,
+    tego_file_transfer_result result);
 
 /*
  * Callback fired when a user's status changes
@@ -1287,10 +1287,10 @@ typedef void (*tego_file_transfer_complete_callback_t)(
  * @param user : the user whose status has changed
  * @param status: the user's new status
  */
-typedef void (*tego_user_status_changed_callback_t)(
-    tego_context_t* context,
-    const tego_user_id_t* user,
-    tego_user_status_t status);
+typedef void (*tego_user_status_changed_callback)(
+    tego_context* context,
+    const tego_user_id* user,
+    tego_user_status status);
 
 /*
  * Callback fired when tor creates a new onion service for
@@ -1299,108 +1299,108 @@ typedef void (*tego_user_status_changed_callback_t)(
  * @param context : the current tego context
  * @param privateKey : the host's private key
  */
-typedef void (*tego_new_identity_created_callback_t)(
-    tego_context_t* context,
-    const tego_ed25519_private_key_t* privateKey);
+typedef void (*tego_new_identity_created_callback)(
+    tego_context* context,
+    const tego_ed25519_private_key* privateKey);
 
 /*
  * Setters for various callbacks
  */
 
 void tego_context_set_tor_error_occurred_callback(
-    tego_context_t* context,
-    tego_tor_error_occurred_callback_t,
-    tego_error_t** error);
+    tego_context* context,
+    tego_tor_error_occurred_callback,
+    tego_error** error);
 
 void tego_context_set_update_tor_daemon_config_succeeded_callback(
-    tego_context_t* context,
-    tego_update_tor_daemon_config_succeeded_callback_t,
-    tego_error_t** error);
+    tego_context* context,
+    tego_update_tor_daemon_config_succeeded_callback,
+    tego_error** error);
 
 void tego_context_set_tor_control_status_changed_callback(
-    tego_context_t* context,
-    tego_tor_control_status_changed_callback_t,
-    tego_error_t** error);
+    tego_context* context,
+    tego_tor_control_status_changed_callback,
+    tego_error** error);
 
 void tego_context_set_tor_process_status_changed_callback(
-    tego_context_t* context,
-    tego_tor_process_status_changed_callback_t,
-    tego_error_t** error);
+    tego_context* context,
+    tego_tor_process_status_changed_callback,
+    tego_error** error);
 
 void tego_context_set_tor_network_status_changed_callback(
-    tego_context_t* context,
-    tego_tor_network_status_changed_callback_t,
-    tego_error_t** error);
+    tego_context* context,
+    tego_tor_network_status_changed_callback,
+    tego_error** error);
 
 void tego_context_set_tor_bootstrap_status_changed_callback(
-    tego_context_t* context,
-    tego_tor_bootstrap_status_changed_callback_t,
-    tego_error_t** error);
+    tego_context* context,
+    tego_tor_bootstrap_status_changed_callback,
+    tego_error** error);
 
 void tego_context_set_tor_log_received_callback(
-    tego_context_t* context,
-    tego_tor_log_received_callback_t,
-    tego_error_t** error);
+    tego_context* context,
+    tego_tor_log_received_callback,
+    tego_error** error);
 
 void tego_context_set_host_onion_service_state_changed_callback(
-    tego_context_t* context,
-    tego_host_onion_service_state_changed_callback_t,
-    tego_error_t** error);
+    tego_context* context,
+    tego_host_onion_service_state_changed_callback,
+    tego_error** error);
 
 void tego_context_set_chat_request_received_callback(
-    tego_context_t* context,
-    tego_chat_request_received_callback_t,
-    tego_error_t** error);
+    tego_context* context,
+    tego_chat_request_received_callback,
+    tego_error** error);
 
 void tego_context_set_chat_request_response_received_callback(
-    tego_context_t* context,
-    tego_chat_request_response_received_callback_t,
-    tego_error_t** error);
+    tego_context* context,
+    tego_chat_request_response_received_callback,
+    tego_error** error);
 
 void tego_context_set_message_received_callback(
-    tego_context_t* context,
-    tego_message_received_callback_t,
-    tego_error_t** error);
+    tego_context* context,
+    tego_message_received_callback,
+    tego_error** error);
 
 void tego_context_set_message_acknowledged_callback(
-    tego_context_t* context,
-    tego_message_acknowledged_callback_t,
-    tego_error_t** error);
+    tego_context* context,
+    tego_message_acknowledged_callback,
+    tego_error** error);
 
 void tego_context_set_file_transfer_request_received_callback(
-    tego_context_t* context,
-    tego_file_transfer_request_received_callback_t,
-    tego_error_t** error);
+    tego_context* context,
+    tego_file_transfer_request_received_callback,
+    tego_error** error);
 
 void tego_context_set_file_transfer_request_acknowledged_callback(
-    tego_context_t* context,
-    tego_file_transfer_request_acknowledged_callback_t,
-    tego_error_t** error);
+    tego_context* context,
+    tego_file_transfer_request_acknowledged_callback,
+    tego_error** error);
 
 void tego_context_set_file_transfer_request_response_received_callback(
-    tego_context_t* context,
-    tego_file_transfer_request_response_received_callback_t,
-    tego_error_t** error);
+    tego_context* context,
+    tego_file_transfer_request_response_received_callback,
+    tego_error** error);
 
 void tego_context_set_file_transfer_progress_callback(
-    tego_context_t* context,
-    tego_file_transfer_progress_callback_t,
-    tego_error_t** error);
+    tego_context* context,
+    tego_file_transfer_progress_callback,
+    tego_error** error);
 
 void tego_context_set_file_transfer_complete_callback(
-    tego_context_t* context,
-    tego_file_transfer_complete_callback_t,
-    tego_error_t** error);
+    tego_context* context,
+    tego_file_transfer_complete_callback,
+    tego_error** error);
 
 void tego_context_set_user_status_changed_callback(
-    tego_context_t* context,
-    tego_user_status_changed_callback_t,
-    tego_error_t** error);
+    tego_context* context,
+    tego_user_status_changed_callback,
+    tego_error** error);
 
 void tego_context_set_new_identity_created_callback(
-    tego_context_t* context,
-    tego_new_identity_created_callback_t,
-    tego_error_t** error);
+    tego_context* context,
+    tego_new_identity_created_callback,
+    tego_error** error);
 
 
 /*
@@ -1408,23 +1408,23 @@ void tego_context_set_new_identity_created_callback(
  */
 
 // error
-void tego_error_delete(tego_error_t*);
+void tego_error_delete(tego_error*);
 
 // crypto
-void tego_ed25519_private_key_delete(tego_ed25519_private_key_t*);
-void tego_ed25519_public_key_delete(tego_ed25519_public_key_t*);
-void tego_ed25519_signature_delete(tego_ed25519_signature_t*);
-void tego_v3_onion_service_id_delete(tego_v3_onion_service_id_t*);
+void tego_ed25519_private_key_delete(tego_ed25519_private_key*);
+void tego_ed25519_public_key_delete(tego_ed25519_public_key*);
+void tego_ed25519_signature_delete(tego_ed25519_signature*);
+void tego_v3_onion_service_id_delete(tego_v3_onion_service_id*);
 
 // user
-void tego_user_id_delete(tego_user_id_t*);
+void tego_user_id_delete(tego_user_id*);
 
 // tor
-void tego_tor_launch_config_delete(tego_tor_launch_config_t*);
-void tego_tor_daemon_config_delete(tego_tor_daemon_config_t*);
+void tego_tor_launch_config_delete(tego_tor_launch_config*);
+void tego_tor_daemon_config_delete(tego_tor_daemon_config*);
 
 // file transfer
-void tego_file_hash_delete(tego_file_hash_t*);
+void tego_file_hash_delete(tego_file_hash*);
 
 #ifdef __cplusplus
 }

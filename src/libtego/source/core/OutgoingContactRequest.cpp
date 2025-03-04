@@ -90,7 +90,7 @@ void OutgoingContactRequest::setStatus(Status newStatus)
         // create user id object from service id
         auto userId = std::make_unique<tego_user_id>(*serviceId.get());
 
-        tego_bool_t requestAccepted = ((m_status == Accepted) ? TEGO_TRUE : TEGO_FALSE);
+        tego_bool requestAccepted = ((m_status == Accepted) ? TEGO_TRUE : TEGO_FALSE);
 
         tego::g_globals.context->callback_registry_.emit_chat_request_response_received(userId.release(), requestAccepted);
     }

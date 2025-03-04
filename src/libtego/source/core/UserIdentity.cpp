@@ -87,7 +87,7 @@ void UserIdentity::setupService(const QString& serviceID)
                 const QByteArray rawKey = key.toUtf8();
 
                 // convert keyblob string to tego_ed25519_private key
-                std::unique_ptr<tego_ed25519_private_key_t> privateKey;
+                std::unique_ptr<tego_ed25519_private_key> privateKey;
                 tego_ed25519_private_key_from_ed25519_keyblob(
                     tego::out(privateKey),
                     rawKey.data(),

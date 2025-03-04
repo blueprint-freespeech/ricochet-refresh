@@ -59,10 +59,10 @@ namespace shims
     {
         auto context = UserIdentity::userIdentity->getContext();
 
-        std::unique_ptr<tego_user_id_t> userId;
+        std::unique_ptr<tego_user_id> userId;
         tego_context_get_host_user_id(context, tego::out(userId), tego::throw_on_error());
 
-        std::unique_ptr<tego_v3_onion_service_id_t> serviceId;
+        std::unique_ptr<tego_v3_onion_service_id> serviceId;
         tego_user_id_get_v3_onion_service_id(userId.get(), tego::out(serviceId), tego::throw_on_error());
 
         char serviceIdString[TEGO_V3_ONION_SERVICE_ID_SIZE] = {0};

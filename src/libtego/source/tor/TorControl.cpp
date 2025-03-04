@@ -130,7 +130,7 @@ void TorControlPrivate::setStatus(TorControl::Status n)
     emit q->statusChanged(status, old);
 
     g_globals.context->callback_registry_.emit_tor_control_status_changed(
-        static_cast<tego_tor_control_status_t>(status));
+        static_cast<tego_tor_control_status>(status));
 
     if (status == TorControl::Connected && old < TorControl::Connected)
         emit q->connected();

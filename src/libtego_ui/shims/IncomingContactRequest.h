@@ -30,6 +30,6 @@ namespace shims
         const QString serviceIdString;
         QString nickname;
         const QString message;
-        std::unique_ptr<tego_user_id_t> userId;
+        std::unique_ptr<tego_user_id> userId;
     };
 }

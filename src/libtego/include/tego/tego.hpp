@@ -21,7 +21,7 @@
 namespace tego
 {
     //
-    // converts tego_error_t** C style error handling to exceptions
+    // converts tego_error** C style error handling to exceptions
     //
     class throw_on_error
     {
@@ -38,18 +38,18 @@ namespace tego
             }
         }
 
-        operator tego_error_t**()
+        operator tego_error**()
         {
             return &error_;
         }
     private:
-        tego_error_t* error_ = nullptr;
+        tego_error* error_ = nullptr;
     };
 
     //
     // to_string methods to convert various tego types to human readable strings
     //
-    inline std::string to_string(tego_file_hash_t const* fileHash)
+    inline std::string to_string(tego_file_hash const* fileHash)
     {
 
         if (fileHash == nullptr) return {};
@@ -70,9 +70,9 @@ namespace tego
 
 #define TEGO_DEFAULT_DELETE_IMPL(TYPE)\
 namespace std {\
-    template<> class default_delete<TYPE##_t> {\
+    template<> class default_delete<TYPE> {\
     public:\
-        void operator()(TYPE##_t* val) { TYPE##_delete(val); }\
+        void operator()(TYPE* val) { TYPE##_delete(val); }\
     };\
 }
 

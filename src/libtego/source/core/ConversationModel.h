@@ -76,12 +76,12 @@ public:
     virtual int rowCount(const QModelIndex &parent = QModelIndex()) const;
     virtual QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const;
 
-    std::tuple<tego_file_transfer_id_t, std::unique_ptr<tego_file_hash_t>, tego_file_size_t> sendFile(const QString &file_url);
-    tego_message_id_t sendMessage(const QString &text);
+    std::tuple<tego_file_transfer_id, std::unique_ptr<tego_file_hash>, tego_file_size> sendFile(const QString &file_url);
+    tego_message_id sendMessage(const QString &text);
 
-    void acceptFile(tego_file_transfer_id_t id, const std::string& dest);
-    void rejectFile(tego_file_transfer_id_t id);
-    void cancelTransfer(tego_file_transfer_id_t id);
+    void acceptFile(tego_file_transfer_id id, const std::string& dest);
+    void rejectFile(tego_file_transfer_id id);
+    void cancelTransfer(tego_file_transfer_id id);
 
     void clear();
 
@@ -96,17 +96,17 @@ private slots:
     void sendQueuedMessages();
     void onContactStatusChanged();
 
-    void onFileTransferRequestReceived(tego_file_transfer_id_t id, const QString& filename, tego_file_size_t fileSize, tego_file_hash_t hash);
-    void onFileTransferAcknowledged(tego_file_transfer_id_t id, bool ack);
-    void onFileTransferRequestResponded(tego_file_transfer_id_t id, tego_file_transfer_response_t response);
-    void onFileTransferProgress(tego_file_transfer_id_t id, tego_file_transfer_direction_t direction, tego_file_size_t bytesTransmitted, tego_file_size_t bytesTotal);
-    void onFileTransferFinished(tego_file_transfer_id_t id, tego_file_transfer_direction_t direction, tego_file_transfer_result_t result);
+    void onFileTransferRequestReceived(tego_file_transfer_id id, const QString& filename, tego_file_size fileSize, tego_file_hash hash);
+    void onFileTransferAcknowledged(tego_file_transfer_id id, bool ack);
+    void onFileTransferRequestResponded(tego_file_transfer_id id, tego_file_transfer_response response);
+    void onFileTransferProgress(tego_file_transfer_id id, tego_file_transfer_direction direction, tego_file_size bytesTransmitted, tego_file_size bytesTotal);
+    void onFileTransferFinished(tego_file_transfer_id id, tego_file_transfer_direction direction, tego_file_transfer_result result);
 
 private:
     struct MessageData {
         MessageType type;
         QString text;
-        tego_file_hash_t fileHash;
+        tego_file_hash fileHash;
         QDateTime time;
         MessageId identifier;
         MessageStatus status;

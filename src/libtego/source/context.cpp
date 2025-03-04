@@ -28,7 +28,7 @@ tego_context::tego_context()
     this->torControl = torManager->control();
 }
 
-void tego_context::start_tor(const tego_tor_launch_config_t* config)
+void tego_context::start_tor(const tego_tor_launch_config* config)
 {
     TEGO_THROW_IF_NULL(this->torManager);
     TEGO_THROW_IF_NULL(config);
@@ -80,13 +80,13 @@ const char* tego_context::get_tor_version_string() const
     return this->torVersion.c_str();
 }
 
-tego_tor_control_status_t tego_context::get_tor_control_status() const
+tego_tor_control_status tego_context::get_tor_control_status() const
 {
     TEGO_THROW_IF_NULL(this->torControl);
-    return static_cast<tego_tor_control_status_t>(this->torControl->status());
+    return static_cast<tego_tor_control_status>(this->torControl->status());
 }
 
-tego_tor_process_status_t tego_context::get_tor_process_status() const
+tego_tor_process_status tego_context::get_tor_process_status() const
 {
     TEGO_THROW_IF_NULL(this->torManager);
 
@@ -113,7 +113,7 @@ tego_tor_process_status_t tego_context::get_tor_process_status() const
     return tego_tor_process_status_unknown;
 }
 
-tego_tor_network_status_t tego_context::get_tor_network_status() const
+tego_tor_network_status tego_context::get_tor_network_status() const
 {
     TEGO_THROW_IF_NULL(this->torControl);
     switch(this->torControl->torStatus())
@@ -127,7 +127,7 @@ tego_tor_network_status_t tego_context::get_tor_network_status() const
     }
 }
 
-tego_tor_bootstrap_tag_t tego_context::get_tor_bootstrap_tag() const
+tego_tor_bootstrap_tag tego_context::get_tor_bootstrap_tag() const
 {
     TEGO_THROW_IF_NULL(this->torControl);
     auto bootstrapStatus = this->torControl->bootstrapStatus();
@@ -170,7 +170,7 @@ tego_tor_bootstrap_tag_t tego_context::get_tor_bootstrap_tag() const
     {
         if (tagList[i] == bootstrapTag)
         {
-            return static_cast<tego_tor_bootstrap_tag_t>(i);
+            return static_cast<tego_tor_bootstrap_tag>(i);
         }
     }
 
@@ -178,9 +178,9 @@ tego_tor_bootstrap_tag_t tego_context::get_tor_bootstrap_tag() const
 }
 
 void tego_context::start_service(
-    tego_ed25519_private_key_t const* hostPrivateKey,
-    tego_user_id_t const* const* userBuffer,
-    tego_user_type_t* const userTypeBuffer,
+    tego_ed25519_private_key const* hostPrivateKey,
+    tego_user_id const* const* userBuffer,
+    tego_user_type* const userTypeBuffer,
     size_t userCount)
 {
     TEGO_THROW_IF_NULL(hostPrivateKey);
@@ -267,7 +267,7 @@ int32_t tego_context::get_tor_bootstrap_progress() const
     return static_cast<int32_t>(bootstrapProgress);
 }
 
-void tego_context::update_tor_daemon_config(const tego_tor_daemon_config_t* daemonConfig)
+void tego_context::update_tor_daemon_config(const tego_tor_daemon_config* daemonConfig)
 {
     TEGO_THROW_IF_NULL(this->torControl);
 
@@ -365,7 +365,7 @@ void tego_context::update_disable_network_flag(bool disableNetwork)
     this->torControl->setConfiguration(vm);
 }
 
-void tego_context::set_host_onion_service_state(tego_host_onion_service_state_t state)
+void tego_context::set_host_onion_service_state(tego_host_onion_service_state state)
 {
     if (state == hostUserState)
     {
@@ -376,7 +376,7 @@ void tego_context::set_host_onion_service_state(tego_host_onion_service_state_t 
     this->callback_registry_.emit_host_onion_service_state_changed(state);
 }
 
-std::unique_ptr<tego_user_id_t> tego_context::get_host_user_id() const
+std::unique_ptr<tego_user_id> tego_context::get_host_user_id() const
 {
     TEGO_THROW_IF_NULL(this->identityManager);
     auto userIdentity = this->identityManager->identities().first();
@@ -384,16 +384,16 @@ std::unique_ptr<tego_user_id_t> tego_context::get_host_user_id() const
     auto hostname = userIdentity->hostname().toUtf8();
     tego_v3_onion_service_id serviceId(hostname.data(), TEGO_V3_ONION_SERVICE_ID_LENGTH);
 
-    return std::make_unique<tego_user_id_t>(serviceId);
+    return std::make_unique<tego_user_id>(serviceId);
 }
 
-tego_host_onion_service_state_t tego_context::get_host_onion_service_state() const
+tego_host_onion_service_state tego_context::get_host_onion_service_state() const
 {
     return this->hostUserState;
 }
 
 void tego_context::send_chat_request(
-    const tego_user_id_t* user,
+    const tego_user_id* user,
     const char* message,
     size_t messageLength)
 {
@@ -408,8 +408,8 @@ void tego_context::send_chat_request(
 }
 
 void tego_context::acknowledge_chat_request(
-        const tego_user_id_t* user,
-        tego_chat_acknowledge_t response)
+        const tego_user_id* user,
+        tego_chat_acknowledge response)
 {
     TEGO_THROW_IF_NULL(user);
 
@@ -441,8 +441,8 @@ void tego_context::acknowledge_chat_request(
     }
 }
 
-tego_message_id_t tego_context::send_message(
-    const tego_user_id_t* user,
+tego_message_id tego_context::send_message(
+    const tego_user_id* user,
     const std::string& message)
 {
     TEGO_THROW_IF_NULL(user);
@@ -455,7 +455,7 @@ tego_message_id_t tego_context::send_message(
     return conversationModel->sendMessage(QString::fromStdString(message));
 }
 
-tego_user_type_t tego_context::get_user_type(tego_user_id_t const* user) const
+tego_user_type tego_context::get_user_type(tego_user_id const* user) const
 {
     auto contactUser = this->getContactUser(user);
     if (contactUser != nullptr)
@@ -514,18 +514,18 @@ size_t tego_context::get_user_count() const
     return static_cast<size_t>(contactsManager->contacts().size());
 }
 
-std::vector<tego_user_id_t*> tego_context::get_users() const
+std::vector<tego_user_id*> tego_context::get_users() const
 {
     TEGO_THROW_IF_NULL(this->identityManager);
     auto userIdentity = this->identityManager->identities().first();
     auto contactsManager = userIdentity->getContacts();
     auto incomingRequestManager = contactsManager->incomingRequestManager();
 
-    std::vector<std::unique_ptr<tego_user_id_t>> managedUsers;
-    std::vector<tego_user_id_t*> users;
+    std::vector<std::unique_ptr<tego_user_id>> managedUsers;
+    std::vector<tego_user_id*> users;
 
     // helper function to from hostname to tego_user_id_t
-    auto hostnameToTegoUserId = [](QString const& hostname) -> std::unique_ptr<tego_user_id_t>
+    auto hostnameToTegoUserId = [](QString const& hostname) -> std::unique_ptr<tego_user_id>
     {
          // convert our hostname to just the service id raw string
         auto serviceIdString = hostname.left(TEGO_V3_ONION_SERVICE_ID_LENGTH).toUtf8();
@@ -573,7 +573,7 @@ std::vector<tego_user_id_t*> tego_context::get_users() const
     return users;
 }
 
-void tego_context::forget_user(const tego_user_id_t* user)
+void tego_context::forget_user(const tego_user_id* user)
 {
     // TODO: does not handle our blocked users or incoming request users
     auto contactUser = this->getContactUser(user);
@@ -581,8 +581,8 @@ void tego_context::forget_user(const tego_user_id_t* user)
     contactUser->deleteContact();
 }
 
-std::tuple<tego_file_transfer_id_t, std::unique_ptr<tego_file_hash_t>, tego_file_size_t> tego_context::send_file_transfer_request(
-    tego_user_id_t const* user,
+std::tuple<tego_file_transfer_id, std::unique_ptr<tego_file_hash>, tego_file_size> tego_context::send_file_transfer_request(
+    tego_user_id const* user,
     std::string const& filePath)
 {
     TEGO_THROW_IF_NULL(user);
@@ -595,9 +595,9 @@ std::tuple<tego_file_transfer_id_t, std::unique_ptr<tego_file_hash_t>, tego_file
 }
 
 void tego_context::respond_file_transfer_request(
-    tego_user_id_t const* user,
-    tego_file_transfer_id_t fileTransfer,
-    tego_file_transfer_response_t response,
+    tego_user_id const* user,
+    tego_file_transfer_id fileTransfer,
+    tego_file_transfer_response response,
     std::string const& destPath)
 {
     // ensure we have a valid user
@@ -628,8 +628,8 @@ void tego_context::respond_file_transfer_request(
 }
 
 void tego_context::cancel_file_transfer_transfer(
-    tego_user_id_t const* user,
-    tego_file_transfer_id_t fileTransfer)
+    tego_user_id const* user,
+    tego_file_transfer_id fileTransfer)
 {
     // ensure we have a valid user
     TEGO_THROW_IF_NULL(user);
@@ -645,7 +645,7 @@ void tego_context::cancel_file_transfer_transfer(
 // tego_context private methods
 //
 
-ContactUser* tego_context::getContactUser(tego_user_id_t const* user) const
+ContactUser* tego_context::getContactUser(tego_user_id const* user) const
 {
     TEGO_THROW_IF_NULL(user);
     TEGO_THROW_IF_NULL(identityManager);
@@ -666,10 +666,10 @@ ContactUser* tego_context::getContactUser(tego_user_id_t const* user) const
 extern "C"
 {
     void tego_get_random_bytes(
-        tego_context_t* context,
+        tego_context* context,
         uint8_t* dest,
         size_t count,
-        tego_error_t** error)
+        tego_error** error)
     {
         return tego::translateExceptions([=]() mutable -> void
         {
@@ -684,8 +684,8 @@ extern "C"
     // Bootstrap Tag
 
     const char* tego_tor_bootstrap_tag_to_summary(
-        tego_tor_bootstrap_tag_t tag,
-        tego_error_t** error)
+        tego_tor_bootstrap_tag tag,
+        tego_error** error)
     {
         return tego::translateExceptions([=]() -> const char*
         {
@@ -731,9 +731,9 @@ extern "C"
     // Tego Context
 
     void tego_context_start_tor(
-        tego_context_t* context,
-        const tego_tor_launch_config_t* launchConfig,
-        tego_error_t** error)
+        tego_context* context,
+        const tego_tor_launch_config* launchConfig,
+        tego_error** error)
     {
         return tego::translateExceptions([=]() -> void
         {
@@ -745,8 +745,8 @@ extern "C"
     }
 
     size_t tego_context_get_tor_logs_size(
-        const tego_context_t* context,
-        tego_error_t** error)
+        const tego_context* context,
+        tego_error** error)
     {
         return tego::translateExceptions([=]() -> size_t
         {
@@ -759,10 +759,10 @@ extern "C"
 
 
     size_t tego_context_get_tor_logs(
-        const tego_context_t* context,
+        const tego_context* context,
         char* out_logBuffer,
         size_t logBufferSize,
-        tego_error_t** error)
+        tego_error** error)
     {
         return tego::translateExceptions([=]() -> size_t
         {
@@ -809,8 +809,8 @@ extern "C"
     }
 
     const char* tego_context_get_tor_version_string(
-        const tego_context_t* context,
-        tego_error_t** error)
+        const tego_context* context,
+        tego_error** error)
     {
         return tego::translateExceptions([=]() -> const char*
         {
@@ -822,9 +822,9 @@ extern "C"
     }
 
     void tego_context_get_tor_control_status(
-        const tego_context_t* context,
-        tego_tor_control_status_t* out_status,
-        tego_error_t** error)
+        const tego_context* context,
+        tego_tor_control_status* out_status,
+        tego_error** error)
     {
         return tego::translateExceptions([=]() -> void
         {
@@ -838,9 +838,9 @@ extern "C"
     }
 
     void tego_context_get_tor_process_status(
-        const tego_context_t* context,
-        tego_tor_process_status_t* out_status,
-        tego_error_t** error)
+        const tego_context* context,
+        tego_tor_process_status* out_status,
+        tego_error** error)
     {
         return tego::translateExceptions([=]() -> void
         {
@@ -854,9 +854,9 @@ extern "C"
     }
 
     void tego_context_get_tor_network_status(
-        const tego_context_t* context,
-        tego_tor_network_status_t* out_status,
-        tego_error_t** error)
+        const tego_context* context,
+        tego_tor_network_status* out_status,
+        tego_error** error)
     {
         return tego::translateExceptions([=]() -> void
         {
@@ -872,8 +872,8 @@ extern "C"
     void tego_context_get_tor_bootstrap_status(
         const tego_context* context,
         int32_t* out_progress,
-        tego_tor_bootstrap_tag_t* out_tag,
-        tego_error_t** error)
+        tego_tor_bootstrap_tag* out_tag,
+        tego_error** error)
     {
         return tego::translateExceptions([=]() -> void
         {
@@ -891,12 +891,12 @@ extern "C"
     }
 
     void tego_context_start_service(
-        tego_context_t* context,
-        tego_ed25519_private_key_t const* hostPrivateKey,
-        tego_user_id_t const* const* userBuffer,
-        tego_user_type_t* const userTypeBuffer,
+        tego_context* context,
+        tego_ed25519_private_key const* hostPrivateKey,
+        tego_user_id const* const* userBuffer,
+        tego_user_type* const userTypeBuffer,
         size_t userCount,
-        tego_error_t** error)
+        tego_error** error)
     {
         return tego::translateExceptions([=]() -> void
         {
@@ -923,9 +923,9 @@ extern "C"
     }
 
     void tego_context_get_host_user_id(
-        const tego_context_t* context,
-        tego_user_id_t** out_hostUser,
-        tego_error_t** error)
+        const tego_context* context,
+        tego_user_id** out_hostUser,
+        tego_error** error)
     {
         return tego::translateExceptions([=]() -> void
         {
@@ -939,9 +939,9 @@ extern "C"
     }
 
     void tego_context_get_host_onion_service_state(
-        const tego_context_t* context,
-        tego_host_onion_service_state_t* out_state,
-        tego_error_t** error)
+        const tego_context* context,
+        tego_host_onion_service_state* out_state,
+        tego_error** error)
     {
         return tego::translateExceptions([=]() -> void
         {
@@ -955,9 +955,9 @@ extern "C"
     }
 
     void tego_context_update_tor_daemon_config(
-        tego_context_t* context,
-        const tego_tor_daemon_config_t* torConfig,
-        tego_error_t** error)
+        tego_context* context,
+        const tego_tor_daemon_config* torConfig,
+        tego_error** error)
     {
         return tego::translateExceptions([=]() -> void
         {
@@ -969,9 +969,9 @@ extern "C"
     }
 
     void tego_context_update_disable_network_flag(
-        tego_context_t* context,
-        tego_bool_t disableNetwork,
-        tego_error_t** error)
+        tego_context* context,
+        tego_bool disableNetwork,
+        tego_error** error)
     {
         return tego::translateExceptions([=]() -> void
         {
@@ -984,10 +984,10 @@ extern "C"
     }
 
     void tego_context_get_user_type(
-        const tego_context_t* context,
-        const tego_user_id_t* user,
-        tego_user_type_t* out_type,
-        tego_error_t** error)
+        const tego_context* context,
+        const tego_user_id* user,
+        tego_user_type* out_type,
+        tego_error** error)
     {
         return tego::translateExceptions([=]() -> void
         {
@@ -1002,9 +1002,9 @@ extern "C"
     }
 
     void tego_context_get_user_count(
-        const tego_context_t* context,
+        const tego_context* context,
         size_t* out_userCount,
-        tego_error_t** error)
+        tego_error** error)
     {
         return tego::translateExceptions([=]() -> void
         {
@@ -1018,11 +1018,11 @@ extern "C"
     }
 
     void tego_context_get_users(
-        const tego_context_t* context,
-        tego_user_id_t** out_usersBuffer,
+        const tego_context* context,
+        tego_user_id** out_usersBuffer,
         size_t usersBufferLength,
         size_t* out_userCount,
-        tego_error_t** error)
+        tego_error** error)
     {
         return tego::translateExceptions([=]() -> void
         {
@@ -1043,11 +1043,11 @@ extern "C"
     }
 
     void tego_context_send_chat_request(
-        tego_context_t* context,
-        const tego_user_id_t* user,
+        tego_context* context,
+        const tego_user_id* user,
         const char* message,
         size_t messageLength,
-        tego_error_t** error)
+        tego_error** error)
     {
         return tego::translateExceptions([=]() -> void
         {
@@ -1061,10 +1061,10 @@ extern "C"
     }
 
     void tego_context_acknowledge_chat_request(
-        tego_context_t* context,
-        const tego_user_id_t* user,
-        tego_chat_acknowledge_t response,
-        tego_error_t** error)
+        tego_context* context,
+        const tego_user_id* user,
+        tego_chat_acknowledge response,
+        tego_error** error)
     {
         return tego::translateExceptions([=]() -> void
         {
@@ -1077,13 +1077,13 @@ extern "C"
 
     void tego_context_send_file_transfer_request(
         tego_context* context,
-        tego_user_id_t const*  user,
+        tego_user_id const*  user,
         char const* filePath,
         size_t filePathLength,
-        tego_file_transfer_id_t* out_id,
-        tego_file_hash_t** out_fileHash,
-        tego_file_size_t* out_fileSize,
-        tego_error_t** error)
+        tego_file_transfer_id* out_id,
+        tego_file_hash** out_fileHash,
+        tego_file_size* out_fileSize,
+        tego_error** error)
     {
         return tego::translateExceptions([=]() -> void
         {
@@ -1116,12 +1116,12 @@ extern "C"
 
     void tego_context_respond_file_transfer_request(
         tego_context* context,
-        tego_user_id_t const* user,
-        tego_file_transfer_id_t fileTransfer,
-        tego_file_transfer_response_t response,
+        tego_user_id const* user,
+        tego_file_transfer_id fileTransfer,
+        tego_file_transfer_response response,
         char const* destPath,
         size_t destPathLength,
-        tego_error_t** error)
+        tego_error** error)
     {
         return tego::translateExceptions([=]() -> void
         {
@@ -1145,9 +1145,9 @@ extern "C"
 
     void tego_context_cancel_file_transfer(
         tego_context* context,
-        tego_user_id_t const* user,
-        tego_file_transfer_id_t id,
-        tego_error_t** error)
+        tego_user_id const* user,
+        tego_file_transfer_id id,
+        tego_error** error)
     {
         return tego::translateExceptions([=]() -> void
         {
@@ -1159,12 +1159,12 @@ extern "C"
     }
 
     void tego_context_send_message(
-        tego_context_t* context,
-        const tego_user_id_t* user,
+        tego_context* context,
+        const tego_user_id* user,
         const char* message,
         size_t messageLength,
-        tego_message_id_t* out_id,
-        tego_error_t** error)
+        tego_message_id* out_id,
+        tego_error** error)
     {
         return tego::translateExceptions([=]() -> void
         {
@@ -1184,9 +1184,9 @@ extern "C"
     }
 
     void tego_context_forget_user(
-        tego_context_t* context,
-        const tego_user_id_t* user,
-        tego_error_t** error)
+        tego_context* context,
+        const tego_user_id* user,
+        tego_error** error)
     {
         return tego::translateExceptions([=]() -> void
         {

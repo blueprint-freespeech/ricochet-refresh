@@ -88,8 +88,8 @@ const std::string& tego_file_hash::to_string() const
 extern "C"
 {
     size_t tego_file_hash_string_size(
-        tego_file_hash_t const* fileHash,
-        tego_error_t** error)
+        tego_file_hash const* fileHash,
+        tego_error** error)
     {
         return tego::translateExceptions([=]() -> size_t
         {
@@ -99,10 +99,10 @@ extern "C"
     }
 
      size_t tego_file_hash_to_string(
-        tego_file_hash_t const* fileHash,
+        tego_file_hash const* fileHash,
         char* out_hashString,
         size_t hashStringSize,
-        tego_error_t** error)
+        tego_error** error)
     {
         return tego::translateExceptions([=]() -> size_t
         {

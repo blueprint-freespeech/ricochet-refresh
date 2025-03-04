@@ -3,7 +3,7 @@
 
 namespace shims
 {
-    ContactsManager::ContactsManager(tego_context_t* context_)
+    ContactsManager::ContactsManager(tego_context* context_)
     : context(context_)
     , contactsList({})
     { }

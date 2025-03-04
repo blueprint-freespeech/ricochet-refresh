@@ -120,9 +120,9 @@ extern "C"
 {
     #define TEGO_DEFINE_CALLBACK_SETTER(EVENT)\
     void tego_context_set_##EVENT##_callback(\
-        tego_context_t* context,\
-        tego_##EVENT##_callback_t callback,\
-        tego_error_t** error)\
+        tego_context* context,\
+        tego_##EVENT##_callback callback,\
+        tego_error** error)\
     {\
         return tego::translateExceptions([=]() -> void\
         {\

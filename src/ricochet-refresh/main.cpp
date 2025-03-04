@@ -87,7 +87,7 @@ int main(int argc, char *argv[]) try
     a.installNativeEventFilter(&wef);
 #endif // Q_OS_WIN
 
-    tego_context_t* tegoContext = nullptr;
+    tego_context* tegoContext = nullptr;
     tego_initialize(&tegoContext, tego::throw_on_error());
 
     auto tego_cleanup = tego::make_scope_exit([=]() -> void {
@@ -125,7 +125,7 @@ int main(int argc, char *argv[]) try
 
     // start Tor
     {
-        std::unique_ptr<tego_tor_launch_config_t> launchConfig;
+        std::unique_ptr<tego_tor_launch_config> launchConfig;
         tego_tor_launch_config_initialize(tego::out(launchConfig), tego::throw_on_error());
 
         auto rawFilePath = (QFileInfo(settings->filePath()).path() + QStringLiteral("/tor/")).toUtf8();
@@ -172,7 +172,7 @@ int main(int argc, char *argv[]) try
                     auto contactsManager = shims::UserIdentity::userIdentity->getContacts();
 
                     // construct privatekey from privateKey keyblob
-                    std::unique_ptr<tego_ed25519_private_key_t> privateKey;
+                    std::unique_ptr<tego_ed25519_private_key> privateKey;
                     auto keyBlob = privateKeyString.toUtf8();
 
                     tego_ed25519_private_key_from_ed25519_keyblob(
@@ -182,15 +182,15 @@ int main(int argc, char *argv[]) try
                         tego::throw_on_error());
 
                     // load all of our user objects
-                    std::vector<tego_user_id_t*> userIds;
-                    std::vector<tego_user_type_t> userTypes;
+                    std::vector<tego_user_id*> userIds;
+                    std::vector<tego_user_type> userTypes;
                     auto userIdCleanup = tego::make_scope_exit([&]() -> void
                     {
                         std::for_each(userIds.begin(), userIds.end(), &tego_user_id_delete);
                     });
 
                     // map strings saved in json with tego types
-                    const static QMap<QString, tego_user_type_t> stringToUserType =
+                    const static QMap<QString, tego_user_type> stringToUserType =
                     {
                         {QString("allowed"), tego_user_type_allowed},
                         {QString("requesting"), tego_user_type_requesting},
@@ -206,14 +206,14 @@ int main(int argc, char *argv[]) try
                         const auto serviceIdString = it.key();
                         const auto serviceIdRaw = serviceIdString.toUtf8();
 
-                        std::unique_ptr<tego_v3_onion_service_id_t> serviceId;
+                        std::unique_ptr<tego_v3_onion_service_id> serviceId;
                         tego_v3_onion_service_id_from_string(
                             tego::out(serviceId),
                             serviceIdRaw.data(),
                             static_cast<size_t>(serviceIdRaw.size()),
                             tego::throw_on_error());
 
-                        std::unique_ptr<tego_user_id_t> userId;
+                        std::unique_ptr<tego_user_id> userId;
                         tego_user_id_from_v3_onion_service_id(
                             tego::out(userId),
                             serviceId.get(),

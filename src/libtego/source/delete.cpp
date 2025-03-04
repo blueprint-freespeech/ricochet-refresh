@@ -7,7 +7,7 @@
 extern "C"
 {
     #define TEGO_DELETE_IMPL(TYPE)\
-    void TYPE##_delete(TYPE##_t* obj)\
+    void TYPE##_delete(TYPE* obj)\
     {\
         delete obj;\
     }
