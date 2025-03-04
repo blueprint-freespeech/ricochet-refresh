@@ -5,16 +5,15 @@ set(tego_rs_sources
     src/lib.rs
 )
 
-set(TEGO_RS_STATIC "${CMAKE_STATIC_LIBRARY_PREFIX}tego-rs${CMAKE_STATIC_LIBRARY_SUFFIX}" CACHE STRING "tego-rs static library filename" FORCE
+set(tego_rs_static_filename "${CMAKE_STATIC_LIBRARY_PREFIX}tego_rs${CMAKE_STATIC_LIBRARY_SUFFIX}" CACHE STRING "tego-rs static library filename" FORCE
 )
 set(tego_rs_static ${CARGO_TARGET_DIR}/${CARGO_TARGET_TRIPLE}/${CARGO_PROFILE}/${tego_rs_static_filename})
-
 set(tego_rs_include_dir
     ${CARGO_TARGET_DIR}/${CARGO_PROFILE}/include/tego
 )
 
 set(tego_rs_outputs
-    ${CARGO_TARGET_DIR}/${CARGO_PROFILE}/${TEGO_RS_STATIC}
+    ${tego_rs_static}
     ${tego_rs_include_dir}/tego.h
 )
 
@@ -35,3 +34,21 @@ add_custom_command(
 add_custom_target(tego_rs_target
     DEPENDS ${tego_rs_outputs}
 )
+
+#
+# create static library target for consumers
+#
+
+add_library(tego_rs STATIC IMPORTED GLOBAL)
+add_dependencies(tego_rs tego_rs_target)
+set_target_properties(tego_rs PROPERTIES
+    IMPORTED_LOCATION ${tego_rs_static})
+target_include_directories(tego_rs INTERFACE ${tego_rs_include_dir})
+
+# Windows
+if (WIN32)
+    target_link_libraries(tego_rs INTERFACE ws2_32)
+    target_link_libraries(tego_rs INTERFACE userenv)
+    target_link_libraries(tego_rs INTERFACE bcrypt)
+    target_link_libraries(tego_rs INTERFACE ntdll)
+endif()
