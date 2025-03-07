@@ -2,11 +2,12 @@
 use std::ffi::c_char;
 
 // extern
+use anyhow::{Result, bail};
 use tor_interface::tor_crypto::{Ed25519PrivateKey, V3OnionServiceId};
 
 // internal crates
 use crate::context::Context;
-use crate::error::Error;
+use crate::error::{Error, translate_failures};
 use crate::file_hash::FileHash;
 use crate::object_map::ObjectMap;
 use crate::tor_daemon_config::TorDaemonConfig;
@@ -31,6 +32,7 @@ pub const TEGO_ED25519_KEYBLOB_SIZE: usize = TEGO_ED25519_KEYBLOB_LENGTH + 1usiz
 
 pub struct tego_error;
 
+pub(crate) type TegoKey = usize;
 pub(crate) enum TegoObject {
     Error(Error),
     Context(Context),
@@ -46,7 +48,7 @@ type TegoObjectMap = ObjectMap<TegoObject>;
 
 static OBJECT_MAP: std::sync::Mutex<TegoObjectMap> = std::sync::Mutex::new(TegoObjectMap::new());
 
-fn get_object_map<'a>() -> std::sync::MutexGuard<'a, TegoObjectMap> {
+pub(crate) fn get_object_map<'a>() -> std::sync::MutexGuard<'a, TegoObjectMap> {
     OBJECT_MAP.lock().expect("another thread panicked while holding OBJECT_MAP's mutex")
 }
 
@@ -54,11 +56,17 @@ fn get_object_map<'a>() -> std::sync::MutexGuard<'a, TegoObjectMap> {
 ///
 /// @param error : the error object to get the message from
 /// @return : null terminated string with error message whose
-///  lifetime is tied to the source tego_error_t
+///  lifetime is tied to the source tego_error_t; null pointer on failure
 #[no_mangle]
 pub extern "C" fn tego_error_get_message(
-    _error: *const tego_error) -> *const c_char {
-    std::ptr::null()
+    error: *const tego_error) -> *const c_char {
+    let key = error as TegoKey;
+    match get_object_map().get(&key) {
+        Some(TegoObject::Error(err)) => {
+            err.message().as_ptr()
+        },
+        _ => std::ptr::null(),
+    }
 }
 
 pub struct tego_context;
@@ -66,7 +74,7 @@ pub struct tego_context;
 #[no_mangle]
 pub extern "C" fn tego_initialize(
     _out_context: *mut *mut tego_context,
-    _error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) -> () {
 }
 
 #[no_mangle]

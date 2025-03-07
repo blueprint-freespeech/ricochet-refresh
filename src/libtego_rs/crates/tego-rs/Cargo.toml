@@ -12,6 +12,7 @@ repository = "https://github.com/blueprint-freespeech/ricochet-refresh"
 cbindgen = { version = "0.28" }
 
 [dependencies]
+anyhow = "1.0"
 tor-interface = {version = "0.5", features = ["legacy-tor-provider"]}
 
 [lib]
