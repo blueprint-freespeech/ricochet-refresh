@@ -11,6 +11,9 @@ repository = "https://github.com/blueprint-freespeech/ricochet-refresh"
 [build-dependencies]
 cbindgen = { version = "0.28" }
 
+[dependencies]
+tor-interface = {version = "0.5", features = ["legacy-tor-provider"]}
+
 [lib]
 name = "tego_rs"
 crate-type = ["staticlib"]

@@ -2,6 +2,7 @@
 use std::ffi::c_char;
 
 // extern
+use tor_interface::tor_crypto::{Ed25519PrivateKey, V3OnionServiceId};
 
 // internal crates
 use crate::context::Context;
@@ -33,8 +34,8 @@ pub struct tego_error;
 pub(crate) enum TegoObject {
     Error(Error),
     Context(Context),
-    Ed25519PrivateKey,
-    V3OnionServiceId,
+    Ed25519PrivateKey(Ed25519PrivateKey),
+    V3OnionServiceId(V3OnionServiceId),
     UserId(UserId),
     FileHash(FileHash),
     TorDaemonConfig(TorDaemonConfig),
