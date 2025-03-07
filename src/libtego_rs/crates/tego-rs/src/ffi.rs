@@ -1,8 +1,16 @@
 // standard
 use std::ffi::c_char;
 
+// extern
+
 // internal crates
+use crate::context::Context;
+use crate::error::Error;
+use crate::file_hash::FileHash;
 use crate::object_map::ObjectMap;
+use crate::tor_daemon_config::TorDaemonConfig;
+use crate::tor_launch_config::TorLaunchConfig;
+use crate::UserId;
 
 pub const TEGO_TRUE: i32 = 1;
 pub const TEGO_FALSE: i32 = 0;
@@ -22,8 +30,24 @@ pub const TEGO_ED25519_KEYBLOB_SIZE: usize = TEGO_ED25519_KEYBLOB_LENGTH + 1usiz
 
 pub struct tego_error;
 
+pub(crate) enum TegoObject {
+    Error(Error),
+    Context(Context),
+    Ed25519PrivateKey,
+    V3OnionServiceId,
+    UserId(UserId),
+    FileHash(FileHash),
+    TorDaemonConfig(TorDaemonConfig),
+    TorLaunchConfig(TorLaunchConfig),
+}
 
+type TegoObjectMap = ObjectMap<TegoObject>;
 
+static OBJECT_MAP: std::sync::Mutex<TegoObjectMap> = std::sync::Mutex::new(TegoObjectMap::new());
+
+fn get_object_map<'a>() -> std::sync::MutexGuard<'a, TegoObjectMap> {
+    OBJECT_MAP.lock().expect("another thread panicked while holding OBJECT_MAP's mutex")
+}
 
 /// Get error message form tego_error
 ///
