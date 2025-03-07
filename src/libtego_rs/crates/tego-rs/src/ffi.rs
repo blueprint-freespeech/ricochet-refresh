@@ -1,4 +1,8 @@
+// standard
 use std::ffi::c_char;
+
+// internal crates
+use crate::object_map::ObjectMap;
 
 pub const TEGO_TRUE: i32 = 1;
 pub const TEGO_FALSE: i32 = 0;
@@ -17,6 +21,9 @@ pub const TEGO_ED25519_KEYBLOB_LENGTH: usize = 99usize;
 pub const TEGO_ED25519_KEYBLOB_SIZE: usize = TEGO_ED25519_KEYBLOB_LENGTH + 1usize;
 
 pub struct tego_error;
+
+
+
 
 /// Get error message form tego_error
 ///
