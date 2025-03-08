@@ -14,6 +14,12 @@ use crate::tor_daemon_config::TorDaemonConfig;
 use crate::tor_launch_config::TorLaunchConfig;
 use crate::UserId;
 
+macro_rules! bail_not_implemented {
+    () => {
+        bail!("not implemented")
+    }
+}
+
 pub const TEGO_TRUE: i32 = 1;
 pub const TEGO_FALSE: i32 = 0;
 
@@ -75,12 +81,18 @@ pub struct tego_context;
 pub extern "C" fn tego_initialize(
     _out_context: *mut *mut tego_context,
     error: *mut *mut tego_error) -> () {
+    translate_failures((), error, || -> Result<()> {
+        bail_not_implemented!()
+    })
 }
 
 #[no_mangle]
 pub extern "C" fn tego_uninitialize(
     _context: *mut tego_context,
-    _error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) -> () {
+    translate_failures((), error, || -> Result<()> {
+        bail_not_implemented!()
+    })
 }
 
 //
@@ -107,7 +119,10 @@ pub extern "C" fn tego_ed25519_private_key_from_ed25519_keyblob(
     _out_private_key: *mut *mut tego_ed25519_private_key,
     _keyblob: *const c_char,
     _keyblob_length: usize,
-    _error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) -> () {
+    translate_failures((), error, || -> Result<()> {
+        bail_not_implemented!()
+    })
 }
 
 /// Conversion method for converting an ed25519 private key
@@ -127,8 +142,10 @@ pub extern "C" fn tego_ed25519_private_key_from_ed25519_keyblob(
     _out_keyblob: *mut c_char,
     _keyblob_size: usize,
     _private_key: *const tego_ed25519_private_key,
-    _error: *mut *mut tego_error) -> usize {
-    0usize
+    error: *mut *mut tego_error) -> usize {
+    translate_failures(0usize, error, || -> Result<usize> {
+        bail_not_implemented!()
+    })
  }
 
 /// Checks if a service id string is valid per tor rend spec:
@@ -143,8 +160,10 @@ pub extern "C" fn tego_ed25519_private_key_from_ed25519_keyblob(
 pub extern "C" fn tego_v3_onion_service_id_string_is_valid(
     _service_id_string: *const c_char,
     _service_id_string_length: usize,
-    _error: *mut *mut tego_error) -> tego_bool {
-    TEGO_FALSE
+    error: *mut *mut tego_error) -> tego_bool {
+    translate_failures(TEGO_FALSE, error, || -> Result<tego_bool> {
+        bail_not_implemented!()
+    })
 }
 
 /// Construct a service id object from string. Validates
@@ -161,7 +180,10 @@ pub extern "C" fn tego_v3_onion_service_id_string_is_valid(
     _out_service_id: *mut *mut tego_v3_onion_service_id,
     _service_id_string: *const c_char,
     _service_id_string_length: usize,
-    _error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) -> () {
+    translate_failures((), error, || -> Result<()> {
+        bail_not_implemented!()
+    })
  }
 
 /// Serializes out a service id object as a null-terminated utf8 string
@@ -180,8 +202,10 @@ pub extern "C" fn tego_v3_onion_service_id_string_is_valid(
     _service_id: *const tego_v3_onion_service_id,
     _out_service_id_string: *mut c_char,
     _service_id_string_size: usize,
-    _error: *mut *mut tego_error) -> usize {
-    0
+    error: *mut *mut tego_error) -> usize {
+    translate_failures(0usize, error, || -> Result<usize> {
+        bail_not_implemented!()
+    })
  }
 
 //
@@ -201,7 +225,10 @@ pub struct tego_user_id;
 pub extern "C" fn tego_user_id_from_v3_onion_service_id(
     _out_user_id: *mut *mut tego_user_id,
     _service_id: *const tego_v3_onion_service_id,
-    _error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) -> () {
+    translate_failures((), error, || -> Result<()> {
+        bail_not_implemented!()
+    })
 }
 
 /// Get the v3 onion service id from the user id
@@ -213,7 +240,10 @@ pub extern "C" fn tego_user_id_from_v3_onion_service_id(
 pub extern "C" fn tego_user_id_get_v3_onion_service_id(
     _user_id: *const tego_user_id,
     _out_service_id: *mut *mut tego_v3_onion_service_id,
-    _error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) -> () {
+    translate_failures((), error, || -> Result<()> {
+        bail_not_implemented!()
+    })
 }
 
 // contacts/user methods
@@ -227,7 +257,10 @@ pub extern "C" fn tego_user_id_get_v3_onion_service_id(
 pub extern "C" fn tego_context_get_host_user_id(
     _context: *const tego_context,
     _out_host_user: *mut *mut tego_user_id,
-    _error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) -> () {
+    translate_failures((), error, || -> Result<()> {
+        bail_not_implemented!()
+    })
 }
 
 /// State of the host user's onion service
@@ -276,7 +309,10 @@ pub struct tego_tor_launch_config;
  #[no_mangle]
 pub extern "C" fn tego_tor_launch_config_initialize(
     _out_launch_config: *mut *mut tego_tor_launch_config,
-    _error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) -> () {
+    translate_failures((), error, || -> Result<()> {
+        bail_not_implemented!()
+    })
 }
 
 /// Set the root directory for the tor daemon to save/read settings
@@ -291,7 +327,10 @@ pub extern "C" fn tego_tor_launch_config_initialize(
     _launch_config: *mut tego_tor_launch_config,
     _data_directory: *const c_char,
     _data_directory_length: usize,
-    _error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) -> () {
+    translate_failures((), error, || -> Result<()> {
+        bail_not_implemented!()
+    })
  }
 
 /// Start an instance of the tor daemon and associate it with the given context
@@ -303,7 +342,10 @@ pub extern "C" fn tego_tor_launch_config_initialize(
 pub extern "C" fn tego_context_start_tor(
     _context: *mut tego_context,
     _tor_config: *const tego_tor_launch_config,
-    _error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) -> () {
+    translate_failures((), error, || -> Result<()> {
+        bail_not_implemented!()
+    })
 }
 
 pub struct tego_tor_daemon_config;
@@ -315,7 +357,10 @@ pub struct tego_tor_daemon_config;
 #[no_mangle]
 pub extern "C" fn tego_tor_daemon_config_initialize(
     _out_config: *mut *mut tego_tor_daemon_config,
-    _error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) -> () {
+    translate_failures((), error, || -> Result<()> {
+        bail_not_implemented!()
+    })
 }
 
 /// Set up SOCKS4 proxy params, overwrites any existing
@@ -333,7 +378,10 @@ pub extern "C" fn tego_tor_daemon_config_set_proxy_socks4(
     _address: *const c_char,
     _address_length: usize,
     _port: u16,
-    _error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) -> () {
+    translate_failures((), error, || -> Result<()> {
+        bail_not_implemented!()
+    })
 }
 
 /// Set up SOCKS5 proxy params, overwrites any existing
@@ -363,7 +411,10 @@ pub extern "C" fn tego_tor_daemon_config_set_proxy_socks5(
     _username_length: usize,
     _password: *const c_char,
     _password_length: usize,
-    _error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) -> () {
+    translate_failures((), error, || -> Result<()> {
+        bail_not_implemented!()
+    })
 }
 
 /// Set up HTTPS proxy params, overwrites any existing
@@ -393,7 +444,10 @@ pub extern "C" fn tego_tor_daemon_config_set_proxy_socks5(
     _username_length: usize,
     _password: *const c_char,
     _password_length: usize,
-    _error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) -> () {
+    translate_failures((), error, || -> Result<()> {
+        bail_not_implemented!()
+    })
 }
 
 /// Set the allowed ports the tor daemon may use
@@ -407,7 +461,10 @@ pub extern "C" fn tego_tor_daemon_config_set_allowed_ports(
     _config: *mut tego_tor_daemon_config,
     _ports: *const u16,
     _ports_count: usize,
-    _error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) -> () {
+    translate_failures((), error, || -> Result<()> {
+        bail_not_implemented!()
+    })
 }
 
 /// Set the list of bridges for tor to use
@@ -425,7 +482,10 @@ pub extern "C" fn tego_tor_daemon_config_set_bridges(
     _bridges: *const *const c_char,
     _bridge_lengths: *const usize,
     _bridge_count: usize,
-    _error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) -> () {
+    translate_failures((), error, || -> Result<()> {
+        bail_not_implemented!()
+    })
 }
 
 /// Update the tor daemon settings of running instance of tor associated
@@ -438,7 +498,10 @@ pub extern "C" fn tego_tor_daemon_config_set_bridges(
 pub extern "C" fn tego_context_update_tor_daemon_config(
     _context: *mut tego_context,
     _tor_config: *const tego_tor_daemon_config,
-    _error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) -> () {
+    translate_failures((), error, || -> Result<()> {
+        bail_not_implemented!()
+    })
 }
 
 /// Set the DisableNetwork flag of running instance of tor associated
@@ -451,7 +514,10 @@ pub extern "C" fn tego_context_update_tor_daemon_config(
 pub extern "C" fn tego_context_update_disable_network_flag(
     _context: *mut tego_context,
     _disable_network: tego_bool,
-    _error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) -> () {
+    translate_failures((), error, || -> Result<()> {
+        bail_not_implemented!()
+    })
 }
 
 /// Start tego's onion service and try to connect to users
@@ -470,7 +536,10 @@ pub extern "C" fn tego_context_start_service(
     _user_buffer: *const *const tego_user_id,
     _user_type_buffer: *const tego_user_type,
     _user_count: usize,
-    _error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) -> () {
+    translate_failures((), error, || -> Result<()> {
+        bail_not_implemented!()
+    })
 }
 
 /// Returns the number of charactres required (including null) to
@@ -482,8 +551,10 @@ pub extern "C" fn tego_context_start_service(
 #[no_mangle]
 pub extern "C" fn tego_context_get_tor_logs_size(
     _context: *const tego_context,
-    _error: *mut *mut tego_error) -> usize {
-    0usize
+    error: *mut *mut tego_error) -> usize {
+    translate_failures(0usize, error, || -> Result<usize> {
+        bail_not_implemented!()
+    })
 }
 
 /// Fill the passed in buffer with the tor daemon's logs, each entry delimitted
@@ -500,8 +571,10 @@ pub extern "C" fn tego_context_get_tor_logs(
     _context: *const tego_context,
     _out_log_buffer: *mut c_char,
     _log_buffer_size: usize,
-    _error: *mut *mut tego_error) -> usize {
-    0usize
+    error: *mut *mut tego_error) -> usize {
+    translate_failures(0usize, error, || -> Result<usize> {
+        bail_not_implemented!()
+    })
 }
 
 /// Get the null-terminated tor version string
@@ -512,8 +585,10 @@ pub extern "C" fn tego_context_get_tor_logs(
 #[no_mangle]
 pub extern "C" fn tego_context_get_tor_version_string(
     _context: *const tego_context,
-    _error: *mut *mut tego_error) -> *const c_char {
-    std::ptr::null()
+    error: *mut *mut tego_error) -> *const c_char {
+    translate_failures(std::ptr::null(), error, || -> Result<*const c_char> {
+        bail_not_implemented!()
+    })
 }
 
 /// corresponds to Ricochet's Tor::TorControl::Status enum
@@ -535,7 +610,10 @@ pub enum tego_tor_control_status {
 pub extern "C" fn tego_context_get_tor_control_status(
     _context: *const tego_context,
     _out_status: *mut tego_tor_control_status,
-    _error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) -> () {
+    translate_failures((), error, || -> Result<()> {
+        bail_not_implemented!()
+    })
 }
 
 #[repr(C)]
@@ -565,7 +643,10 @@ pub enum tego_tor_network_status {
 pub extern "C" fn tego_context_get_tor_network_status(
     _context: *const tego_context,
     _out_status: *mut tego_tor_network_status,
-    _error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) -> () {
+    translate_failures((), error, || -> Result<()> {
+        bail_not_implemented!()
+    })
 }
 
 #[repr(C)]
@@ -609,8 +690,10 @@ pub enum tego_tor_bootstrap_tag {
 #[no_mangle]
 pub extern "C" fn tego_tor_bootstrap_tag_to_summary(
     _tag: tego_tor_bootstrap_tag,
-    _error: *mut *mut tego_error) -> *const c_char {
-    std::ptr::null()
+    error: *mut *mut tego_error) -> *const c_char {
+    translate_failures(std::ptr::null(), error, || -> Result<*const c_char> {
+        bail_not_implemented!()
+    })
 }
 
 //
@@ -638,8 +721,10 @@ pub type tego_file_size = u64;
 #[no_mangle]
 pub extern "C" fn tego_file_hash_string_size(
     _file_hash: *const tego_file_hash,
-    _error: *mut *mut tego_error) -> usize {
-    0usize
+    error: *mut *mut tego_error) -> usize {
+    translate_failures(0usize, error, || -> Result<usize> {
+        bail_not_implemented!()
+    })
 }
 
 /// Serializes out a file hash as a null-terminated utf8 string to
@@ -656,8 +741,10 @@ pub extern "C" fn tego_file_hash_to_string(
     _file_hash: *const tego_file_hash,
     _out_hash_string: *mut c_char,
     _hash_string_size: usize,
-    _error: *mut *mut tego_error) -> usize {
-    0usize
+    error: *mut *mut tego_error) -> usize {
+    translate_failures(0usize, error, || -> Result<usize> {
+        bail_not_implemented!()
+    })
 }
 
 
@@ -676,7 +763,10 @@ pub extern "C" fn tego_context_send_message(
     _message: *const c_char,
     _message_length: usize,
     _out_id: *mut tego_message_id,
-    _error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) -> () {
+    translate_failures((), error, || -> Result<()> {
+        bail_not_implemented!()
+    })
 }
 
 /// Request to send a file to the given user
@@ -698,7 +788,10 @@ pub extern "C" fn tego_context_send_file_transfer_request(
     _out_id: *mut tego_file_transfer_id,
     _out_file_hash: *mut *mut tego_file_hash,
     _out_file_size: *mut tego_file_size,
-    _error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) -> () {
+    translate_failures((), error, || -> Result<()> {
+        bail_not_implemented!()
+    })
 }
 
 #[repr(C)]
@@ -726,7 +819,10 @@ pub extern "C" fn tego_context_respond_file_transfer_request(
     _response: tego_file_transfer_response,
     _dest_path: *const c_char,
     _dest_path_length: usize,
-    _error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) -> () {
+    translate_failures((), error, || -> Result<()> {
+        bail_not_implemented!()
+    })
 }
 
 /// Cancel an in-progress file transfer
@@ -740,7 +836,10 @@ pub extern "C" fn tego_context_cancel_file_transfer(
     _context: *mut tego_context,
     _user: *const tego_user_id,
     _id: tego_file_transfer_id,
-    _error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) -> () {
+    translate_failures((), error, || -> Result<()> {
+        bail_not_implemented!()
+    })
 }
 
 /// Sends a request to chat to a user
@@ -756,7 +855,10 @@ pub extern "C" fn tego_context_send_chat_request(
     _user: *const tego_user_id,
     _message: *const c_char,
     _message_length: usize,
-    _error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) -> () {
+    translate_failures((), error, || -> Result<()> {
+        bail_not_implemented!()
+    })
 }
 
 #[repr(C)]
@@ -781,7 +883,10 @@ pub extern "C" fn tego_context_acknowledge_chat_request(
     _context: *mut tego_context,
     _user: *const tego_user_id,
     _response: tego_chat_acknowledge,
-    _error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) -> () {
+    translate_failures((), error, || -> Result<()> {
+        bail_not_implemented!()
+    })
 }
 
 /// Forget about a given user, said user will be removed
@@ -795,7 +900,10 @@ pub extern "C" fn tego_context_acknowledge_chat_request(
 pub extern "C" fn tego_context_forget_user(
     _context: *mut tego_context,
     _user: *const tego_user_id,
-    _error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) -> () {
+    translate_failures((), error, || -> Result<()> {
+        bail_not_implemented!()
+    })
 }
 
 //
@@ -1122,133 +1230,190 @@ pub type tego_user_status_changed_callback = Option<
 pub extern "C" fn tego_context_set_tor_error_occurred_callback(
     _context: *mut tego_context,
     _callback: tego_tor_error_occurred_callback,
-    _error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) -> () {
+    translate_failures((), error, || -> Result<()> {
+        bail_not_implemented!()
+    })
 }
 
 #[no_mangle]
 pub extern "C" fn tego_context_set_update_tor_daemon_config_succeeded_callback(
     _context: *mut tego_context,
     _callback: tego_update_tor_daemon_config_succeeded_callback,
-    _error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) -> () {
+    translate_failures((), error, || -> Result<()> {
+        bail_not_implemented!()
+    })
 }
 
 #[no_mangle]
 pub extern "C" fn tego_context_set_tor_control_status_changed_callback(
     _context: *mut tego_context,
     _callback: tego_tor_control_status_changed_callback,
-    _error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) -> () {
+    translate_failures((), error, || -> Result<()> {
+        bail_not_implemented!()
+    })
 }
 
 #[no_mangle]
 pub extern "C" fn tego_context_set_tor_process_status_changed_callback(
     _context: *mut tego_context,
     _callback: tego_tor_process_status_changed_callback,
-    _error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) -> () {
+    translate_failures((), error, || -> Result<()> {
+        bail_not_implemented!()
+    })
 }
 
 #[no_mangle]
 pub extern "C" fn tego_context_set_tor_network_status_changed_callback(
     _context: *mut tego_context,
     _callback: tego_tor_network_status_changed_callback,
-    _error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) -> () {
+    translate_failures((), error, || -> Result<()> {
+        bail_not_implemented!()
+    })
 }
 
 #[no_mangle]
 pub extern "C" fn tego_context_set_tor_bootstrap_status_changed_callback(
     _context: *mut tego_context,
     _callback: tego_tor_bootstrap_status_changed_callback,
-    _error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) -> () {
+    translate_failures((), error, || -> Result<()> {
+        bail_not_implemented!()
+    })
 }
 
 #[no_mangle]
 pub extern "C" fn tego_context_set_tor_log_received_callback(
     _context: *mut tego_context,
     _callback: tego_tor_log_received_callback,
-    _error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) -> () {
+    translate_failures((), error, || -> Result<()> {
+        bail_not_implemented!()
+    })
 }
 
 #[no_mangle]
 pub extern "C" fn tego_context_set_host_onion_service_state_changed_callback(
     _context: *mut tego_context,
     _callback: tego_host_onion_service_state_changed_callback,
-    _error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) -> () {
+    translate_failures((), error, || -> Result<()> {
+        bail_not_implemented!()
+    })
 }
 
 #[no_mangle]
 pub extern "C" fn tego_context_set_chat_request_received_callback(
     _context: *mut tego_context,
     _callback: tego_chat_request_received_callback,
-    _error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) -> () {
+    translate_failures((), error, || -> Result<()> {
+        bail_not_implemented!()
+    })
 }
 
 #[no_mangle]
 pub extern "C" fn tego_context_set_chat_request_response_received_callback(
     _context: *mut tego_context,
     _callback: tego_chat_request_response_received_callback,
-    _error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) -> () {
+    translate_failures((), error, || -> Result<()> {
+        bail_not_implemented!()
+    })
 }
 
 #[no_mangle]
 pub extern "C" fn tego_context_set_message_received_callback(
     _context: *mut tego_context,
     _callback: tego_message_received_callback,
-    _error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) -> () {
+    translate_failures((), error, || -> Result<()> {
+        bail_not_implemented!()
+    })
 }
 
 #[no_mangle]
 pub extern "C" fn tego_context_set_message_acknowledged_callback(
     _context: *mut tego_context,
     _callback: tego_message_acknowledged_callback,
-    _error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) -> () {
+    translate_failures((), error, || -> Result<()> {
+        bail_not_implemented!()
+    })
 }
 
 #[no_mangle]
 pub extern "C" fn tego_context_set_file_transfer_request_received_callback(
     _context: *mut tego_context,
     _callback: tego_file_transfer_request_received_callback,
-    _error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) -> () {
+    translate_failures((), error, || -> Result<()> {
+        bail_not_implemented!()
+    })
 }
 
 #[no_mangle]
 pub extern "C" fn tego_context_set_file_transfer_request_acknowledged_callback(
     _context: *mut tego_context,
     _callback: tego_file_transfer_request_acknowledged_callback,
-    _error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) -> () {
+    translate_failures((), error, || -> Result<()> {
+        bail_not_implemented!()
+    })
 }
 
 #[no_mangle]
 pub extern "C" fn tego_context_set_file_transfer_request_response_received_callback(
     _context: *mut tego_context,
     _callback: tego_file_transfer_request_response_received_callback,
-    _error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) -> () {
+    translate_failures((), error, || -> Result<()> {
+        bail_not_implemented!()
+    })
 }
 
 #[no_mangle]
 pub extern "C" fn tego_context_set_file_transfer_progress_callback(
     _context: *mut tego_context,
     _callback: tego_file_transfer_progress_callback,
-    _error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) -> () {
+    translate_failures((), error, || -> Result<()> {
+        bail_not_implemented!()
+    })
 }
 
 #[no_mangle]
 pub extern "C" fn tego_context_set_file_transfer_complete_callback(
     _context: *mut tego_context,
     _callback: tego_file_transfer_complete_callback,
-    _error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) -> () {
+    translate_failures((), error, || -> Result<()> {
+        bail_not_implemented!()
+    })
 }
 
 #[no_mangle]
 pub extern "C" fn tego_context_set_user_status_changed_callback(
     _context: *mut tego_context,
     _callback: tego_user_status_changed_callback,
-    _error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) -> () {
+    translate_failures((), error, || -> Result<()> {
+        bail_not_implemented!()
+    })
 }
 
 #[no_mangle]
 pub extern "C" fn tego_context_set_new_identity_created_callback(
     _context: *mut tego_context,
     _callback: tego_new_identity_created_callback,
-    _error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) -> () {
+    translate_failures((), error, || -> Result<()> {
+        bail_not_implemented!()
+    })
 }
 
 //
