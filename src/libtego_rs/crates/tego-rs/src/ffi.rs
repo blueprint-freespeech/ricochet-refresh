@@ -381,11 +381,36 @@ pub extern "C" fn tego_tor_launch_config_initialize(
 /// @param error : filled on error
 #[no_mangle]
 pub extern "C" fn tego_context_start_tor(
-    _context: *mut tego_context,
-    _tor_config: *const tego_tor_launch_config,
+    context: *mut tego_context,
+    tor_config: *const tego_tor_launch_config,
     error: *mut *mut tego_error) -> () {
     translate_failures((), error, || -> Result<()> {
-        bail_not_implemented!()
+        bail_if_null!(context);
+        bail_if_null!(tor_config);
+
+        let mut object_map = get_object_map();
+
+        let tor_data_directory = {
+            let tor_config = tor_config as TegoKey;
+            let tor_config = match object_map.get(&tor_config) {
+                Some(TegoObject::TorLaunchConfig(tor_config)) => tor_config,
+                Some(_) => bail!("not a tego_tor_launch_config pointer: {:?}", tor_config as *const c_void),
+                None => bail!("not a valid pointer: {:?}", tor_config as *const c_void),
+            };
+            tor_config.data_directory.clone()
+        };
+
+        let context = context as TegoKey;
+        let context = match object_map.get_mut(&context) {
+            Some(TegoObject::Context(context)) => context,
+            Some(_) => bail!("not a tego_context pointer: {:?}", context as *const c_void),
+            None => bail!("not a valid pointer: {:?}", context as *const c_void),
+        };
+
+        context.tor_data_directory = tor_data_directory;
+
+        // we defer tor daemonn launch until after tego_context_update_tor_daemon_config
+        Ok(())
     })
 }
 
@@ -594,7 +619,8 @@ pub extern "C" fn tego_context_get_tor_logs_size(
     _context: *const tego_context,
     error: *mut *mut tego_error) -> usize {
     translate_failures(0usize, error, || -> Result<usize> {
-        bail_not_implemented!()
+        // TODO: maybe implement
+        Ok(0usize)
     })
 }
 
@@ -614,7 +640,8 @@ pub extern "C" fn tego_context_get_tor_logs(
     _log_buffer_size: usize,
     error: *mut *mut tego_error) -> usize {
     translate_failures(0usize, error, || -> Result<usize> {
-        bail_not_implemented!()
+        // TODO: maybe implement
+        Ok(0usize)
     })
 }
 
@@ -653,7 +680,8 @@ pub extern "C" fn tego_context_get_tor_control_status(
     _out_status: *mut tego_tor_control_status,
     error: *mut *mut tego_error) -> () {
     translate_failures((), error, || -> Result<()> {
-        bail_not_implemented!()
+        // TODO: maybe implement
+        Ok(())
     })
 }
 
@@ -686,7 +714,8 @@ pub extern "C" fn tego_context_get_tor_network_status(
     _out_status: *mut tego_tor_network_status,
     error: *mut *mut tego_error) -> () {
     translate_failures((), error, || -> Result<()> {
-        bail_not_implemented!()
+        // TODO: maybe implement
+        Ok(())
     })
 }
 

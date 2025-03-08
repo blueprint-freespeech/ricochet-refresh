@@ -1,9 +1,13 @@
+// standard
+use std::path::PathBuf;
+
 // internal cratse
 use crate::ffi::*;
 
 #[derive(Default)]
 pub(crate) struct Context {
     pub callbacks: Callbacks,
+    pub tor_data_directory: PathBuf,
 }
 
 #[derive(Default)]
