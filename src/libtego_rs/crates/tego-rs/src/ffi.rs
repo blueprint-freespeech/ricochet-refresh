@@ -1,5 +1,6 @@
 // standard
 use std::ffi::{c_char, c_void};
+use std::path::PathBuf;
 
 // extern
 use anyhow::{Result, bail};
@@ -322,10 +323,17 @@ pub struct tego_tor_launch_config;
 /// @apram error : filled on error
  #[no_mangle]
 pub extern "C" fn tego_tor_launch_config_initialize(
-    _out_launch_config: *mut *mut tego_tor_launch_config,
+    out_launch_config: *mut *mut tego_tor_launch_config,
     error: *mut *mut tego_error) -> () {
     translate_failures((), error, || -> Result<()> {
-        bail_not_implemented!()
+        bail_if_null!(out_launch_config);
+
+        let object = TegoObject::TorLaunchConfig(Default::default());
+        let key = get_object_map().insert(object);
+        unsafe {
+            *out_launch_config = key as *mut tego_tor_launch_config;
+        }
+        Ok(())
     })
 }
 
@@ -338,12 +346,31 @@ pub extern "C" fn tego_tor_launch_config_initialize(
 /// @param error : filled on error
  #[no_mangle]
  pub extern "C" fn tego_tor_launch_config_set_data_directory(
-    _launch_config: *mut tego_tor_launch_config,
-    _data_directory: *const c_char,
-    _data_directory_length: usize,
+    launch_config: *mut tego_tor_launch_config,
+    data_directory: *const c_char,
+    data_directory_length: usize,
     error: *mut *mut tego_error) -> () {
     translate_failures((), error, || -> Result<()> {
-        bail_not_implemented!()
+        bail_if_null!(launch_config);
+        bail_if_null!(data_directory);
+        bail_if_equal!(data_directory_length, 0usize);
+
+        let data_directory = unsafe { std::slice::from_raw_parts(data_directory as *const u8, data_directory_length) };
+        let data_directory = std::str::from_utf8(data_directory)?;
+
+        let mut object_map = get_object_map();
+        let key = launch_config as TegoKey;
+        let launch_config: &mut TorLaunchConfig = match object_map.get_mut(&key) {
+            Some(TegoObject::TorLaunchConfig(launch_config)) => launch_config,
+            Some(_) => bail!("not a tego_tor_launch_config pointer: {:?}", key as *const c_void),
+            None => bail!("not a valid pointer: {:?}", key as *const c_void),
+        };
+
+        let data_directory = PathBuf::from(data_directory);
+        let data_directory = std::path::absolute(data_directory)?;
+        launch_config.data_directory = data_directory;
+
+        Ok(())
     })
  }
 
