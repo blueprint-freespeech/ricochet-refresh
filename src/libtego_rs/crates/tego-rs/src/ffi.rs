@@ -391,23 +391,32 @@ pub extern "C" fn tego_context_start_tor(
         let mut object_map = get_object_map();
 
         let tor_data_directory = {
-            let tor_config = tor_config as TegoKey;
-            let tor_config = match object_map.get(&tor_config) {
+            let tor_config_key = tor_config as TegoKey;
+            let tor_config = match object_map.get(&tor_config_key) {
                 Some(TegoObject::TorLaunchConfig(tor_config)) => tor_config,
-                Some(_) => bail!("not a tego_tor_launch_config pointer: {:?}", tor_config as *const c_void),
-                None => bail!("not a valid pointer: {:?}", tor_config as *const c_void),
+                Some(_) => bail!("not a tego_tor_launch_config pointer: {:?}", tor_config_key as *const c_void),
+                None => bail!("not a valid pointer: {:?}", tor_config_key as *const c_void),
             };
             tor_config.data_directory.clone()
         };
 
-        let context = context as TegoKey;
-        let context = match object_map.get_mut(&context) {
+        let context_ptr = context;
+        let context_key = context_ptr as TegoKey;
+        let context = match object_map.get_mut(&context_key) {
             Some(TegoObject::Context(context)) => context,
-            Some(_) => bail!("not a tego_context pointer: {:?}", context as *const c_void),
-            None => bail!("not a valid pointer: {:?}", context as *const c_void),
+            Some(_) => bail!("not a tego_context pointer: {:?}", context_key as *const c_void),
+            None => bail!("not a valid pointer: {:?}", context_key as *const c_void),
         };
 
         context.tor_data_directory = tor_data_directory;
+
+        if let Some(callback) = context.callbacks.on_tor_control_status_changed {
+            callback(context_ptr, tego_tor_control_status::tego_tor_control_status_connected);
+        }
+
+        if let Some(callback) = context.callbacks.on_tor_process_status_changed {
+            callback(context_ptr, tego_tor_process_status::tego_tor_process_status_running);
+        }
 
         // we defer tor daemonn launch until after tego_context_update_tor_daemon_config
         Ok(())
@@ -604,7 +613,8 @@ pub extern "C" fn tego_context_start_service(
     _user_count: usize,
     error: *mut *mut tego_error) -> () {
     translate_failures((), error, || -> Result<()> {
-        bail_not_implemented!()
+        // TODO: refactor so this funciton is called *after* bootstrap
+        Ok(())
     })
 }
 
@@ -676,11 +686,14 @@ pub enum tego_tor_control_status {
 /// @param error : filled on error
 #[no_mangle]
 pub extern "C" fn tego_context_get_tor_control_status(
-    _context: *const tego_context,
-    _out_status: *mut tego_tor_control_status,
+    context: *const tego_context,
+    out_status: *mut tego_tor_control_status,
     error: *mut *mut tego_error) -> () {
     translate_failures((), error, || -> Result<()> {
-        // TODO: maybe implement
+        // TODO: remove this function
+        bail_if_null!(context);
+        bail_if_null!(out_status);
+        unsafe { *out_status = tego_tor_control_status::tego_tor_control_status_connected; }
         Ok(())
     })
 }
