@@ -116,8 +116,6 @@ pub extern "C" fn tego_uninitialize(
 //
 
 pub struct tego_ed25519_private_key;
-pub struct tego_ed25519_public_key;
-pub struct tego_ed25519_signature;
 pub struct tego_v3_onion_service_id;
 
 /// Conversion method for converting the keyblob string returned by
@@ -1413,38 +1411,47 @@ pub extern "C" fn tego_context_set_new_identity_created_callback(
 // Destructors for various tego types
 //
 
-#[no_mangle]
-pub extern "C" fn tego_error_delete(_value: *mut tego_error) -> () {
+macro_rules! impl_deleter {
+    ($tego_object:pat, $value:expr) => {
+        let key = $value as TegoKey;
+        let mut object_map = get_object_map();
+        if let Some($tego_object) = object_map.get(&key) {
+            object_map.remove(&key);
+        }
+    }
 }
 
 #[no_mangle]
-pub extern "C" fn tego_ed25519_private_key_delete(_value: *mut tego_ed25519_private_key) -> () {
+pub extern "C" fn tego_error_delete(value: *mut tego_error) -> () {
+    impl_deleter!(TegoObject::Error(_), value);
 }
 
 #[no_mangle]
-pub extern "C" fn tego_ed25519_public_key_delete(_value: *mut tego_ed25519_public_key) -> () {
+pub extern "C" fn tego_ed25519_private_key_delete(value: *mut tego_ed25519_private_key) -> () {
+    impl_deleter!(TegoObject::Ed25519PrivateKey(_), value);
 }
 
 #[no_mangle]
-pub extern "C" fn tego_ed25519_signature_delete(_value: *mut tego_ed25519_signature) -> () {
+pub extern "C" fn tego_v3_onion_service_id_delete(value: *mut tego_v3_onion_service_id) -> () {
+    impl_deleter!(TegoObject::V3OnionServiceId(_), value);
 }
 
 #[no_mangle]
-pub extern "C" fn tego_v3_onion_service_id_delete(_value: *mut tego_v3_onion_service_id) -> () {
+pub extern "C" fn tego_user_id_delete(value: *mut tego_user_id) -> () {
+    impl_deleter!(TegoObject::UserId(_), value);
 }
 
 #[no_mangle]
-pub extern "C" fn tego_user_id_delete(_value: *mut tego_user_id) -> () {
+pub extern "C" fn tego_tor_launch_config_delete(value: *mut tego_tor_launch_config) -> () {
+    impl_deleter!(TegoObject::TorLaunchConfig(_), value);
 }
 
 #[no_mangle]
-pub extern "C" fn tego_tor_launch_config_delete(_value: *mut tego_tor_launch_config) -> () {
+pub extern "C" fn tego_tor_daemon_config_delete(value: *mut tego_tor_daemon_config) -> () {
+    impl_deleter!(TegoObject::TorDaemonConfig(_), value);
 }
 
 #[no_mangle]
-pub extern "C" fn tego_tor_daemon_config_delete(_value: *mut tego_tor_daemon_config) -> () {
-}
-
-#[no_mangle]
-pub extern "C" fn tego_file_hash_delete(_value: *mut tego_file_hash) -> () {
+pub extern "C" fn tego_file_hash_delete(value: *mut tego_file_hash) -> () {
+    impl_deleter!(TegoObject::FileHash(_), value);
 }
