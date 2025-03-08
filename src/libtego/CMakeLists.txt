@@ -137,7 +137,6 @@ add_library(
     source/globals.cpp
     source/globals.hpp
     source/libtego.cpp
-    source/logger.cpp
     source/orconfig.h
     source/precomp.h
     source/protocol/AuthHiddenServiceChannel.cpp
@@ -188,7 +187,6 @@ add_library(
     source/tor_stubs.cpp
     source/user.cpp
     source/user.hpp
-    source/utilities.cpp
     source/utils/CryptoKey.cpp
     source/utils/CryptoKey.h
     source/utils/PendingOperation.cpp

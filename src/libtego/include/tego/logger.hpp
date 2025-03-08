@@ -30,7 +30,7 @@ public:
         auto& fs = get_stream();
 
         fmt::print(fs, "[{:f}][{}] ", get_timestamp(), std::this_thread::get_id());
-        fmt::print(fs, format, std::forward<ARGS>(args)...);
+        fmt::print(fs, fmt::runtime(format), std::forward<ARGS>(args)...);
         fs << std::endl;
     }
 
@@ -45,12 +45,27 @@ public:
         fs << msg << std::endl;
     }
 
-    static void trace(const source_location& loc = source_location::current());
+    static void trace(const source_location& loc = source_location::current()) {
+        println("{}:{} -> {}(...)", loc.file_name(), loc.line(), loc.function_name());
+    }
 private:
-    static std::ofstream& get_stream();
-    static std::mutex& get_mutex();
-    static double get_timestamp();
+    static std::ofstream& get_stream() {
+        static std::ofstream fs("libtego.log", std::ios::binary);
+        return fs;
+    }
+    static std::mutex& get_mutex() {
+        static std::mutex m;
+        return m;
+    }
+    static double get_timestamp() {
+        const static auto start = std::chrono::system_clock::now();
+        const auto now = std::chrono::system_clock::now();
+        std::chrono::duration<double> duration(now - start);
+        return duration.count();
+    }
 };
+
+
 
 #else // ENABLE_TEGO_LOGGER
 
