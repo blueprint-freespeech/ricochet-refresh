@@ -12,6 +12,7 @@ pub(crate) use bail_not_implemented;
 //
 // Argument validation macros
 //
+
 // ensure pointer is not null
 macro_rules! bail_if_null {
     ($ptr:ident) => {
@@ -23,3 +24,16 @@ macro_rules! bail_if_null {
     };
 }
 pub(crate) use bail_if_null;
+
+// ensure values are not equal
+macro_rules! bail_if_equal {
+    ($left:expr, $right:expr) => {
+        paste::paste! {
+            if $left == $right {
+                bail!(stringify!([<$left>] must not be equal [<$right>]));
+            }
+        }
+    };
+}
+pub(crate) use bail_if_equal;
+
