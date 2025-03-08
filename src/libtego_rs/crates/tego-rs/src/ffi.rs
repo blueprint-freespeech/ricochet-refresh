@@ -1,5 +1,5 @@
 // standard
-use std::ffi::c_char;
+use std::ffi::{c_char, c_void};
 
 // extern
 use anyhow::{Result, bail};
@@ -61,12 +61,16 @@ pub(crate) fn get_object_map<'a>() -> std::sync::MutexGuard<'a, TegoObjectMap> {
 #[no_mangle]
 pub extern "C" fn tego_error_get_message(
     error: *const tego_error) -> *const c_char {
-    let key = error as TegoKey;
-    match get_object_map().get(&key) {
-        Some(TegoObject::Error(err)) => {
-            err.message().as_ptr()
-        },
-        _ => std::ptr::null(),
+    if error.is_null() {
+        std::ptr::null()
+    } else {
+        let key = error as TegoKey;
+        match get_object_map().get(&key) {
+            Some(TegoObject::Error(err)) => {
+                err.message().as_ptr()
+            },
+            _ => std::ptr::null(),
+        }
     }
 }
 
@@ -74,19 +78,36 @@ pub struct tego_context;
 
 #[no_mangle]
 pub extern "C" fn tego_initialize(
-    _out_context: *mut *mut tego_context,
+    out_context: *mut *mut tego_context,
     error: *mut *mut tego_error) -> () {
     translate_failures((), error, || -> Result<()> {
-        bail_not_implemented!()
+        bail_if_null!(out_context);
+
+        let object = TegoObject::Context(Default::default());
+        let key = get_object_map().insert(object);
+        unsafe {
+            *out_context = key as *mut tego_context;
+        }
+        Ok(())
     })
 }
 
 #[no_mangle]
 pub extern "C" fn tego_uninitialize(
-    _context: *mut tego_context,
+    context: *mut tego_context,
     error: *mut *mut tego_error) -> () {
     translate_failures((), error, || -> Result<()> {
-        bail_not_implemented!()
+        bail_if_null!(context);
+
+        let key = context as TegoKey;
+        let mut object_map = get_object_map();
+        match object_map.get(&key) {
+            Some(TegoObject::Context(_)) => object_map.remove(&key),
+            Some(_) => bail!("not a tego_context pointer: {:?}", key as *const c_void),
+            None => bail!("not a valid pointer: {:?}", key as *const c_void),
+        };
+
+        Ok(())
     })
 }
 
