@@ -9,16 +9,11 @@ use tor_interface::tor_crypto::{Ed25519PrivateKey, V3OnionServiceId};
 use crate::context::Context;
 use crate::error::{Error, translate_failures};
 use crate::file_hash::FileHash;
+use crate::macros::*;
 use crate::object_map::ObjectMap;
 use crate::tor_daemon_config::TorDaemonConfig;
 use crate::tor_launch_config::TorLaunchConfig;
 use crate::UserId;
-
-macro_rules! bail_not_implemented {
-    () => {
-        bail!("not implemented")
-    }
-}
 
 pub const TEGO_TRUE: i32 = 1;
 pub const TEGO_FALSE: i32 = 0;
