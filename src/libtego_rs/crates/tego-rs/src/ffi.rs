@@ -1239,197 +1239,174 @@ pub type tego_user_status_changed_callback = Option<
 >;
 
 //
-// Setters for varoius callbacks
+// Setters for various callbacks
 //
+
+macro_rules! impl_callback_setter {
+    ($dest:ident, $context:expr, $callback:expr, $error:expr) => {
+        translate_failures((), $error, || -> Result<()> {
+            let key = $context as TegoKey;
+            match get_object_map().get_mut(&key) {
+                Some(TegoObject::Context(context)) => context.callbacks.$dest = $callback,
+                Some(_) => bail!("not a tego_context pointer: {:?}", key as *const c_void),
+                None => bail!("not a valid pointer: {:?}", key as *const c_void),
+            };
+            Ok(())
+        })
+    }
+}
 
 #[no_mangle]
 pub extern "C" fn tego_context_set_tor_error_occurred_callback(
-    _context: *mut tego_context,
-    _callback: tego_tor_error_occurred_callback,
+    context: *mut tego_context,
+    callback: tego_tor_error_occurred_callback,
     error: *mut *mut tego_error) -> () {
-    translate_failures((), error, || -> Result<()> {
-        bail_not_implemented!()
-    })
+    impl_callback_setter!(on_tor_error_occurred, context, callback, error);
 }
 
 #[no_mangle]
 pub extern "C" fn tego_context_set_update_tor_daemon_config_succeeded_callback(
-    _context: *mut tego_context,
-    _callback: tego_update_tor_daemon_config_succeeded_callback,
+    context: *mut tego_context,
+    callback: tego_update_tor_daemon_config_succeeded_callback,
     error: *mut *mut tego_error) -> () {
-    translate_failures((), error, || -> Result<()> {
-        bail_not_implemented!()
-    })
+    impl_callback_setter!(on_update_tor_daemon_config_succeeded, context, callback, error);
+
 }
 
 #[no_mangle]
 pub extern "C" fn tego_context_set_tor_control_status_changed_callback(
-    _context: *mut tego_context,
-    _callback: tego_tor_control_status_changed_callback,
+    context: *mut tego_context,
+    callback: tego_tor_control_status_changed_callback,
     error: *mut *mut tego_error) -> () {
-    translate_failures((), error, || -> Result<()> {
-        bail_not_implemented!()
-    })
+    impl_callback_setter!(on_tor_control_status_changed, context, callback, error);
 }
 
 #[no_mangle]
 pub extern "C" fn tego_context_set_tor_process_status_changed_callback(
-    _context: *mut tego_context,
-    _callback: tego_tor_process_status_changed_callback,
+    context: *mut tego_context,
+    callback: tego_tor_process_status_changed_callback,
     error: *mut *mut tego_error) -> () {
-    translate_failures((), error, || -> Result<()> {
-        bail_not_implemented!()
-    })
+    impl_callback_setter!(on_tor_process_status_changed, context, callback, error);
 }
 
 #[no_mangle]
 pub extern "C" fn tego_context_set_tor_network_status_changed_callback(
-    _context: *mut tego_context,
-    _callback: tego_tor_network_status_changed_callback,
+    context: *mut tego_context,
+    callback: tego_tor_network_status_changed_callback,
     error: *mut *mut tego_error) -> () {
-    translate_failures((), error, || -> Result<()> {
-        bail_not_implemented!()
-    })
+    impl_callback_setter!(on_tor_network_status_changed, context, callback, error);
 }
 
 #[no_mangle]
 pub extern "C" fn tego_context_set_tor_bootstrap_status_changed_callback(
-    _context: *mut tego_context,
-    _callback: tego_tor_bootstrap_status_changed_callback,
+    context: *mut tego_context,
+    callback: tego_tor_bootstrap_status_changed_callback,
     error: *mut *mut tego_error) -> () {
-    translate_failures((), error, || -> Result<()> {
-        bail_not_implemented!()
-    })
+    impl_callback_setter!(on_tor_bootstrap_status_changed, context, callback, error);
 }
 
 #[no_mangle]
 pub extern "C" fn tego_context_set_tor_log_received_callback(
-    _context: *mut tego_context,
-    _callback: tego_tor_log_received_callback,
+    context: *mut tego_context,
+    callback: tego_tor_log_received_callback,
     error: *mut *mut tego_error) -> () {
-    translate_failures((), error, || -> Result<()> {
-        bail_not_implemented!()
-    })
+    impl_callback_setter!(on_tor_log_received, context, callback, error);
 }
 
 #[no_mangle]
 pub extern "C" fn tego_context_set_host_onion_service_state_changed_callback(
-    _context: *mut tego_context,
-    _callback: tego_host_onion_service_state_changed_callback,
+    context: *mut tego_context,
+    callback: tego_host_onion_service_state_changed_callback,
     error: *mut *mut tego_error) -> () {
-    translate_failures((), error, || -> Result<()> {
-        bail_not_implemented!()
-    })
+    impl_callback_setter!(on_host_onion_service_state_changed, context, callback, error);
 }
 
 #[no_mangle]
 pub extern "C" fn tego_context_set_chat_request_received_callback(
-    _context: *mut tego_context,
-    _callback: tego_chat_request_received_callback,
+    context: *mut tego_context,
+    callback: tego_chat_request_received_callback,
     error: *mut *mut tego_error) -> () {
-    translate_failures((), error, || -> Result<()> {
-        bail_not_implemented!()
-    })
+    impl_callback_setter!(on_chat_request_received, context, callback, error);
 }
 
 #[no_mangle]
 pub extern "C" fn tego_context_set_chat_request_response_received_callback(
-    _context: *mut tego_context,
-    _callback: tego_chat_request_response_received_callback,
+    context: *mut tego_context,
+    callback: tego_chat_request_response_received_callback,
     error: *mut *mut tego_error) -> () {
-    translate_failures((), error, || -> Result<()> {
-        bail_not_implemented!()
-    })
+    impl_callback_setter!(on_chat_request_response_received, context, callback, error);
 }
 
 #[no_mangle]
 pub extern "C" fn tego_context_set_message_received_callback(
-    _context: *mut tego_context,
-    _callback: tego_message_received_callback,
+    context: *mut tego_context,
+    callback: tego_message_received_callback,
     error: *mut *mut tego_error) -> () {
-    translate_failures((), error, || -> Result<()> {
-        bail_not_implemented!()
-    })
+    impl_callback_setter!(on_message_received, context, callback, error);
 }
 
 #[no_mangle]
 pub extern "C" fn tego_context_set_message_acknowledged_callback(
-    _context: *mut tego_context,
-    _callback: tego_message_acknowledged_callback,
+    context: *mut tego_context,
+    callback: tego_message_acknowledged_callback,
     error: *mut *mut tego_error) -> () {
-    translate_failures((), error, || -> Result<()> {
-        bail_not_implemented!()
-    })
+    impl_callback_setter!(on_message_acknowledged, context, callback, error);
 }
 
 #[no_mangle]
 pub extern "C" fn tego_context_set_file_transfer_request_received_callback(
-    _context: *mut tego_context,
-    _callback: tego_file_transfer_request_received_callback,
+    context: *mut tego_context,
+    callback: tego_file_transfer_request_received_callback,
     error: *mut *mut tego_error) -> () {
-    translate_failures((), error, || -> Result<()> {
-        bail_not_implemented!()
-    })
+    impl_callback_setter!(on_file_transfer_request_received, context, callback, error);
 }
 
 #[no_mangle]
 pub extern "C" fn tego_context_set_file_transfer_request_acknowledged_callback(
-    _context: *mut tego_context,
-    _callback: tego_file_transfer_request_acknowledged_callback,
+    context: *mut tego_context,
+    callback: tego_file_transfer_request_acknowledged_callback,
     error: *mut *mut tego_error) -> () {
-    translate_failures((), error, || -> Result<()> {
-        bail_not_implemented!()
-    })
+    impl_callback_setter!(on_file_transfer_request_acknowledged, context, callback, error);
 }
 
 #[no_mangle]
 pub extern "C" fn tego_context_set_file_transfer_request_response_received_callback(
-    _context: *mut tego_context,
-    _callback: tego_file_transfer_request_response_received_callback,
+    context: *mut tego_context,
+    callback: tego_file_transfer_request_response_received_callback,
     error: *mut *mut tego_error) -> () {
-    translate_failures((), error, || -> Result<()> {
-        bail_not_implemented!()
-    })
+    impl_callback_setter!(on_file_transfer_request_response_received, context, callback, error);
 }
 
 #[no_mangle]
 pub extern "C" fn tego_context_set_file_transfer_progress_callback(
-    _context: *mut tego_context,
-    _callback: tego_file_transfer_progress_callback,
+    context: *mut tego_context,
+    callback: tego_file_transfer_progress_callback,
     error: *mut *mut tego_error) -> () {
-    translate_failures((), error, || -> Result<()> {
-        bail_not_implemented!()
-    })
+    impl_callback_setter!(on_file_transfer_progress, context, callback, error);
 }
 
 #[no_mangle]
 pub extern "C" fn tego_context_set_file_transfer_complete_callback(
-    _context: *mut tego_context,
-    _callback: tego_file_transfer_complete_callback,
+    context: *mut tego_context,
+    callback: tego_file_transfer_complete_callback,
     error: *mut *mut tego_error) -> () {
-    translate_failures((), error, || -> Result<()> {
-        bail_not_implemented!()
-    })
+    impl_callback_setter!(on_file_transfer_complete, context, callback, error);
 }
 
 #[no_mangle]
 pub extern "C" fn tego_context_set_user_status_changed_callback(
-    _context: *mut tego_context,
-    _callback: tego_user_status_changed_callback,
+    context: *mut tego_context,
+    callback: tego_user_status_changed_callback,
     error: *mut *mut tego_error) -> () {
-    translate_failures((), error, || -> Result<()> {
-        bail_not_implemented!()
-    })
+    impl_callback_setter!(on_user_status_changed, context, callback, error);
 }
 
 #[no_mangle]
 pub extern "C" fn tego_context_set_new_identity_created_callback(
-    _context: *mut tego_context,
-    _callback: tego_new_identity_created_callback,
+    context: *mut tego_context,
+    callback: tego_new_identity_created_callback,
     error: *mut *mut tego_error) -> () {
-    translate_failures((), error, || -> Result<()> {
-        bail_not_implemented!()
-    })
+    impl_callback_setter!(on_new_identity_created, context, callback, error);
 }
 
 //
