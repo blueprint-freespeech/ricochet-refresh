@@ -695,11 +695,23 @@ pub extern "C" fn tego_context_start_service(
 /// @return : the number of characters required
 #[no_mangle]
 pub extern "C" fn tego_context_get_tor_logs_size(
-    _context: *const tego_context,
+    context: *const tego_context,
     error: *mut *mut tego_error) -> usize {
     translate_failures(0usize, error, || -> Result<usize> {
-        // TODO: maybe implement
-        Ok(0usize)
+        bail_if_null!(context);
+
+        let context_ptr = context;
+        let key = context_ptr as TegoKey;
+        match get_object_map().get(&key) {
+            Some(TegoObject::Context(context)) => {
+                let tor_logs = context.tor_logs.lock().unwrap();
+                let tor_logs = tor_logs.join("\n");
+                // 1 extra for null terminator
+                Ok(tor_logs.len() + 1usize)
+            },
+            Some(_) => bail!("not a tego_context pointer: {:?}", key as *const c_void),
+            None => bail!("not a valid pointer: {:?}", key as *const c_void),
+        }
     })
 }
 
@@ -714,13 +726,44 @@ pub extern "C" fn tego_context_get_tor_logs_size(
 ///  out_log_buffer
 #[no_mangle]
 pub extern "C" fn tego_context_get_tor_logs(
-    _context: *const tego_context,
-    _out_log_buffer: *mut c_char,
-    _log_buffer_size: usize,
+    context: *const tego_context,
+    out_log_buffer: *mut c_char,
+    log_buffer_size: usize,
     error: *mut *mut tego_error) -> usize {
     translate_failures(0usize, error, || -> Result<usize> {
-        // TODO: maybe implement
-        Ok(0usize)
+        bail_if_null!(context);
+        bail_if_null!(out_log_buffer);
+
+        if log_buffer_size == 0usize {
+            return Ok(0usize);
+        }
+
+        let context_ptr = context;
+        let key = context_ptr as TegoKey;
+        match get_object_map().get(&key) {
+            Some(TegoObject::Context(context)) => {
+                let tor_logs = context.tor_logs.lock().unwrap();
+                let tor_logs = tor_logs.join("\n");
+                let tor_logs = tor_logs.as_str();
+
+                // number of bytes to write
+                let bytes = std::cmp::min(log_buffer_size - 1, tor_logs.len());
+
+                unsafe {
+                    let out_log_buffer = std::slice::from_raw_parts_mut(
+                        out_log_buffer as *mut u8,
+                        log_buffer_size);
+                    std::ptr::copy(
+                        tor_logs.as_ptr(),
+                        out_log_buffer.as_mut_ptr(),
+                        bytes);
+                    out_log_buffer[bytes] = 0u8;
+                }
+                Ok(bytes)
+            },
+            Some(_) => bail!("not a tego_context pointer: {:?}", key as *const c_void),
+            None => bail!("not a valid pointer: {:?}", key as *const c_void),
+        }
     })
 }
 

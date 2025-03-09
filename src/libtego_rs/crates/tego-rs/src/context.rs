@@ -22,6 +22,7 @@ pub(crate) struct Context {
     pub allowed_ports: Option<Vec<u16>>,
     tor_client: Option<Arc<Mutex<LegacyTorClient>>>,
     pub tor_version: CString,
+    pub tor_logs: Arc<Mutex<Vec<String>>>,
 }
 
 impl Context {
@@ -51,10 +52,12 @@ impl Context {
 
         let tor_client = tor_client_weak;
 
+        let tor_logs = Arc::downgrade(&self.tor_logs);
+
         std::thread::Builder::new()
             .name("network-task".to_string())
             .spawn(move || {
-                Self::network_task(tego_key, &callbacks, &tor_client)
+                Self::network_task(tego_key, &callbacks, &tor_client, &tor_logs)
             })?;
 
         Ok(())
@@ -80,7 +83,8 @@ impl Context {
     fn network_task(
         tego_key: TegoKey,
         callbacks: &Weak<Mutex<Callbacks>>,
-        tor_client: &Weak<Mutex<LegacyTorClient>>) -> () {
+        tor_client: &Weak<Mutex<LegacyTorClient>>,
+        tor_logs: &Weak<Mutex<Vec<String>>>) -> () {
 
         println!("begin network_task");
 
@@ -107,7 +111,6 @@ impl Context {
                 for e in events {
                     match e {
                         TorEvent::BootstrapStatus{progress, tag, summary} => {
-                            println!("progress: {progress}, tag: {tag}, summary: {summary}");
                             if let Some(on_tor_bootstrap_status_changed) = callbacks.on_tor_bootstrap_status_changed {
                                 on_tor_bootstrap_status_changed(tego_key as *mut tego_context, progress as i32, tag.as_str().into());
                             }
@@ -116,7 +119,16 @@ impl Context {
 
                         },
                         TorEvent::LogReceived{line} => {
+                            if let Some(on_tor_log_received) = callbacks.on_tor_log_received {
+                                let line = CString::new(line.as_str()).unwrap();
+                                let line_len = line.as_bytes().len();
+                                on_tor_log_received(tego_key as *mut tego_context, line.as_c_str().as_ptr(), line_len);
+                            }
 
+                            if let Some(tor_logs) = tor_logs.upgrade() {
+                                let mut tor_logs = tor_logs.lock().unwrap();
+                                tor_logs.push(line);
+                            }
                         },
                         TorEvent::OnionServicePublished{service_id} => {
 
