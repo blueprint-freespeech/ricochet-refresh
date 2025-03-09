@@ -731,10 +731,19 @@ pub extern "C" fn tego_context_get_tor_logs(
 /// @return : the version string for the context's running tor daemon
 #[no_mangle]
 pub extern "C" fn tego_context_get_tor_version_string(
-    _context: *const tego_context,
+    context: *const tego_context,
     error: *mut *mut tego_error) -> *const c_char {
     translate_failures(std::ptr::null(), error, || -> Result<*const c_char> {
-        bail_not_implemented!()
+        bail_if_null!(context);
+
+        let key = context as TegoKey;
+        match get_object_map().get(&key) {
+            Some(TegoObject::Context(context)) => {
+                Ok(context.tor_version.as_c_str().as_ptr())
+            },
+            Some(_) => bail!("not a tego_context pointer: {:?}", key as *const c_void),
+            None => bail!("not a valid pointer: {:?}", key as *const c_void),
+        }
     })
 }
 

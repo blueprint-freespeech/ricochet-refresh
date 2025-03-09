@@ -1,4 +1,5 @@
 // standard
+use std::ffi::CString;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, Weak};
 
@@ -20,6 +21,7 @@ pub(crate) struct Context {
     pub proxy_settings: Option<ProxyConfig>,
     pub allowed_ports: Option<Vec<u16>>,
     tor_client: Option<Arc<Mutex<LegacyTorClient>>>,
+    pub tor_version: CString,
 }
 
 impl Context {
@@ -37,7 +39,11 @@ impl Context {
             bridge_lines: None,
         };
 
-        let tor_client = LegacyTorClient::new(config)?;
+        let mut tor_client = LegacyTorClient::new(config)?;
+        let tor_version = tor_client.version().to_string();
+        let tor_version = CString::new(tor_version)?;
+        self.tor_version = tor_version;
+
         let tor_client = Arc::new(Mutex::new(tor_client));
         let tor_client_weak = Arc::downgrade(&tor_client);
 
