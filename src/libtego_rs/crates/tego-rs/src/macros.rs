@@ -37,3 +37,14 @@ macro_rules! bail_if_equal {
 }
 pub(crate) use bail_if_equal;
 
+// ensure values are equal
+macro_rules! bail_if_not_equal {
+    ($left:expr, $right:expr) => {
+        paste::paste! {
+            if $left != $right {
+                bail!(stringify!([<$left>] must equal [<$right>]));
+            }
+        }
+    };
+}
+pub(crate) use bail_if_not_equal;

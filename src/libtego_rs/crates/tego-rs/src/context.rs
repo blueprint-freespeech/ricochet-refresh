@@ -1,13 +1,126 @@
 // standard
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex, Weak};
 
-// internal cratse
+// extern
+use anyhow::Result;
+use tor_interface::proxy::{ProxyConfig};
+use tor_interface::legacy_tor_client::*;
+use tor_interface::tor_provider::{TorEvent, TorProvider};
+
+// internal crates
 use crate::ffi::*;
 
 #[derive(Default)]
 pub(crate) struct Context {
-    pub callbacks: Callbacks,
+    pub tego_key: TegoKey,
+    pub callbacks: Arc<Mutex<Callbacks>>,
+    // daemon configuration data
     pub tor_data_directory: PathBuf,
+    pub proxy_settings: Option<ProxyConfig>,
+    pub allowed_ports: Option<Vec<u16>>,
+    tor_client: Option<Arc<Mutex<LegacyTorClient>>>,
+}
+
+impl Context {
+    pub fn connect(&mut self) -> Result<()> {
+
+        let tego_key = self.tego_key;
+        let callbacks = Arc::downgrade(&self.callbacks);
+
+        let config = LegacyTorClientConfig::BundledTor{
+            tor_bin_path: Self::tor_bin_path()?,
+            data_directory: self.tor_data_directory.clone(),
+            proxy_settings: None,
+            allowed_ports: None,
+            pluggable_transports: None,
+            bridge_lines: None,
+        };
+
+        let tor_client = LegacyTorClient::new(config)?;
+        let tor_client = Arc::new(Mutex::new(tor_client));
+        let tor_client_weak = Arc::downgrade(&tor_client);
+
+        self.tor_client = Some(tor_client);
+
+        let tor_client = tor_client_weak;
+
+        std::thread::Builder::new()
+            .name("network-task".to_string())
+            .spawn(move || {
+                Self::network_task(tego_key, &callbacks, &tor_client)
+            })?;
+
+        Ok(())
+    }
+
+    fn tor_bin_path() -> Result<PathBuf> {
+        let bin_name = format!("tor{}", std::env::consts::EXE_SUFFIX);
+
+        // get the path of the current running exe
+        let mut path = std::env::current_exe()?;
+        // tor should live in the same directory
+        path.pop();
+        path.push(bin_name.as_str());
+
+        if path.exists() {
+            Ok(path)
+        } else {
+            path = which::which(bin_name)?;
+            Ok(path)
+        }
+    }
+
+    fn network_task(
+        tego_key: TegoKey,
+        callbacks: &Weak<Mutex<Callbacks>>,
+        tor_client: &Weak<Mutex<LegacyTorClient>>) -> () {
+
+        println!("begin network_task");
+
+        if let Some(tor_client) = tor_client.upgrade() {
+            let _ = tor_client.lock().unwrap().bootstrap();
+        } else {
+            // drop everything?
+            return;
+        }
+
+        loop {
+            // get events
+            let events = if let Some(tor_client) = tor_client.upgrade() {
+                tor_client.lock().unwrap().update().unwrap()
+            } else {
+                // drop everything?
+                return;
+            };
+
+            if let Some(callbacks) = callbacks.upgrade() {
+                let callbacks = callbacks.lock().unwrap();
+
+                // handle events
+                for e in events {
+                    match e {
+                        TorEvent::BootstrapStatus{progress, tag, summary} => {
+                            println!("progress: {progress}, tag: {tag}, summary: {summary}");
+                            if let Some(on_tor_bootstrap_status_changed) = callbacks.on_tor_bootstrap_status_changed {
+                                on_tor_bootstrap_status_changed(tego_key as *mut tego_context, progress as i32, tag.as_str().into());
+                            }
+                        },
+                        TorEvent::BootstrapComplete => {
+
+                        },
+                        TorEvent::LogReceived{line} => {
+
+                        },
+                        TorEvent::OnionServicePublished{service_id} => {
+
+                        },
+                        _ => (),
+                    }
+                }
+            }
+        }
+    }
 }
 
 #[derive(Default)]

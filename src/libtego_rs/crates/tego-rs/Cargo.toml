@@ -15,6 +15,7 @@ cbindgen = { version = "0.28" }
 anyhow = "1.0"
 paste = "1.0"
 tor-interface = {version = "0.5", features = ["legacy-tor-provider"]}
+which = "7.0"
 
 [lib]
 name = "tego_rs"

@@ -1,5 +1,5 @@
 // standard
-use std::ffi::{c_char, c_void};
+use std::ffi::{c_char, c_int, c_void};
 use std::path::PathBuf;
 
 // extern
@@ -88,6 +88,11 @@ pub extern "C" fn tego_initialize(
         let key = get_object_map().insert(object);
         unsafe {
             *out_context = key as *mut tego_context;
+        }
+        if let Some(TegoObject::Context(context)) = get_object_map().get_mut(&key) {
+            context.tego_key = key;
+        } else {
+            bail!("");
         }
         Ok(())
     })
@@ -410,11 +415,15 @@ pub extern "C" fn tego_context_start_tor(
 
         context.tor_data_directory = tor_data_directory;
 
-        if let Some(callback) = context.callbacks.on_tor_control_status_changed {
+        let callbacks = context.callbacks.lock().expect("another thread panicked while holding callback's mutex");
+
+        // TODO: these callbacks are required to enable the 'connect' button
+        // in the network configuraiton screen
+        if let Some(callback) = callbacks.on_tor_control_status_changed {
             callback(context_ptr, tego_tor_control_status::tego_tor_control_status_connected);
         }
 
-        if let Some(callback) = context.callbacks.on_tor_process_status_changed {
+        if let Some(callback) = callbacks.on_tor_process_status_changed {
             callback(context_ptr, tego_tor_process_status::tego_tor_process_status_running);
         }
 
@@ -431,10 +440,17 @@ pub struct tego_tor_daemon_config;
 /// @param error : filled on error
 #[no_mangle]
 pub extern "C" fn tego_tor_daemon_config_initialize(
-    _out_config: *mut *mut tego_tor_daemon_config,
+    out_config: *mut *mut tego_tor_daemon_config,
     error: *mut *mut tego_error) -> () {
     translate_failures((), error, || -> Result<()> {
-        bail_not_implemented!()
+        bail_if_null!(out_config);
+
+        let object = TegoObject::TorDaemonConfig(Default::default());
+        let key = get_object_map().insert(object);
+        unsafe {
+            *out_config = key as *mut tego_tor_daemon_config;
+        }
+        Ok(())
     })
 }
 
@@ -571,11 +587,41 @@ pub extern "C" fn tego_tor_daemon_config_set_bridges(
 /// @param error : filled on error
 #[no_mangle]
 pub extern "C" fn tego_context_update_tor_daemon_config(
-    _context: *mut tego_context,
-    _tor_config: *const tego_tor_daemon_config,
+    context: *mut tego_context,
+    tor_config: *const tego_tor_daemon_config,
     error: *mut *mut tego_error) -> () {
     translate_failures((), error, || -> Result<()> {
-        bail_not_implemented!()
+        bail_if_null!(context);
+        bail_if_null!(tor_config);
+
+        let context_ptr = context;
+
+        let mut object_map = get_object_map();
+
+        // TODO: add bridge and pts
+        let (proxy_settings, allowed_ports) = {
+            let key = tor_config as TegoKey;
+            match object_map.get(&key) {
+                Some(TegoObject::TorDaemonConfig(config)) => {
+                    (config.proxy_settings.clone(), config.allowed_ports.clone())
+                },
+                Some(_) => bail!("not a tego_tor_daemon_config pointer: {:?}", key as *const c_void),
+                None => bail!("not a valid pointer: {:?}", key as *const c_void),
+            }
+        };
+
+        let key = context_ptr as TegoKey;
+        match object_map.get_mut(&key) {
+            Some(TegoObject::Context(context)) => {
+                context.proxy_settings = proxy_settings;
+                context.allowed_ports = allowed_ports;
+                Ok(())
+            },
+            Some(_) => bail!("not a tego_context pointer: {:?}", key as *const c_void),
+            None => bail!("not a valid pointer: {:?}", key as *const c_void),
+        }
+
+
     })
 }
 
@@ -587,11 +633,34 @@ pub extern "C" fn tego_context_update_tor_daemon_config(
 /// @param error : filled on error
 #[no_mangle]
 pub extern "C" fn tego_context_update_disable_network_flag(
-    _context: *mut tego_context,
-    _disable_network: tego_bool,
+    context: *mut tego_context,
+    disable_network: tego_bool,
     error: *mut *mut tego_error) -> () {
     translate_failures((), error, || -> Result<()> {
-        bail_not_implemented!()
+        bail_if_null!(context);
+        bail_if_not_equal!(disable_network, TEGO_FALSE);
+
+        let context_ptr = context;
+
+        let key = context_ptr as TegoKey;
+        match get_object_map().get_mut(&key) {
+            Some(TegoObject::Context(context)) => {
+                context.connect()?;
+
+                let callbacks = context.callbacks.lock().expect("another thread panicked while holding callback's mutex");
+
+                // TODO: this callback invocation is required to move
+                // the network configuration screen forward into the
+                // bootstrapping progression screen
+                if let Some(callback) = callbacks.on_update_tor_daemon_config_succeeded {
+                    callback(context_ptr, TEGO_TRUE);
+                }
+
+            },
+            Some(_) => bail!("not a tego_context pointer: {:?}", key as *const c_void),
+            None => bail!("not a valid pointer: {:?}", key as *const c_void),
+        }
+        Ok(())
     })
 }
 
@@ -765,6 +834,43 @@ pub enum tego_tor_bootstrap_tag {
     tego_tor_bootstrap_tag_count
 }
 
+impl From<&str> for tego_tor_bootstrap_tag {
+    fn from(value: &str) -> Self {
+        use tego_tor_bootstrap_tag::*;
+        match value {
+            "starting" => tego_tor_bootstrap_tag_starting,
+            "conn_pt" => tego_tor_bootstrap_tag_conn_pt,
+            "conn_done_pt" => tego_tor_bootstrap_tag_conn_done_pt,
+            "conn_proxy" => tego_tor_bootstrap_tag_conn_proxy,
+            "conn_done_proxy" => tego_tor_bootstrap_tag_conn_done_proxy,
+            "conn" => tego_tor_bootstrap_tag_conn,
+            "conn_done" => tego_tor_bootstrap_tag_conn_done,
+            "handshake" => tego_tor_bootstrap_tag_handshake,
+            "handshake_done" => tego_tor_bootstrap_tag_handshake_done,
+            "onehop_create" => tego_tor_bootstrap_tag_onehop_create,
+            "requesting_status" => tego_tor_bootstrap_tag_requesting_status,
+            "loading_status" => tego_tor_bootstrap_tag_loading_status,
+            "loading_keys" => tego_tor_bootstrap_tag_loading_keys,
+            "requesting_descriptors" => tego_tor_bootstrap_tag_requesting_descriptors,
+            "loading_descriptors" => tego_tor_bootstrap_tag_loading_descriptors,
+            "enough_dirinfo" => tego_tor_bootstrap_tag_enough_dirinfo,
+            "ap_conn_pt" => tego_tor_bootstrap_tag_ap_conn_pt_summary,
+            "ap_conn_done_pt" => tego_tor_bootstrap_tag_ap_conn_done_pt,
+            "ap_conn_proxy" => tego_tor_bootstrap_tag_ap_conn_proxy,
+            "ap_conn_done_proxy" => tego_tor_bootstrap_tag_ap_conn_done_proxy,
+            "ap_conn" => tego_tor_bootstrap_tag_ap_conn,
+            "ap_conn_done" => tego_tor_bootstrap_tag_ap_conn_done,
+            "ap_handshake" => tego_tor_bootstrap_tag_ap_handshake,
+            "ap_handshake_done" => tego_tor_bootstrap_tag_ap_handshake_done,
+            "circuit_create" => tego_tor_bootstrap_tag_circuit_create,
+            "done" => tego_tor_bootstrap_tag_done,
+            _ => tego_tor_bootstrap_tag_invalid,
+        }
+    }
+}
+
+
+
 /// Get the summary string associated with the given bootstrap tag
 ///
 /// @param tag : the tag to get the summary of
@@ -772,10 +878,40 @@ pub enum tego_tor_bootstrap_tag {
 /// @return : utf8 null-terminated summary string, NULL on error
 #[no_mangle]
 pub extern "C" fn tego_tor_bootstrap_tag_to_summary(
-    _tag: tego_tor_bootstrap_tag,
+    tag: tego_tor_bootstrap_tag,
     error: *mut *mut tego_error) -> *const c_char {
     translate_failures(std::ptr::null(), error, || -> Result<*const c_char> {
-        bail_not_implemented!()
+        use tego_tor_bootstrap_tag::*;
+        let summary = match tag {
+            tego_tor_bootstrap_tag_starting => "Starting\0",
+            tego_tor_bootstrap_tag_conn_pt => "Connecting to pluggable transport\0",
+            tego_tor_bootstrap_tag_conn_done_pt => "Connected to pluggable transport\0",
+            tego_tor_bootstrap_tag_conn_proxy => "Connecting to proxy\0",
+            tego_tor_bootstrap_tag_conn_done_proxy => "Connected to proxy\0",
+            tego_tor_bootstrap_tag_conn => "Connecting to a relay\0",
+            tego_tor_bootstrap_tag_conn_done => "Connected to a relay\0",
+            tego_tor_bootstrap_tag_handshake => "Handshaking with a relay\0",
+            tego_tor_bootstrap_tag_handshake_done => "Handshake with a relay done\0",
+            tego_tor_bootstrap_tag_onehop_create => "Establishing an encrypted directory connection\0",
+            tego_tor_bootstrap_tag_requesting_status => "Asking for networkstatus consensus\0",
+            tego_tor_bootstrap_tag_loading_status => "Loading networkstatus consensus\0",
+            tego_tor_bootstrap_tag_loading_keys => "Loading authority key certs\0",
+            tego_tor_bootstrap_tag_requesting_descriptors => "Asking for relay descriptors\0",
+            tego_tor_bootstrap_tag_loading_descriptors => "Loading relay descriptors\0",
+            tego_tor_bootstrap_tag_enough_dirinfo => "Loaded enough directory info to build circuits\0",
+            tego_tor_bootstrap_tag_ap_conn_pt_summary => "Connecting to pluggable transport to build circuits\0",
+            tego_tor_bootstrap_tag_ap_conn_done_pt => "Connected to pluggable transport to build circuits\0",
+            tego_tor_bootstrap_tag_ap_conn_proxy => "Connecting to proxy to build circuits\0",
+            tego_tor_bootstrap_tag_ap_conn_done_proxy => "Connected to proxy to build circuits\0",
+            tego_tor_bootstrap_tag_ap_conn => "Connecting to a relay to build circuits\0",
+            tego_tor_bootstrap_tag_ap_conn_done => "Connected to a relay to build circuits\0",
+            tego_tor_bootstrap_tag_ap_handshake => "Finishing handshake with a relay to build circuits\0",
+            tego_tor_bootstrap_tag_ap_handshake_done => "Handshake finished with a relay to build circuits\0",
+            tego_tor_bootstrap_tag_circuit_create => "Establishing a Tor circuit\0",
+            tego_tor_bootstrap_tag_done => "Done\0",
+            _ => bail!("unknown tego_tor_bootstrap_tag: {}", tag as c_int),
+        };
+        Ok(summary.as_ptr() as *const c_char)
     })
 }
 
@@ -1314,7 +1450,10 @@ macro_rules! impl_callback_setter {
         translate_failures((), $error, || -> Result<()> {
             let key = $context as TegoKey;
             match get_object_map().get_mut(&key) {
-                Some(TegoObject::Context(context)) => context.callbacks.$dest = $callback,
+                Some(TegoObject::Context(context)) => {
+                    let mut callbacks = context.callbacks.lock().expect("another thread panicked while holding callback's mutex");
+                    callbacks.$dest = $callback;
+                },
                 Some(_) => bail!("not a tego_context pointer: {:?}", key as *const c_void),
                 None => bail!("not a valid pointer: {:?}", key as *const c_void),
             };
