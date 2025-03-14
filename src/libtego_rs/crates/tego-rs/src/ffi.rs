@@ -1,10 +1,15 @@
 // standard
 use std::ffi::{c_char, c_int, c_void};
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use std::path::PathBuf;
+use std::str::FromStr;
 
 // extern
 use anyhow::{Result, bail};
+use tor_interface::censorship_circumvention::*;
+use tor_interface::proxy::*;
 use tor_interface::tor_crypto::{Ed25519PrivateKey, V3OnionServiceId};
+use tor_interface::tor_provider::{DomainAddr, TargetAddr};
 
 // internal crates
 use crate::context::Context;
@@ -465,13 +470,46 @@ pub extern "C" fn tego_tor_daemon_config_initialize(
 /// @param error : filled on error
 #[no_mangle]
 pub extern "C" fn tego_tor_daemon_config_set_proxy_socks4(
-    _config: *mut tego_tor_daemon_config,
-    _address: *const c_char,
-    _address_length: usize,
-    _port: u16,
+    config: *mut tego_tor_daemon_config,
+    address: *const c_char,
+    address_length: usize,
+    port: u16,
     error: *mut *mut tego_error) -> () {
     translate_failures((), error, || -> Result<()> {
-        bail_not_implemented!()
+        bail_if_null!(config);
+        bail_if_null!(address);
+        bail_if_equal!(address_length, 0usize);
+        bail_if_equal!(port, 0u16);
+
+        // convert args to a proxy config
+        let address = unsafe { std::slice::from_raw_parts(address as *const u8, address_length) };
+        let address = std::str::from_utf8(address)?;
+
+        let proxy_address = if let Ok(address) = Ipv4Addr::from_str(address) {
+            let address = SocketAddr::new(IpAddr::V4(address), port);
+            TargetAddr::Socket(address)
+        } else if let Ok(address) = Ipv6Addr::from_str(address) {
+            let address = SocketAddr::new(IpAddr::V6(address), port);
+            TargetAddr::Socket(address)
+        } else if let Ok(domain) = DomainAddr::try_from((address.to_string(), port)) {
+            TargetAddr::Domain(domain)
+        } else {
+            bail!("address is not a valid proxy address: {address}");
+        };
+
+        let proxy_config = ProxyConfig::Socks4(Socks4ProxyConfig::new(proxy_address)?);
+
+        // update the config
+        let key = config as TegoKey;
+        match get_object_map().get_mut(&key) {
+            Some(TegoObject::TorDaemonConfig(config)) => {
+                config.proxy_settings = Some(proxy_config);
+            },
+            Some(_) => bail!("not a tego_tor_daemon_config pointer: {:?}", key as *const c_void),
+            None => bail!("not a valid pointer: {:?}", key as *const c_void),
+        };
+
+        Ok(())
     })
 }
 
@@ -494,17 +532,70 @@ pub extern "C" fn tego_tor_daemon_config_set_proxy_socks4(
 /// @param error : filled on error
 #[no_mangle]
 pub extern "C" fn tego_tor_daemon_config_set_proxy_socks5(
-    _config: *mut tego_tor_daemon_config,
-    _address: *const c_char,
-    _address_length: usize,
-    _port: u16,
-    _username: *const c_char,
-    _username_length: usize,
-    _password: *const c_char,
-    _password_length: usize,
+    config: *mut tego_tor_daemon_config,
+    address: *const c_char,
+    address_length: usize,
+    port: u16,
+    username: *const c_char,
+    username_length: usize,
+    password: *const c_char,
+    password_length: usize,
     error: *mut *mut tego_error) -> () {
     translate_failures((), error, || -> Result<()> {
-        bail_not_implemented!()
+        bail_if_null!(config);
+        bail_if_null!(address);
+        bail_if_equal!(address_length, 0usize);
+        bail_if_equal!(port, 0u16);
+        bail_if!(username.is_null() && username_length != 0usize);
+        bail_if!(!username.is_null() && username_length == 0usize);
+        bail_if!(password.is_null() && password_length != 0usize);
+        bail_if!(!password.is_null() && password_length == 0usize);
+
+        // convert args to a proxy config
+        let address = unsafe { std::slice::from_raw_parts(address as *const u8, address_length) };
+        let address = std::str::from_utf8(address)?;
+
+        let proxy_address = if let Ok(address) = Ipv4Addr::from_str(address) {
+            let address = SocketAddr::new(IpAddr::V4(address), port);
+            TargetAddr::Socket(address)
+        } else if let Ok(address) = Ipv6Addr::from_str(address) {
+            let address = SocketAddr::new(IpAddr::V6(address), port);
+            TargetAddr::Socket(address)
+        } else if let Ok(domain) = DomainAddr::try_from((address.to_string(), port)) {
+            TargetAddr::Domain(domain)
+        } else {
+            bail!("address is not a valid proxy address: {address}");
+        };
+
+        let username = if username.is_null() {
+            None
+        } else {
+            let username = unsafe { std::slice::from_raw_parts(username as *const u8, username_length) };
+            let username = std::str::from_utf8(username)?;
+            Some(username.to_string())
+        };
+
+        let password = if password.is_null() {
+            None
+        } else {
+            let password = unsafe { std::slice::from_raw_parts(password as *const u8, password_length) };
+            let password = std::str::from_utf8(password)?;
+            Some(password.to_string())
+        };
+
+        let proxy_config = ProxyConfig::Socks5(Socks5ProxyConfig::new(proxy_address, username, password)?);
+
+        // update the config
+        let key = config as TegoKey;
+        match get_object_map().get_mut(&key) {
+            Some(TegoObject::TorDaemonConfig(config)) => {
+                config.proxy_settings = Some(proxy_config);
+            },
+            Some(_) => bail!("not a tego_tor_daemon_config pointer: {:?}", key as *const c_void),
+            None => bail!("not a valid pointer: {:?}", key as *const c_void),
+        };
+
+        Ok(())
     })
 }
 
@@ -527,17 +618,70 @@ pub extern "C" fn tego_tor_daemon_config_set_proxy_socks5(
 /// @param error : filled on error
  #[no_mangle]
  pub extern "C" fn tego_tor_daemon_config_set_proxy_https(
-    _config: *mut tego_tor_daemon_config,
-    _address: *const c_char,
-    _address_length: usize,
-    _port: u16,
-    _username: *const c_char,
-    _username_length: usize,
-    _password: *const c_char,
-    _password_length: usize,
+    config: *mut tego_tor_daemon_config,
+    address: *const c_char,
+    address_length: usize,
+    port: u16,
+    username: *const c_char,
+    username_length: usize,
+    password: *const c_char,
+    password_length: usize,
     error: *mut *mut tego_error) -> () {
     translate_failures((), error, || -> Result<()> {
-        bail_not_implemented!()
+        bail_if_null!(config);
+        bail_if_null!(address);
+        bail_if_equal!(address_length, 0usize);
+        bail_if_equal!(port, 0u16);
+        bail_if!(username.is_null() && username_length != 0usize);
+        bail_if!(!username.is_null() && username_length == 0usize);
+        bail_if!(password.is_null() && password_length != 0usize);
+        bail_if!(!password.is_null() && password_length == 0usize);
+
+        // convert args to a proxy config
+        let address = unsafe { std::slice::from_raw_parts(address as *const u8, address_length) };
+        let address = std::str::from_utf8(address)?;
+
+        let proxy_address = if let Ok(address) = Ipv4Addr::from_str(address) {
+            let address = SocketAddr::new(IpAddr::V4(address), port);
+            TargetAddr::Socket(address)
+        } else if let Ok(address) = Ipv6Addr::from_str(address) {
+            let address = SocketAddr::new(IpAddr::V6(address), port);
+            TargetAddr::Socket(address)
+        } else if let Ok(domain) = DomainAddr::try_from((address.to_string(), port)) {
+            TargetAddr::Domain(domain)
+        } else {
+            bail!("address is not a valid proxy address: {address}");
+        };
+
+        let username = if username.is_null() {
+            None
+        } else {
+            let username = unsafe { std::slice::from_raw_parts(username as *const u8, username_length) };
+            let username = std::str::from_utf8(username)?;
+            Some(username.to_string())
+        };
+
+        let password = if password.is_null() {
+            None
+        } else {
+            let password = unsafe { std::slice::from_raw_parts(password as *const u8, password_length) };
+            let password = std::str::from_utf8(password)?;
+            Some(password.to_string())
+        };
+
+        let proxy_config = ProxyConfig::Https(HttpsProxyConfig::new(proxy_address, username, password)?);
+
+        // update the config
+        let key = config as TegoKey;
+        match get_object_map().get_mut(&key) {
+            Some(TegoObject::TorDaemonConfig(config)) => {
+                config.proxy_settings = Some(proxy_config);
+            },
+            Some(_) => bail!("not a tego_tor_daemon_config pointer: {:?}", key as *const c_void),
+            None => bail!("not a valid pointer: {:?}", key as *const c_void),
+        };
+
+        Ok(())
     })
 }
 
@@ -549,33 +693,83 @@ pub extern "C" fn tego_tor_daemon_config_set_proxy_socks5(
 /// @param error : filled on error
 #[no_mangle]
 pub extern "C" fn tego_tor_daemon_config_set_allowed_ports(
-    _config: *mut tego_tor_daemon_config,
-    _ports: *const u16,
-    _ports_count: usize,
+    config: *mut tego_tor_daemon_config,
+    ports: *const u16,
+    ports_count: usize,
     error: *mut *mut tego_error) -> () {
-    translate_failures((), error, || -> Result<()> {
-        bail_not_implemented!()
+        translate_failures((), error, || -> Result<()> {
+
+        bail_if_null!(config);
+
+        let ports: Option<Vec<u16>> = if ports.is_null() {
+            None
+        } else {
+            let ports = unsafe { std::slice::from_raw_parts(ports, ports_count) };
+            Some(ports.into())
+        };
+
+        // update the config
+        let key = config as TegoKey;
+        match get_object_map().get_mut(&key) {
+            Some(TegoObject::TorDaemonConfig(config)) => {
+                config.allowed_ports = ports;
+            },
+            Some(_) => bail!("not a tego_tor_daemon_config pointer: {:?}", key as *const c_void),
+            None => bail!("not a valid pointer: {:?}", key as *const c_void),
+        };
+
+        Ok(())
     })
 }
 
 /// Set the list of bridges for tor to use
 ///
 /// @param config : config to update
-/// @param bridges : array of utf8 encoded bridge strings
-/// @param bridge_lengths : array of lengths of the strings stored
-///  in 'bridges', does not include any NULL terminators
+/// @param bridge_lines : array of utf8 encoded bridge-line strings
+/// @param bridge_line_lengths : array of lengths of the strings stored
+///  in 'bridge_lines', does not include any NULL terminators
 /// @param bridge_count : the number of bridge strings being
 ///  passed in
 /// @param error : filled on error
 #[no_mangle]
 pub extern "C" fn tego_tor_daemon_config_set_bridges(
-    _config: *mut tego_tor_daemon_config,
-    _bridges: *const *const c_char,
-    _bridge_lengths: *const usize,
-    _bridge_count: usize,
+    config: *mut tego_tor_daemon_config,
+    bridge_lines: *const *const c_char,
+    bridge_line_lengths: *const usize,
+    bridge_count: usize,
     error: *mut *mut tego_error) -> () {
     translate_failures((), error, || -> Result<()> {
-        bail_not_implemented!()
+        bail_if_null!(config);
+
+        let bridge_lines: Option<Vec<BridgeLine>> = if bridge_lines.is_null() {
+            None
+        } else {
+            let bridge_lines = unsafe { std::slice::from_raw_parts(bridge_lines, bridge_count) };
+            bail_if_null!(bridge_line_lengths);
+            let bridge_line_lengths = unsafe { std::slice::from_raw_parts(bridge_line_lengths, bridge_count) };
+            let mut bridge_line_vec: Vec<BridgeLine> = Vec::with_capacity(bridge_count);
+            for (bridge_line, bridge_line_length) in bridge_lines.iter().zip(bridge_line_lengths.iter()) {
+                let bridge_line = unsafe { std::slice::from_raw_parts(*bridge_line as *const u8, *bridge_line_length) };
+                let bridge_line = std::str::from_utf8(bridge_line)?;
+                let bridge_line = BridgeLine::from_str(bridge_line)?;
+
+                bridge_line_vec.push(bridge_line);
+            }
+
+            Some(bridge_line_vec)
+        };
+
+        // update the config
+        let key = config as TegoKey;
+        match get_object_map().get_mut(&key) {
+            Some(TegoObject::TorDaemonConfig(config)) => {
+                config.bridge_lines = bridge_lines;
+            },
+            Some(_) => bail!("not a tego_tor_daemon_config pointer: {:?}", key as *const c_void),
+            None => bail!("not a valid pointer: {:?}", key as *const c_void),
+        };
+
+        Ok(())
     })
 }
 
