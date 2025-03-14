@@ -809,13 +809,19 @@ pub extern "C" fn tego_context_update_tor_daemon_config(
             Some(TegoObject::Context(context)) => {
                 context.proxy_settings = proxy_settings;
                 context.allowed_ports = allowed_ports;
+
+                let callbacks = context.callbacks.lock().expect("another thread panicked while holding callback's mutex");
+
+                // TODO: remove need for this callback
+                if let Some(callback) = callbacks.on_update_tor_daemon_config_succeeded {
+                            callback(context_ptr, TEGO_TRUE);
+                }
+
                 Ok(())
             },
             Some(_) => bail!("not a tego_context pointer: {:?}", key as *const c_void),
             None => bail!("not a valid pointer: {:?}", key as *const c_void),
         }
-
-
     })
 }
 
