@@ -7,6 +7,7 @@ use std::sync::{Arc, Mutex, Weak};
 use anyhow::Result;
 use tor_interface::proxy::{ProxyConfig};
 use tor_interface::legacy_tor_client::*;
+use tor_interface::tor_crypto::Ed25519PrivateKey;
 use tor_interface::tor_provider::{TorEvent, TorProvider};
 
 // internal crates
@@ -23,6 +24,8 @@ pub(crate) struct Context {
     tor_client: Option<Arc<Mutex<LegacyTorClient>>>,
     pub tor_version: CString,
     pub tor_logs: Arc<Mutex<Vec<String>>>,
+    // ricochet-refresh data
+    pub private_key: Option<Ed25519PrivateKey>,
 }
 
 impl Context {

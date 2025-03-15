@@ -19,7 +19,7 @@ use crate::macros::*;
 use crate::object_map::ObjectMap;
 use crate::tor_daemon_config::TorDaemonConfig;
 use crate::tor_launch_config::TorLaunchConfig;
-use crate::UserId;
+use crate::user_id::UserId;
 
 pub const TEGO_TRUE: i32 = 1;
 pub const TEGO_FALSE: i32 = 0;
@@ -141,12 +141,30 @@ pub struct tego_v3_onion_service_id;
 
 #[no_mangle]
 pub extern "C" fn tego_ed25519_private_key_from_ed25519_keyblob(
-    _out_private_key: *mut *mut tego_ed25519_private_key,
-    _keyblob: *const c_char,
-    _keyblob_length: usize,
+    out_private_key: *mut *mut tego_ed25519_private_key,
+    keyblob: *const c_char,
+    keyblob_length: usize,
     error: *mut *mut tego_error) -> () {
     translate_failures((), error, || -> Result<()> {
-        bail_not_implemented!()
+        bail_if_null!(out_private_key);
+        bail_if_null!(keyblob);
+
+        let keyblob = unsafe { std::slice::from_raw_parts(keyblob as *const u8, keyblob_length) };
+        let keyblob = std::str::from_utf8(keyblob)?;
+
+        let private_key = if let Ok(private_key) = Ed25519PrivateKey::from_key_blob(keyblob) {
+            private_key
+        } else {
+            // try to fall back to legacy validation if failed
+            Ed25519PrivateKey::from_key_blob_legacy(keyblob)?
+        };
+
+        let object = TegoObject::Ed25519PrivateKey(private_key);
+        let key = get_object_map().insert(object);
+        unsafe {
+            *out_private_key = key as *mut tego_ed25519_private_key;
+        }
+        Ok(())
     })
 }
 
@@ -164,12 +182,35 @@ pub extern "C" fn tego_ed25519_private_key_from_ed25519_keyblob(
 ///  to out_keyblob
  #[no_mangle]
  pub extern "C" fn tego_ed25519_keyblob_from_ed25519_private_key(
-    _out_keyblob: *mut c_char,
-    _keyblob_size: usize,
-    _private_key: *const tego_ed25519_private_key,
+    out_keyblob: *mut c_char,
+    keyblob_size: usize,
+    private_key: *const tego_ed25519_private_key,
     error: *mut *mut tego_error) -> usize {
     translate_failures(0usize, error, || -> Result<usize> {
-        bail_not_implemented!()
+        bail_if_null!(out_keyblob);
+        bail_if!(keyblob_size < TEGO_ED25519_KEYBLOB_SIZE);
+        bail_if_null!(private_key);
+
+        let key = private_key as TegoKey;
+        match get_object_map().get(&key) {
+            Some(TegoObject::Ed25519PrivateKey(private_key)) => {
+                let keyblob = private_key.to_key_blob();
+                let keyblob = keyblob.as_str();
+                assert!(keyblob.len() == TEGO_ED25519_KEYBLOB_LENGTH);
+
+                unsafe {
+                    let out_keyblob = std::slice::from_raw_parts_mut(out_keyblob as *mut u8, keyblob_size);
+                    std::ptr::copy(
+                        keyblob.as_ptr(),
+                        out_keyblob.as_mut_ptr(),
+                        keyblob.len());
+                    out_keyblob[TEGO_ED25519_KEYBLOB_LENGTH] = 0u8;
+                }
+                Ok(TEGO_ED25519_KEYBLOB_SIZE)
+            },
+            Some(_) => bail!("not a tego_ed25519_private_key pointer: {:?}", key as *const c_void),
+            None => bail!("not a valid pointer: {:?}", key as *const c_void),
+        }
     })
  }
 
@@ -183,11 +224,20 @@ pub extern "C" fn tego_ed25519_private_key_from_ed25519_keyblob(
 
 #[no_mangle]
 pub extern "C" fn tego_v3_onion_service_id_string_is_valid(
-    _service_id_string: *const c_char,
-    _service_id_string_length: usize,
+    service_id_string: *const c_char,
+    service_id_string_length: usize,
     error: *mut *mut tego_error) -> tego_bool {
     translate_failures(TEGO_FALSE, error, || -> Result<tego_bool> {
-        bail_not_implemented!()
+        bail_if_null!(service_id_string);
+
+        let service_id_string = unsafe { std::slice::from_raw_parts(service_id_string as *const u8, service_id_string_length) };
+        let service_id_string = std::str::from_utf8(service_id_string)?;
+
+        if V3OnionServiceId::is_valid(service_id_string) {
+            Ok(TEGO_TRUE)
+        } else {
+            Ok(TEGO_FALSE)
+        }
     })
 }
 
@@ -202,12 +252,25 @@ pub extern "C" fn tego_v3_onion_service_id_string_is_valid(
 /// @param error : filled on error
  #[no_mangle]
  pub extern "C" fn tego_v3_onion_service_id_from_string(
-    _out_service_id: *mut *mut tego_v3_onion_service_id,
-    _service_id_string: *const c_char,
-    _service_id_string_length: usize,
+    out_service_id: *mut *mut tego_v3_onion_service_id,
+    service_id_string: *const c_char,
+    service_id_string_length: usize,
     error: *mut *mut tego_error) -> () {
     translate_failures((), error, || -> Result<()> {
-        bail_not_implemented!()
+        bail_if_null!(out_service_id);
+        bail_if_null!(service_id_string);
+
+        let service_id_string = unsafe { std::slice::from_raw_parts(service_id_string as *const u8, service_id_string_length) };
+        let service_id_string = std::str::from_utf8(service_id_string)?;
+
+        let service_id = V3OnionServiceId::from_string(service_id_string)?;
+
+        let object = TegoObject::V3OnionServiceId(service_id);
+        let key = get_object_map().insert(object);
+        unsafe {
+            *out_service_id = key as *mut tego_v3_onion_service_id;
+        }
+        Ok(())
     })
  }
 
@@ -224,12 +287,35 @@ pub extern "C" fn tego_v3_onion_service_id_string_is_valid(
 ///  TEGO_V3_ONION_SERVICE_ID_SIZE (57) on success, 0 on failure
  #[no_mangle]
  pub extern "C" fn tego_v3_onion_service_id_to_string(
-    _service_id: *const tego_v3_onion_service_id,
-    _out_service_id_string: *mut c_char,
-    _service_id_string_size: usize,
+    service_id: *const tego_v3_onion_service_id,
+    out_service_id_string: *mut c_char,
+    service_id_string_size: usize,
     error: *mut *mut tego_error) -> usize {
     translate_failures(0usize, error, || -> Result<usize> {
-        bail_not_implemented!()
+        bail_if_null!(service_id);
+        bail_if_null!(out_service_id_string);
+        bail_if!(service_id_string_size < TEGO_V3_ONION_SERVICE_ID_SIZE);
+
+        let key = service_id as TegoKey;
+        match get_object_map().get(&key) {
+            Some(TegoObject::V3OnionServiceId(service_id)) => {
+                let service_id = service_id.to_string();
+                let service_id = service_id.as_str();
+                assert!(service_id.len() == TEGO_V3_ONION_SERVICE_ID_LENGTH);
+
+                unsafe {
+                    let out_service_id_string = std::slice::from_raw_parts_mut(out_service_id_string as *mut u8, service_id_string_size);
+                    std::ptr::copy(
+                        service_id.as_ptr(),
+                        out_service_id_string.as_mut_ptr(),
+                        service_id.len());
+                    out_service_id_string[TEGO_V3_ONION_SERVICE_ID_LENGTH] = 0u8;
+                }
+                Ok(TEGO_V3_ONION_SERVICE_ID_SIZE)
+            },
+            Some(_) => bail!("not a tego_v3_onion_service_id pointer: {:?}", key as *const c_void),
+            None => bail!("not a valid pointer: {:?}", key as *const c_void),
+        }
     })
  }
 
@@ -248,11 +334,25 @@ pub struct tego_user_id;
 /// @param error : filled on error
  #[no_mangle]
 pub extern "C" fn tego_user_id_from_v3_onion_service_id(
-    _out_user_id: *mut *mut tego_user_id,
-    _service_id: *const tego_v3_onion_service_id,
+    out_user_id: *mut *mut tego_user_id,
+    service_id: *const tego_v3_onion_service_id,
     error: *mut *mut tego_error) -> () {
     translate_failures((), error, || -> Result<()> {
-        bail_not_implemented!()
+        bail_if_null!(out_user_id);
+        bail_if_null!(service_id);
+
+        let key = service_id as TegoKey;
+        let service_id = match get_object_map().get(&key) {
+            Some(TegoObject::V3OnionServiceId(service_id)) => service_id.clone(),
+            Some(_) => bail!("not a tego_v3_onion_service_id pointer: {:?}", key as *const c_void),
+            None => bail!("not a valid pointer: {:?}", key as *const c_void),
+        };
+
+        let user_id = get_object_map().insert(TegoObject::UserId(UserId{service_id}));
+
+        unsafe { *out_user_id = user_id as *mut tego_user_id };
+
+        Ok(())
     })
 }
 
@@ -263,11 +363,25 @@ pub extern "C" fn tego_user_id_from_v3_onion_service_id(
 /// @param error : filled on error
 #[no_mangle]
 pub extern "C" fn tego_user_id_get_v3_onion_service_id(
-    _user_id: *const tego_user_id,
-    _out_service_id: *mut *mut tego_v3_onion_service_id,
+    user_id: *const tego_user_id,
+    out_service_id: *mut *mut tego_v3_onion_service_id,
     error: *mut *mut tego_error) -> () {
     translate_failures((), error, || -> Result<()> {
-        bail_not_implemented!()
+        bail_if_null!(user_id);
+        bail_if_null!(out_service_id);
+
+        let key = user_id as TegoKey;
+        let service_id = match get_object_map().get(&key) {
+            Some(TegoObject::UserId(user_id)) => user_id.service_id.clone(),
+            Some(_) => bail!("not a tego_v3_onion_service_id pointer: {:?}", key as *const c_void),
+            None => bail!("not a valid pointer: {:?}", key as *const c_void),
+        };
+
+        let service_id = get_object_map().insert(TegoObject::V3OnionServiceId(service_id));
+
+        unsafe {*out_service_id = service_id as *mut tego_v3_onion_service_id};
+
+        Ok(())
     })
 }
 
@@ -280,11 +394,30 @@ pub extern "C" fn tego_user_id_get_v3_onion_service_id(
 /// @param error : filled on error
 #[no_mangle]
 pub extern "C" fn tego_context_get_host_user_id(
-    _context: *const tego_context,
-    _out_host_user: *mut *mut tego_user_id,
+    context: *const tego_context,
+    out_host_user: *mut *mut tego_user_id,
     error: *mut *mut tego_error) -> () {
     translate_failures((), error, || -> Result<()> {
-        bail_not_implemented!()
+        bail_if_null!(context);
+        bail_if_null!(out_host_user);
+
+        let key = context as TegoKey;
+        let service_id = match get_object_map().get(&key) {
+            Some(TegoObject::Context(context)) => {
+                if let Some(private_key) = &context.private_key {
+                    V3OnionServiceId::from_private_key(private_key)
+                } else {
+                    bail!("no host key defined");
+                }
+            }
+            Some(_) => bail!("not a tego_context pointer: {:?}", key as *const c_void),
+            None => bail!("not a valid pointer: {:?}", key as *const c_void),
+        };
+
+        let host_user = get_object_map().insert(TegoObject::UserId(UserId{service_id}));
+
+        unsafe { *out_host_user = host_user as *mut tego_user_id };
+        Ok(())
     })
 }
 
