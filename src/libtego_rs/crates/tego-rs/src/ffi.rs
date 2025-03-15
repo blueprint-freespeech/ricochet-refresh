@@ -1222,8 +1222,8 @@ pub enum tego_tor_process_status {
 #[repr(C)]
 pub enum tego_tor_network_status {
     tego_tor_network_status_unknown,
-    tego_tor_network_status_ready,
     tego_tor_network_status_offline,
+    tego_tor_network_status_ready,
 }
 
 /// Get the current status of the tor daemon's connection
@@ -1234,11 +1234,29 @@ pub enum tego_tor_network_status {
 /// @param error : filled on error
 #[no_mangle]
 pub extern "C" fn tego_context_get_tor_network_status(
-    _context: *const tego_context,
-    _out_status: *mut tego_tor_network_status,
+    context: *const tego_context,
+    out_status: *mut tego_tor_network_status,
     error: *mut *mut tego_error) -> () {
     translate_failures((), error, || -> Result<()> {
-        // TODO: maybe implement
+        bail_if_null!(context);
+        bail_if_null!(out_status);
+
+        let key = context as TegoKey;
+        match get_object_map().get(&key) {
+            Some(TegoObject::Context(context)) => {
+                use tego_tor_network_status::*;
+                let status = if context.connect_complete() {
+                    tego_tor_network_status_ready
+                } else {
+                    tego_tor_network_status_offline
+                };
+
+                unsafe { *out_status = status };
+            },
+            Some(_) => bail!("not a tego_context pointer: {:?}", key as *const c_void),
+            None => bail!("not a valid pointer: {:?}", key as *const c_void),
+        }
+
         Ok(())
     })
 }

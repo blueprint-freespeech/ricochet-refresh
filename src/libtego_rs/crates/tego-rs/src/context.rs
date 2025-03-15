@@ -2,7 +2,7 @@
 use std::collections::BTreeMap;
 use std::ffi::CString;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex, Weak};
+use std::sync::{atomic::{AtomicBool, Ordering}, Arc, Mutex, Weak};
 
 // extern
 use anyhow::Result;
@@ -18,13 +18,14 @@ use crate::ffi::*;
 pub(crate) struct Context {
     pub tego_key: TegoKey,
     pub callbacks: Arc<Mutex<Callbacks>>,
-    // daemon configuration data
+    // tor daemon data
     pub tor_data_directory: PathBuf,
     pub proxy_settings: Option<ProxyConfig>,
     pub allowed_ports: Option<Vec<u16>>,
     tor_client: Option<Arc<Mutex<LegacyTorClient>>>,
     pub tor_version: CString,
     pub tor_logs: Arc<Mutex<Vec<String>>>,
+    connect_complete: Arc<AtomicBool>,
     // ricochet-refresh data
     pub private_key: Option<Ed25519PrivateKey>,
     pub users: Arc<Mutex<BTreeMap<V3OnionServiceId, UserData>>>,
@@ -59,13 +60,19 @@ impl Context {
 
         let tor_logs = Arc::downgrade(&self.tor_logs);
 
+        let connect_complete = Arc::downgrade(&self.connect_complete);
+
         std::thread::Builder::new()
             .name("network-task".to_string())
             .spawn(move || {
-                Self::network_task(tego_key, &callbacks, &tor_client, &tor_logs)
+                Self::network_task(tego_key, &callbacks, &tor_client, &tor_logs, &connect_complete)
             })?;
 
         Ok(())
+    }
+
+    pub fn connect_complete(&self) -> bool {
+        self.connect_complete.load(Ordering::Relaxed)
     }
 
     fn tor_bin_path() -> Result<PathBuf> {
@@ -89,9 +96,8 @@ impl Context {
         tego_key: TegoKey,
         callbacks: &Weak<Mutex<Callbacks>>,
         tor_client: &Weak<Mutex<LegacyTorClient>>,
-        tor_logs: &Weak<Mutex<Vec<String>>>) -> () {
-
-        println!("begin network_task");
+        tor_logs: &Weak<Mutex<Vec<String>>>,
+        connect_complete: &Weak<AtomicBool>) -> () {
 
         if let Some(tor_client) = tor_client.upgrade() {
             let _ = tor_client.lock().unwrap().bootstrap();
@@ -121,6 +127,10 @@ impl Context {
                             }
                         },
                         TorEvent::BootstrapComplete => {
+                            if let Some(connect_complete) = connect_complete.upgrade() {
+                                connect_complete.store(true, Ordering::Relaxed);
+                            }
+
                             if let Some(on_tor_network_status_changed) = callbacks.on_tor_network_status_changed {
                                 use tego_tor_network_status::tego_tor_network_status_ready;
                                 on_tor_network_status_changed(tego_key as *mut tego_context, tego_tor_network_status_ready);
