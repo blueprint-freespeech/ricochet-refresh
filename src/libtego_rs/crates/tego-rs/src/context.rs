@@ -1,4 +1,5 @@
 // standard
+use std::collections::BTreeMap;
 use std::ffi::CString;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, Weak};
@@ -7,7 +8,7 @@ use std::sync::{Arc, Mutex, Weak};
 use anyhow::Result;
 use tor_interface::proxy::{ProxyConfig};
 use tor_interface::legacy_tor_client::*;
-use tor_interface::tor_crypto::Ed25519PrivateKey;
+use tor_interface::tor_crypto::{Ed25519PrivateKey, V3OnionServiceId};
 use tor_interface::tor_provider::{TorEvent, TorProvider};
 
 // internal crates
@@ -26,6 +27,7 @@ pub(crate) struct Context {
     pub tor_logs: Arc<Mutex<Vec<String>>>,
     // ricochet-refresh data
     pub private_key: Option<Ed25519PrivateKey>,
+    pub users: Arc<Mutex<BTreeMap<V3OnionServiceId, UserData>>>,
 }
 
 impl Context {
@@ -119,7 +121,17 @@ impl Context {
                             }
                         },
                         TorEvent::BootstrapComplete => {
+                            if let Some(on_tor_network_status_changed) = callbacks.on_tor_network_status_changed {
+                                use tego_tor_network_status::tego_tor_network_status_ready;
+                                on_tor_network_status_changed(tego_key as *mut tego_context, tego_tor_network_status_ready);
+                            }
 
+                            // TODO: start onion service
+
+                            if let Some(on_host_onion_service_state_changed) = callbacks.on_host_onion_service_state_changed {
+                                use tego_host_onion_service_state::tego_host_onion_service_state_service_added;
+                                on_host_onion_service_state_changed(tego_key as *mut tego_context, tego_host_onion_service_state_service_added);
+                            }
                         },
                         TorEvent::LogReceived{line} => {
                             if let Some(on_tor_log_received) = callbacks.on_tor_log_received {
@@ -165,4 +177,12 @@ pub(crate) struct Callbacks {
     pub on_file_transfer_complete: tego_file_transfer_complete_callback,
     pub on_user_status_changed: tego_user_status_changed_callback,
     pub on_new_identity_created: tego_new_identity_created_callback,
+}
+
+pub(crate) enum UserData {
+    Allowed,
+    Requesting,
+    Blocked,
+    Pending,
+    Rejected,
 }

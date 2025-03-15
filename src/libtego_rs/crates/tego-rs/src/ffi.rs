@@ -1,4 +1,5 @@
 // standard
+use std::collections::BTreeMap;
 use std::ffi::{c_char, c_int, c_void};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use std::path::PathBuf;
@@ -12,7 +13,7 @@ use tor_interface::tor_crypto::{Ed25519PrivateKey, V3OnionServiceId};
 use tor_interface::tor_provider::{DomainAddr, TargetAddr};
 
 // internal crates
-use crate::context::Context;
+use crate::context::{Context, UserData};
 use crate::error::{Error, translate_failures};
 use crate::file_hash::FileHash;
 use crate::macros::*;
@@ -1008,14 +1009,70 @@ pub extern "C" fn tego_context_update_disable_network_flag(
 /// @param error : filled on error
 #[no_mangle]
 pub extern "C" fn tego_context_start_service(
-    _context: *mut tego_context,
-    _host_private_key: *const tego_ed25519_private_key,
-    _user_buffer: *const *const tego_user_id,
-    _user_type_buffer: *const tego_user_type,
-    _user_count: usize,
+    context: *mut tego_context,
+    host_private_key: *const tego_ed25519_private_key,
+    user_buffer: *const *const tego_user_id,
+    user_type_buffer: *const tego_user_type,
+    user_count: usize,
     error: *mut *mut tego_error) -> () {
     translate_failures((), error, || -> Result<()> {
         // TODO: refactor so this funciton is called *after* bootstrap
+        bail_if_null!(context);
+        bail_if!(user_buffer.is_null() && !user_type_buffer.is_null());
+        bail_if!(!user_buffer.is_null() && user_type_buffer.is_null());
+
+        let mut object_map = get_object_map();
+
+        let key = context as TegoKey;
+        let mut context = match object_map.get_mut(&key) {
+            Some(TegoObject::Context(context)) => context,
+            Some(_) => bail!("not a tego_context pointer: {:?}", key as *const c_void),
+            None => bail!("not a valid pointer: {:?}", key as *const c_void),
+        };
+
+        bail_if!(context.private_key.is_some());
+
+        let private_key = if host_private_key.is_null() {
+            Ed25519PrivateKey::generate()
+        } else {
+            let key = host_private_key as TegoKey;
+            match get_object_map().get(&key) {
+                Some(TegoObject::Ed25519PrivateKey(private_key)) => private_key.clone(),
+                Some(_) => bail!("not a tego_ed25519_private_key pointer: {:?}", key as *const c_void),
+                None => bail!("not a valid pointer: {:?}", key as *const c_void),
+            }
+        };
+
+        let mut users: BTreeMap<V3OnionServiceId, UserData> = Default::default();
+
+        if !user_buffer.is_null() && !user_type_buffer.is_null() {
+            let user_buffer = unsafe { std::slice::from_raw_parts(user_buffer, user_count) };
+            let user_type_buffer = unsafe { std::slice::from_raw_parts(user_type_buffer, user_count) };
+
+            for (user_id, user_type) in user_buffer.iter().zip(user_type_buffer.iter()) {
+                let key = *user_id as TegoKey;
+                let service_id = match get_object_map().get(&key) {
+                    Some(TegoObject::UserId(UserId{service_id})) => service_id.clone(),
+                    Some(_) => bail!("not a tego_user_id pointer: {:?}", key as *const c_void),
+                    None => bail!("not a valid pointer: {:?}", key as *const c_void),
+                };
+
+                use tego_user_type::*;
+                let user_data = match user_type {
+                    tego_user_type_host => bail!("user type may not be tego_user_type_host"),
+                    tego_user_type_allowed => UserData::Allowed,
+                    tego_user_type_requesting => UserData::Requesting,
+                    tego_user_type_blocked => UserData::Blocked,
+                    tego_user_type_pending => UserData::Pending,
+                    tego_user_type_rejected => UserData::Rejected,
+                };
+                users.insert(service_id, user_data);
+            }
+        }
+
+        context.private_key = Some(private_key);
+        context.users.lock().expect("another thread panked while holding users mutex").append(&mut users);
+
         Ok(())
     })
 }
