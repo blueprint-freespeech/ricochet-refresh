@@ -1021,19 +1021,31 @@ pub extern "C" fn tego_context_start_service(
         bail_if!(user_buffer.is_null() && !user_type_buffer.is_null());
         bail_if!(!user_buffer.is_null() && user_type_buffer.is_null());
 
-        let mut object_map = get_object_map();
+        let context_ptr = context;
 
-        let key = context as TegoKey;
-        let mut context = match object_map.get_mut(&key) {
-            Some(TegoObject::Context(context)) => context,
+        let key = context_ptr as TegoKey;
+        match get_object_map().get(&key) {
+            Some(TegoObject::Context(context)) => bail_if!(context.private_key.is_some()),
             Some(_) => bail!("not a tego_context pointer: {:?}", key as *const c_void),
             None => bail!("not a valid pointer: {:?}", key as *const c_void),
-        };
-
-        bail_if!(context.private_key.is_some());
-
+        }
         let private_key = if host_private_key.is_null() {
-            Ed25519PrivateKey::generate()
+            let private_key = Ed25519PrivateKey::generate();
+            // notify caller new identity created
+            let on_new_identity_created = match get_object_map().get(&key) {
+                Some(TegoObject::Context(context)) => {
+                    let callbacks = context.callbacks.lock().expect("another thread panicked while holding callback's mutex");
+                    callbacks.on_new_identity_created.clone()
+                },
+                Some(_) => bail!("not a tego_context pointer: {:?}", key as *const c_void),
+                None => bail!("not a valid pointer: {:?}", key as *const c_void),
+            };
+            if let Some(on_new_identity_created) = on_new_identity_created {
+                let object = TegoObject::Ed25519PrivateKey(private_key.clone());
+                let key = get_object_map().insert(object);
+                on_new_identity_created(context_ptr, key as *const tego_ed25519_private_key);
+            }
+            private_key
         } else {
             let key = host_private_key as TegoKey;
             match get_object_map().get(&key) {
@@ -1070,9 +1082,15 @@ pub extern "C" fn tego_context_start_service(
             }
         }
 
-        context.private_key = Some(private_key);
-        context.users.lock().expect("another thread panked while holding users mutex").append(&mut users);
-
+        let key = context_ptr as TegoKey;
+        match get_object_map().get_mut(&key) {
+            Some(TegoObject::Context(context)) => {
+                context.private_key = Some(private_key);
+                context.users.lock().expect("another thread panked while holding users mutex").append(&mut users);
+            },
+            Some(_) => bail!("not a tego_context pointer: {:?}", key as *const c_void),
+            None => bail!("not a valid pointer: {:?}", key as *const c_void),
+        };
         Ok(())
     })
 }

@@ -2,7 +2,7 @@
 use std::collections::BTreeMap;
 use std::ffi::CString;
 use std::path::PathBuf;
-use std::sync::{atomic::{AtomicBool, Ordering}, Arc, Mutex, Weak};
+use std::sync::{atomic::{AtomicBool, Ordering}, Arc, Condvar, Mutex, Weak};
 
 // extern
 use anyhow::Result;
@@ -26,6 +26,7 @@ pub(crate) struct Context {
     pub tor_version: CString,
     pub tor_logs: Arc<Mutex<Vec<String>>>,
     connect_complete: Arc<AtomicBool>,
+    network_task_complete: Arc<(Mutex<bool>, Condvar)>,
     // ricochet-refresh data
     pub private_key: Option<Ed25519PrivateKey>,
     pub users: Arc<Mutex<BTreeMap<V3OnionServiceId, UserData>>>,
@@ -61,6 +62,7 @@ impl Context {
         let tor_logs = Arc::downgrade(&self.tor_logs);
 
         let connect_complete = Arc::downgrade(&self.connect_complete);
+        let network_task_complete = Arc::downgrade(&self.network_task_complete);
 
         let private_key = self.private_key.as_ref().unwrap().clone();
 
@@ -73,7 +75,14 @@ impl Context {
                     &tor_client,
                     &tor_logs,
                     &connect_complete,
-                    private_key)
+                    private_key);
+                // signal task completion
+                if let Some(complete) = network_task_complete.upgrade() {
+                    let (complete, cvar) = &*complete;
+                    let mut complete = complete.lock().unwrap();
+                    *complete = true;
+                    cvar.notify_one();
+                }
             })?;
 
         Ok(())
@@ -181,7 +190,21 @@ impl Context {
                         _ => (),
                     }
                 }
+            } else {
+                return;
             }
+        }
+    }
+}
+
+impl Drop for Context {
+    fn drop(&mut self) {
+        // drop the tor client and let network task complete
+        self.tor_client = None;
+        let (complete, cvar) = &*self.network_task_complete;
+        let mut complete = complete.lock().unwrap();
+        while !*complete {
+            complete = cvar.wait(complete).unwrap();
         }
     }
 }
