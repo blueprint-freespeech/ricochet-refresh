@@ -23,7 +23,6 @@ pub(crate) struct Context {
     pub tor_data_directory: PathBuf,
     pub proxy_settings: Option<ProxyConfig>,
     pub allowed_ports: Option<Vec<u16>>,
-    tor_client: Option<Arc<Mutex<LegacyTorClient>>>,
     // tor runtime data
     tor_version_cstring: Option<CString>,
     tor_version: Arc<Mutex<Option<LegacyTorVersion>>>,
@@ -39,7 +38,14 @@ pub(crate) struct Context {
 }
 
 impl Context {
-    pub fn tor_version_string(&self) -> Option<&CString> {
+    pub fn tor_version_string(&mut self) -> Option<&CString> {
+        if self.tor_version_cstring.is_none() {
+            let tor_version = self.tor_version.lock().expect("tor_version mutex poisoned");
+            if let Some(tor_version) = &*tor_version {
+                let tor_version = tor_version.to_string();
+                self.tor_version_cstring = Some(CString::new(tor_version).unwrap());
+            }
+        }
         self.tor_version_cstring.as_ref()
     }
 
@@ -57,19 +63,7 @@ impl Context {
             bridge_lines: None,
         };
 
-        let mut tor_client = LegacyTorClient::new(config)?;
-        let tor_version = tor_client.version().to_string();
-        self.tor_version_cstring = Some(CString::new(tor_version.clone())?);
-        let mut tor_version = self.tor_version.lock().expect("tor_version mutex poisoned");
-        let tor_version = tor_client.version();
-
-        let tor_client = Arc::new(Mutex::new(tor_client));
-        let tor_client_weak = Arc::downgrade(&tor_client);
-
-        self.tor_client = Some(tor_client);
-
-        let tor_client = tor_client_weak;
-
+        let tor_version = Arc::downgrade(&self.tor_version);
         let tor_logs = Arc::downgrade(&self.tor_logs);
 
         let connect_complete = Arc::downgrade(&self.connect_complete);
@@ -82,14 +76,25 @@ impl Context {
         std::thread::Builder::new()
             .name("network-task".to_string())
             .spawn(move || {
+                // launch tor daemon
+                let mut tor_client = LegacyTorClient::new(config).unwrap();
+
+                // save off the tor daemon version
+                if let Some(tor_version) = tor_version.upgrade() {
+                    let mut tor_version = tor_version.lock().expect("tor_version mutex poisoned");
+                    *tor_version = Some(tor_client.version());
+                };
+
+                // start event loop
                 Self::network_task(
                     tego_key,
                     &callbacks,
-                    &tor_client,
+                    tor_client,
                     &tor_logs,
                     &connect_complete,
                     private_key,
                     &command_queue);
+
                 // signal task completion
                 if let Some(complete) = network_task_complete.upgrade() {
                     let (complete, cvar) = &*complete;
@@ -131,37 +136,26 @@ impl Context {
     fn network_task(
         tego_key: TegoKey,
         callbacks: &Weak<Mutex<Callbacks>>,
-        tor_client: &Weak<Mutex<LegacyTorClient>>,
+        mut tor_client: LegacyTorClient,
         tor_logs: &Weak<Mutex<Vec<String>>>,
         connect_complete: &Weak<AtomicBool>,
         private_key: Ed25519PrivateKey,
-        command_queue: &Weak<Mutex<Vec<Command>>>) -> () {
+        command_queue: &Weak<Mutex<Vec<Command>>>) -> Result<()> {
 
-        if let Some(tor_client) = tor_client.upgrade() {
-            let _ = tor_client.lock().unwrap().bootstrap();
-        } else {
-            // drop everything?
-            return;
-        }
+        tor_client.bootstrap();
 
         let mut listener: Option<OnionListener> = None;
 
         loop {
             // get events
-            let events = if let Some(tor_client) = tor_client.upgrade() {
-                tor_client.lock().unwrap().update().unwrap()
-            } else {
-                // TODO: error callback?
-                return;
-            };
+            let events = tor_client.update()?;
 
             // get pending commands
             let command_queue: Vec<Command> = if let Some(command_queue) = command_queue.upgrade() {
                 let mut command_queue = command_queue.lock().expect("command_queue mutex poisoned");
                 std::mem::take(&mut command_queue)
             } else {
-                // TODO: error callback?
-                return;
+                Default::default()
             };
 
             if let Some(callbacks) = callbacks.upgrade() {
@@ -191,12 +185,7 @@ impl Context {
                             }
 
                             // start onion service
-                            if let Some(tor_client) = tor_client.upgrade() {
-                                listener = Some(tor_client.lock().unwrap().listener(&private_key, 9878u16, None).unwrap());
-                            } else {
-                                // TODO: error callback?
-                                return;
-                            };
+                            listener = Some(tor_client.listener(&private_key, 9878u16, None).unwrap());
                         },
                         TorEvent::LogReceived{line} => {
                             if let Some(on_tor_log_received) = callbacks.on_tor_log_received {
@@ -221,10 +210,10 @@ impl Context {
                 }
 
                 for cmd in command_queue {
-
+                    match cmd {
+                        Command::EndNetworkTask => return Ok(()),
+                    }
                 }
-            } else {
-                return;
             }
         }
     }
@@ -232,8 +221,7 @@ impl Context {
 
 impl Drop for Context {
     fn drop(&mut self) {
-        // drop the tor client and let network task complete
-        self.tor_client = None;
+        self.push_command(Command::EndNetworkTask);
         let (complete, cvar) = &*self.network_task_complete;
         let mut complete = complete.lock().unwrap();
         while !*complete {
@@ -243,6 +231,7 @@ impl Drop for Context {
 }
 
 enum Command {
+    EndNetworkTask,
 }
 
 #[derive(Default)]

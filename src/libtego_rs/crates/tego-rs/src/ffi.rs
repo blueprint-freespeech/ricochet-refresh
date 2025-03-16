@@ -1188,7 +1188,7 @@ pub extern "C" fn tego_context_get_tor_version_string(
         bail_if_null!(context);
 
         let key = context as TegoKey;
-        match get_object_map().get(&key) {
+        match get_object_map().get_mut(&key) {
             Some(TegoObject::Context(context)) => {
                 if let Some(tor_version) = context.tor_version_string() {
                     Ok(tor_version.as_c_str().as_ptr())
