@@ -9,7 +9,7 @@ use anyhow::Result;
 use tor_interface::proxy::{ProxyConfig};
 use tor_interface::legacy_tor_client::*;
 use tor_interface::tor_crypto::{Ed25519PrivateKey, V3OnionServiceId};
-use tor_interface::tor_provider::{TorEvent, TorProvider};
+use tor_interface::tor_provider::{OnionListener, TorEvent, TorProvider};
 
 // internal crates
 use crate::ffi::*;
@@ -62,10 +62,18 @@ impl Context {
 
         let connect_complete = Arc::downgrade(&self.connect_complete);
 
+        let private_key = self.private_key.as_ref().unwrap().clone();
+
         std::thread::Builder::new()
             .name("network-task".to_string())
             .spawn(move || {
-                Self::network_task(tego_key, &callbacks, &tor_client, &tor_logs, &connect_complete)
+                Self::network_task(
+                    tego_key,
+                    &callbacks,
+                    &tor_client,
+                    &tor_logs,
+                    &connect_complete,
+                    private_key)
             })?;
 
         Ok(())
@@ -97,7 +105,8 @@ impl Context {
         callbacks: &Weak<Mutex<Callbacks>>,
         tor_client: &Weak<Mutex<LegacyTorClient>>,
         tor_logs: &Weak<Mutex<Vec<String>>>,
-        connect_complete: &Weak<AtomicBool>) -> () {
+        connect_complete: &Weak<AtomicBool>,
+        private_key: Ed25519PrivateKey) -> () {
 
         if let Some(tor_client) = tor_client.upgrade() {
             let _ = tor_client.lock().unwrap().bootstrap();
@@ -106,12 +115,14 @@ impl Context {
             return;
         }
 
+        let mut listener: Option<OnionListener> = None;
+
         loop {
             // get events
             let events = if let Some(tor_client) = tor_client.upgrade() {
                 tor_client.lock().unwrap().update().unwrap()
             } else {
-                // drop everything?
+                // TODO: error callback?
                 return;
             };
 
@@ -136,12 +147,18 @@ impl Context {
                                 on_tor_network_status_changed(tego_key as *mut tego_context, tego_tor_network_status_ready);
                             }
 
-                            // TODO: start onion service
-
                             if let Some(on_host_onion_service_state_changed) = callbacks.on_host_onion_service_state_changed {
                                 use tego_host_onion_service_state::tego_host_onion_service_state_service_added;
                                 on_host_onion_service_state_changed(tego_key as *mut tego_context, tego_host_onion_service_state_service_added);
                             }
+
+                            // start onion service
+                            if let Some(tor_client) = tor_client.upgrade() {
+                                listener = Some(tor_client.lock().unwrap().listener(&private_key, 9878u16, None).unwrap());
+                            } else {
+                                // TODO: error callback?
+                                return;
+                            };
                         },
                         TorEvent::LogReceived{line} => {
                             if let Some(on_tor_log_received) = callbacks.on_tor_log_received {
@@ -155,8 +172,11 @@ impl Context {
                                 tor_logs.push(line);
                             }
                         },
-                        TorEvent::OnionServicePublished{service_id} => {
-
+                        TorEvent::OnionServicePublished{service_id : _} => {
+                            if let Some(on_host_onion_service_state_changed) = callbacks.on_host_onion_service_state_changed {
+                                use tego_host_onion_service_state::tego_host_onion_service_state_service_published;
+                                on_host_onion_service_state_changed(tego_key as *mut tego_context, tego_host_onion_service_state_service_published);
+                            }
                         },
                         _ => (),
                     }
