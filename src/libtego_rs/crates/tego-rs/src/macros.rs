@@ -1,9 +1,6 @@
-//extern
-use anyhow::bail;
-
 macro_rules! bail_not_implemented {
     () => {
-        bail!("not implemented")
+        anyhow::bail!("not implemented")
     }
 }
 pub(crate) use bail_not_implemented;
@@ -16,7 +13,7 @@ pub(crate) use bail_not_implemented;
 macro_rules! bail_if {
     ($cond:expr) => {
         if $cond {
-            bail!(stringify!([<$cond>] must not be true));
+            anyhow::bail!(stringify!([<$cond>] must not be true));
 }
     };
 }
@@ -27,7 +24,7 @@ pub(crate) use bail_if;
 macro_rules! bail_if_null {
     ($ptr:ident) => {
         if $ptr.is_null() {
-            bail!(stringify!([<$ptr>] must not be null));
+            anyhow::bail!(stringify!([<$ptr>] must not be null));
         }
     };
 }
@@ -37,7 +34,7 @@ pub(crate) use bail_if_null;
 macro_rules! bail_if_equal {
     ($left:expr, $right:expr) => {
         if $left == $right {
-            bail!(stringify!([<$left>] must not be equal [<$right>]));
+            anyhow::bail!(stringify!([<$left>] must not be equal [<$right>]));
         }
     };
 }
@@ -47,7 +44,7 @@ pub(crate) use bail_if_equal;
 macro_rules! bail_if_not_equal {
     ($left:expr, $right:expr) => {
         if $left != $right {
-            bail!(stringify!([<$left>] must equal [<$right>]));
+            anyhow::bail!(stringify!([<$left>] must equal [<$right>]));
         }
     };
 }
