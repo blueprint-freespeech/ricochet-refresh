@@ -8,6 +8,7 @@ use std::sync::{atomic::{AtomicBool, Ordering}, Arc, Condvar, Mutex, Weak};
 use anyhow::Result;
 use tor_interface::proxy::{ProxyConfig};
 use tor_interface::legacy_tor_client::*;
+use tor_interface::legacy_tor_version::LegacyTorVersion;
 use tor_interface::tor_crypto::{Ed25519PrivateKey, V3OnionServiceId};
 use tor_interface::tor_provider::{OnionListener, TorEvent, TorProvider};
 
@@ -18,12 +19,14 @@ use crate::ffi::*;
 pub(crate) struct Context {
     pub tego_key: TegoKey,
     pub callbacks: Arc<Mutex<Callbacks>>,
-    // tor daemon data
+    // tor config data
     pub tor_data_directory: PathBuf,
     pub proxy_settings: Option<ProxyConfig>,
     pub allowed_ports: Option<Vec<u16>>,
     tor_client: Option<Arc<Mutex<LegacyTorClient>>>,
-    pub tor_version: CString,
+    // tor runtime data
+    tor_version_cstring: Option<CString>,
+    tor_version: Arc<Mutex<Option<LegacyTorVersion>>>,
     pub tor_logs: Arc<Mutex<Vec<String>>>,
     // flags
     connect_complete: Arc<AtomicBool>,
@@ -36,6 +39,10 @@ pub(crate) struct Context {
 }
 
 impl Context {
+    pub fn tor_version_string(&self) -> Option<&CString> {
+        self.tor_version_cstring.as_ref()
+    }
+
     pub fn connect(&mut self) -> Result<()> {
 
         let tego_key = self.tego_key;
@@ -52,8 +59,9 @@ impl Context {
 
         let mut tor_client = LegacyTorClient::new(config)?;
         let tor_version = tor_client.version().to_string();
-        let tor_version = CString::new(tor_version)?;
-        self.tor_version = tor_version;
+        self.tor_version_cstring = Some(CString::new(tor_version.clone())?);
+        let mut tor_version = self.tor_version.lock().expect("tor_version mutex poisoned");
+        let tor_version = tor_client.version();
 
         let tor_client = Arc::new(Mutex::new(tor_client));
         let tor_client_weak = Arc::downgrade(&tor_client);

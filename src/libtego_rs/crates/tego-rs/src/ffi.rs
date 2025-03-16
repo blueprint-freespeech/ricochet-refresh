@@ -1190,7 +1190,11 @@ pub extern "C" fn tego_context_get_tor_version_string(
         let key = context as TegoKey;
         match get_object_map().get(&key) {
             Some(TegoObject::Context(context)) => {
-                Ok(context.tor_version.as_c_str().as_ptr())
+                if let Some(tor_version) = context.tor_version_string() {
+                    Ok(tor_version.as_c_str().as_ptr())
+                } else {
+                    Ok(std::ptr::null())
+                }
             },
             Some(_) => bail!("not a tego_context pointer: {:?}", key as *const c_void),
             None => bail!("not a valid pointer: {:?}", key as *const c_void),
