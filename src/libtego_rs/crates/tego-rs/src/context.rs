@@ -25,8 +25,11 @@ pub(crate) struct Context {
     tor_client: Option<Arc<Mutex<LegacyTorClient>>>,
     pub tor_version: CString,
     pub tor_logs: Arc<Mutex<Vec<String>>>,
+    // flags
     connect_complete: Arc<AtomicBool>,
     network_task_complete: Arc<(Mutex<bool>, Condvar)>,
+    // command queue
+    command_queue: Arc<Mutex<Vec<Command>>>,
     // ricochet-refresh data
     pub private_key: Option<Ed25519PrivateKey>,
     pub users: Arc<Mutex<BTreeMap<V3OnionServiceId, UserData>>>,
@@ -66,6 +69,8 @@ impl Context {
 
         let private_key = self.private_key.as_ref().unwrap().clone();
 
+        let command_queue = Arc::downgrade(&self.command_queue);
+
         std::thread::Builder::new()
             .name("network-task".to_string())
             .spawn(move || {
@@ -75,7 +80,8 @@ impl Context {
                     &tor_client,
                     &tor_logs,
                     &connect_complete,
-                    private_key);
+                    private_key,
+                    &command_queue);
                 // signal task completion
                 if let Some(complete) = network_task_complete.upgrade() {
                     let (complete, cvar) = &*complete;
@@ -90,6 +96,11 @@ impl Context {
 
     pub fn connect_complete(&self) -> bool {
         self.connect_complete.load(Ordering::Relaxed)
+    }
+
+    fn push_command(&self, cmd: Command) -> () {
+        let mut command_queue = self.command_queue.lock().expect("command_queue mutex poisoned");
+        command_queue.push(cmd);
     }
 
     fn tor_bin_path() -> Result<PathBuf> {
@@ -115,7 +126,8 @@ impl Context {
         tor_client: &Weak<Mutex<LegacyTorClient>>,
         tor_logs: &Weak<Mutex<Vec<String>>>,
         connect_complete: &Weak<AtomicBool>,
-        private_key: Ed25519PrivateKey) -> () {
+        private_key: Ed25519PrivateKey,
+        command_queue: &Weak<Mutex<Vec<Command>>>) -> () {
 
         if let Some(tor_client) = tor_client.upgrade() {
             let _ = tor_client.lock().unwrap().bootstrap();
@@ -130,6 +142,15 @@ impl Context {
             // get events
             let events = if let Some(tor_client) = tor_client.upgrade() {
                 tor_client.lock().unwrap().update().unwrap()
+            } else {
+                // TODO: error callback?
+                return;
+            };
+
+            // get pending commands
+            let command_queue: Vec<Command> = if let Some(command_queue) = command_queue.upgrade() {
+                let mut command_queue = command_queue.lock().expect("command_queue mutex poisoned");
+                std::mem::take(&mut command_queue)
             } else {
                 // TODO: error callback?
                 return;
@@ -190,6 +211,10 @@ impl Context {
                         _ => (),
                     }
                 }
+
+                for cmd in command_queue {
+
+                }
             } else {
                 return;
             }
@@ -207,6 +232,9 @@ impl Drop for Context {
             complete = cvar.wait(complete).unwrap();
         }
     }
+}
+
+enum Command {
 }
 
 #[derive(Default)]
