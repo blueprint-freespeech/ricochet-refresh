@@ -178,6 +178,16 @@ impl Context {
                             use tego_host_onion_service_state::tego_host_onion_service_state_service_added;
                             on_host_onion_service_state_changed(tego_key as *mut tego_context, tego_host_onion_service_state_service_added);
                         }
+
+                        // start onion service
+                        let listener = tor_client.listener(&private_key, 9878u16, None)?;
+                        std::thread::Builder::new()
+                            .name("listener-loop".to_string())
+                            .spawn({
+                                let command_queue = command_queue.clone();
+                                move || {
+                                    let _ = Self::listener_loop(listener, &command_queue);
+                            }})?;
                     },
                     TorEvent::LogReceived{line} => {
                         if let Some(on_tor_log_received) = callbacks.on_tor_log_received {
@@ -214,6 +224,14 @@ impl Context {
                 }
             }
         }
+    }
+
+    fn listener_loop(
+        listener: OnionListener,
+        command_queue: &Weak<Mutex<Vec<Command>>>,
+    ) -> Result<()> {
+        println!("listener loop begin!");
+        Ok(())
     }
 }
 
