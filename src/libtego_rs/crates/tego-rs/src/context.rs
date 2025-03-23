@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use std::sync::{atomic::{AtomicBool, Ordering}, Arc, Condvar, Mutex, Weak};
 
 // extern
-use anyhow::Result;
+use anyhow::{Context as AnyhowContext ,Result};
 use tor_interface::proxy::{ProxyConfig};
 use tor_interface::legacy_tor_client::*;
 use tor_interface::legacy_tor_version::LegacyTorVersion;
@@ -29,7 +29,7 @@ pub(crate) struct Context {
     pub tor_logs: Arc<Mutex<Vec<String>>>,
     // flags
     connect_complete: Arc<AtomicBool>,
-    network_task_complete: Arc<(Mutex<bool>, Condvar)>,
+    event_loop_complete: Arc<(Mutex<bool>, Condvar)>,
     // command queue
     command_queue: Arc<Mutex<Vec<Command>>>,
     // ricochet-refresh data
@@ -54,7 +54,7 @@ impl Context {
         let tego_key = self.tego_key;
         let callbacks = Arc::downgrade(&self.callbacks);
 
-        let config = LegacyTorClientConfig::BundledTor{
+        let tor_config = LegacyTorClientConfig::BundledTor{
             tor_bin_path: Self::tor_bin_path()?,
             data_directory: self.tor_data_directory.clone(),
             proxy_settings: None,
@@ -67,36 +67,28 @@ impl Context {
         let tor_logs = Arc::downgrade(&self.tor_logs);
 
         let connect_complete = Arc::downgrade(&self.connect_complete);
-        let network_task_complete = Arc::downgrade(&self.network_task_complete);
+        let event_loop_complete = Arc::downgrade(&self.event_loop_complete);
 
         let private_key = self.private_key.as_ref().unwrap().clone();
 
         let command_queue = Arc::downgrade(&self.command_queue);
 
         std::thread::Builder::new()
-            .name("network-task".to_string())
+            .name("event-loop".to_string())
             .spawn(move || {
-                // launch tor daemon
-                let mut tor_client = LegacyTorClient::new(config).unwrap();
-
-                // save off the tor daemon version
-                if let Some(tor_version) = tor_version.upgrade() {
-                    let mut tor_version = tor_version.lock().expect("tor_version mutex poisoned");
-                    *tor_version = Some(tor_client.version());
-                };
-
                 // start event loop
-                Self::network_task(
+                let _ = Self::event_loop(
                     tego_key,
                     &callbacks,
-                    tor_client,
+                    tor_config,
+                    &tor_version,
                     &tor_logs,
                     &connect_complete,
                     private_key,
                     &command_queue);
 
                 // signal task completion
-                if let Some(complete) = network_task_complete.upgrade() {
+                if let Some(complete) = event_loop_complete.upgrade() {
                     let (complete, cvar) = &*complete;
                     let mut complete = complete.lock().unwrap();
                     *complete = true;
@@ -133,86 +125,92 @@ impl Context {
         }
     }
 
-    fn network_task(
+    fn event_loop(
         tego_key: TegoKey,
         callbacks: &Weak<Mutex<Callbacks>>,
-        mut tor_client: LegacyTorClient,
+        tor_config: LegacyTorClientConfig,
+        tor_version: &Weak<Mutex<Option<LegacyTorVersion>>>,
         tor_logs: &Weak<Mutex<Vec<String>>>,
         connect_complete: &Weak<AtomicBool>,
         private_key: Ed25519PrivateKey,
         command_queue: &Weak<Mutex<Vec<Command>>>) -> Result<()> {
 
-        tor_client.bootstrap();
+        // launch tor daemon
+        let mut tor_client = LegacyTorClient::new(tor_config)?;
 
-        let mut listener: Option<OnionListener> = None;
+        // save off the tor daemon version
+        {
+            let mut tor_version = tor_version.upgrade().context("tor_version dropped")?;
+            let mut tor_version = tor_version.lock().expect("tor_version mutex poisoned");
+            *tor_version = Some(tor_client.version());
+        }
+
+        // bootstrap tor daemon
+        tor_client.bootstrap()?;
 
         loop {
             // get events
             let events = tor_client.update()?;
 
+            // handle callbacks
+            let callbacks = callbacks.upgrade().context("callbacks dropped")?;
+            let callbacks = callbacks.lock().expect("callbacks mutex poisoned");
+
+            // handle events
+            for e in events {
+                match e {
+                    TorEvent::BootstrapStatus{progress, tag, summary} => {
+                        if let Some(on_tor_bootstrap_status_changed) = callbacks.on_tor_bootstrap_status_changed {
+                            on_tor_bootstrap_status_changed(tego_key as *mut tego_context, progress as i32, tag.as_str().into());
+                        }
+                    },
+                    TorEvent::BootstrapComplete => {
+                        if let Some(connect_complete) = connect_complete.upgrade() {
+                            connect_complete.store(true, Ordering::Relaxed);
+                        }
+
+                        if let Some(on_tor_network_status_changed) = callbacks.on_tor_network_status_changed {
+                            use tego_tor_network_status::tego_tor_network_status_ready;
+                            on_tor_network_status_changed(tego_key as *mut tego_context, tego_tor_network_status_ready);
+                        }
+
+                        if let Some(on_host_onion_service_state_changed) = callbacks.on_host_onion_service_state_changed {
+                            use tego_host_onion_service_state::tego_host_onion_service_state_service_added;
+                            on_host_onion_service_state_changed(tego_key as *mut tego_context, tego_host_onion_service_state_service_added);
+                        }
+                    },
+                    TorEvent::LogReceived{line} => {
+                        if let Some(on_tor_log_received) = callbacks.on_tor_log_received {
+                            let line = CString::new(line.as_str()).unwrap();
+                            let line_len = line.as_bytes().len();
+                            on_tor_log_received(tego_key as *mut tego_context, line.as_c_str().as_ptr(), line_len);
+                        }
+
+                        if let Some(tor_logs) = tor_logs.upgrade() {
+                            let mut tor_logs = tor_logs.lock().unwrap();
+                            tor_logs.push(line);
+                        }
+                    },
+                    TorEvent::OnionServicePublished{service_id : _} => {
+                        if let Some(on_host_onion_service_state_changed) = callbacks.on_host_onion_service_state_changed {
+                            use tego_host_onion_service_state::tego_host_onion_service_state_service_published;
+                            on_host_onion_service_state_changed(tego_key as *mut tego_context, tego_host_onion_service_state_service_published);
+                        }
+                    },
+                    _ => (),
+                }
+            }
+
             // get pending commands
-            let command_queue: Vec<Command> = if let Some(command_queue) = command_queue.upgrade() {
+            let command_queue: Vec<Command> = {
+                let command_queue = command_queue.upgrade().context("command_queue dropped")?;
                 let mut command_queue = command_queue.lock().expect("command_queue mutex poisoned");
                 std::mem::take(&mut command_queue)
-            } else {
-                Default::default()
             };
 
-            if let Some(callbacks) = callbacks.upgrade() {
-                let callbacks = callbacks.lock().unwrap();
-
-                // handle events
-                for e in events {
-                    match e {
-                        TorEvent::BootstrapStatus{progress, tag, summary} => {
-                            if let Some(on_tor_bootstrap_status_changed) = callbacks.on_tor_bootstrap_status_changed {
-                                on_tor_bootstrap_status_changed(tego_key as *mut tego_context, progress as i32, tag.as_str().into());
-                            }
-                        },
-                        TorEvent::BootstrapComplete => {
-                            if let Some(connect_complete) = connect_complete.upgrade() {
-                                connect_complete.store(true, Ordering::Relaxed);
-                            }
-
-                            if let Some(on_tor_network_status_changed) = callbacks.on_tor_network_status_changed {
-                                use tego_tor_network_status::tego_tor_network_status_ready;
-                                on_tor_network_status_changed(tego_key as *mut tego_context, tego_tor_network_status_ready);
-                            }
-
-                            if let Some(on_host_onion_service_state_changed) = callbacks.on_host_onion_service_state_changed {
-                                use tego_host_onion_service_state::tego_host_onion_service_state_service_added;
-                                on_host_onion_service_state_changed(tego_key as *mut tego_context, tego_host_onion_service_state_service_added);
-                            }
-
-                            // start onion service
-                            listener = Some(tor_client.listener(&private_key, 9878u16, None).unwrap());
-                        },
-                        TorEvent::LogReceived{line} => {
-                            if let Some(on_tor_log_received) = callbacks.on_tor_log_received {
-                                let line = CString::new(line.as_str()).unwrap();
-                                let line_len = line.as_bytes().len();
-                                on_tor_log_received(tego_key as *mut tego_context, line.as_c_str().as_ptr(), line_len);
-                            }
-
-                            if let Some(tor_logs) = tor_logs.upgrade() {
-                                let mut tor_logs = tor_logs.lock().unwrap();
-                                tor_logs.push(line);
-                            }
-                        },
-                        TorEvent::OnionServicePublished{service_id : _} => {
-                            if let Some(on_host_onion_service_state_changed) = callbacks.on_host_onion_service_state_changed {
-                                use tego_host_onion_service_state::tego_host_onion_service_state_service_published;
-                                on_host_onion_service_state_changed(tego_key as *mut tego_context, tego_host_onion_service_state_service_published);
-                            }
-                        },
-                        _ => (),
-                    }
-                }
-
-                for cmd in command_queue {
-                    match cmd {
-                        Command::EndNetworkTask => return Ok(()),
-                    }
+            for cmd in command_queue {
+                match cmd {
+                    Command::EndEventLoop => return Ok(()),
                 }
             }
         }
@@ -221,8 +219,8 @@ impl Context {
 
 impl Drop for Context {
     fn drop(&mut self) {
-        self.push_command(Command::EndNetworkTask);
-        let (complete, cvar) = &*self.network_task_complete;
+        self.push_command(Command::EndEventLoop);
+        let (complete, cvar) = &*self.event_loop_complete;
         let mut complete = complete.lock().unwrap();
         while !*complete {
             complete = cvar.wait(complete).unwrap();
@@ -231,7 +229,7 @@ impl Drop for Context {
 }
 
 enum Command {
-    EndNetworkTask,
+    EndEventLoop,
 }
 
 #[derive(Default)]
