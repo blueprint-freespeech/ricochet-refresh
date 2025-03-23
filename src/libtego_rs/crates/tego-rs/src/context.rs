@@ -10,7 +10,7 @@ use tor_interface::proxy::{ProxyConfig};
 use tor_interface::legacy_tor_client::*;
 use tor_interface::legacy_tor_version::LegacyTorVersion;
 use tor_interface::tor_crypto::{Ed25519PrivateKey, V3OnionServiceId};
-use tor_interface::tor_provider::{OnionListener, TorEvent, TorProvider};
+use tor_interface::tor_provider::{OnionListener, OnionStream, TorEvent, TorProvider};
 
 // internal crates
 use crate::ffi::*;
@@ -221,16 +221,30 @@ impl Context {
             for cmd in command_queue {
                 match cmd {
                     Command::EndEventLoop => return Ok(()),
+                    Command::BeginServerHandshake{stream} => {
+                        println!("begin server handshake");
+                    },
                 }
             }
         }
     }
 
+    // listen for connections to our onion service and request handshake begin
     fn listener_loop(
         listener: OnionListener,
         command_queue: &Weak<Mutex<Vec<Command>>>,
     ) -> Result<()> {
         println!("listener loop begin!");
+        listener.set_nonblocking(false);
+        while let Ok(stream) = listener.accept() {
+            if let Some(stream) = stream {
+                println!("stream: {stream:?}");
+                let command_queue = command_queue.upgrade().context("command_queue dropped")?;
+                let mut command_queue = command_queue.lock().expect("command_queue mutex poisoned");
+                command_queue.push(Command::BeginServerHandshake{stream});
+            }
+        }
+
         Ok(())
     }
 }
@@ -247,7 +261,12 @@ impl Drop for Context {
 }
 
 enum Command {
+    // library is going away we need to cleanup
     EndEventLoop,
+    // client connects to our listener triggering an incoming handshake
+    BeginServerHandshake{
+        stream: OnionStream
+    },
 }
 
 #[derive(Default)]
