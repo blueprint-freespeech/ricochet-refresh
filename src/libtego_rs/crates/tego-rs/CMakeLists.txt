@@ -2,8 +2,16 @@ set(tego_rs_sources
     build.rs
     Cargo.toml
     cbindgen.toml
+    src/context.rs
+    src/error.rs
     src/ffi.rs
+    src/file_hash.rs
     src/lib.rs
+    src/macros.rs
+    src/object_map.rs
+    src/tor_daemon_config.rs
+    src/tor_launch_config.rs
+    src/user_id.rs
 )
 
 set(tego_rs_static_filename "${CMAKE_STATIC_LIBRARY_PREFIX}tego_rs${CMAKE_STATIC_LIBRARY_SUFFIX}" CACHE STRING "tego-rs static library filename" FORCE
