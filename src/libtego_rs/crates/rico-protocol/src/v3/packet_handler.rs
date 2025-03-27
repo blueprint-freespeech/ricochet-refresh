@@ -114,7 +114,7 @@ struct Connection {
     direction: Direction,
 }
 
-type ConnectionHandle = u32;
+pub type ConnectionHandle = u32;
 pub const INVALID_CONNECTION_HANDLE: ConnectionHandle = 0xffffffffu32;
 
 pub enum Event {
@@ -128,6 +128,7 @@ pub enum Event {
 
 #[derive(Default)]
 pub struct PacketHandler {
+    next_connection_handle: ConnectionHandle,
     connections: BTreeMap<ConnectionHandle, Connection>,
 }
 
@@ -140,7 +141,7 @@ impl PacketHandler {
     pub fn try_parse_packet(
         &self,
         connection_handle: ConnectionHandle,
-        bytes: &[u8]) -> Result<Option<(Packet, usize)>, Error> {
+        bytes: &[u8]) -> Result<(Packet, usize), Error> {
 
         let connection = self.connections.get(&connection_handle).ok_or(Error::TargetConnectionDoesNotExist(connection_handle))?;
         let channel_map = &connection.channel_map;
@@ -149,7 +150,7 @@ impl PacketHandler {
             match TryInto::<introduction::IntroductionPacket>::try_into(bytes) {
                 Ok(packet) => {
                     let offset = 3 + packet.versions().len();
-                    return Ok(Some((Packet::IntroductionPacket(packet), offset)));
+                    return Ok((Packet::IntroductionPacket(packet), offset));
                 },
                 Err(Error::NeedMoreBytes) => return Err(Error::NeedMoreBytes),
                 _ => (),
@@ -158,7 +159,7 @@ impl PacketHandler {
             match TryInto::<introduction::IntroductionResponsePacket>::try_into(bytes) {
                 Ok(packet) => {
                     let offset = 1;
-                    return Ok(Some((Packet::IntroductionResponsePacket(packet), offset)));
+                    return Ok((Packet::IntroductionResponsePacket(packet), offset));
                 },
                 Err(Error::NeedMoreBytes) => return Err(Error::NeedMoreBytes),
                 _ => (),
@@ -168,10 +169,10 @@ impl PacketHandler {
         } else {
             if bytes.len() >= 4 {
                 // size is encoded as big-endian u16
-                let size: u16 = (bytes[0] as u16) << 8 + bytes[1] as u16;
+                let size: u16 = ((bytes[0] as u16) << 8) | (bytes[1] as u16);
                 let size = size as usize;
                 // channel id is encoded as big-endian u16
-                let channel: u16 = (bytes[2] as u16) << 8 + bytes[3] as u16;
+                let channel: u16 = ((bytes[2] as u16) << 8) | (bytes[3] as u16);
 
                 // size must be at least
                 if size < 4 {
@@ -179,7 +180,7 @@ impl PacketHandler {
                 } else if bytes.len() < size {
                     Err(Error::NeedMoreBytes)
                 } else if size == 4 {
-                    Ok(Some((Packet::CloseChannelPacket{channel}, 4)))
+                    Ok((Packet::CloseChannelPacket{channel}, 4))
                 } else {
                     let bytes = &bytes[4..size];
                     let packet = match channel_map.get(&channel) {
@@ -201,16 +202,17 @@ impl PacketHandler {
                         },
                         None => return Err(Error::TargetChannelDoesNotExist(channel)),
                     };
-                    Ok(Some((packet, size)))
+                    Ok((packet, size))
                 }
             } else {
-                Ok(None)
+                Err(Error::NeedMoreBytes)
             }
         }
     }
 
     // Handle a received packet and returns an event which needs to be handled by
     // the caller
+    // TODO: maybe this should be a Result<Event, Error>
     pub fn handle_packet(
         &mut self,
         connection_handle: ConnectionHandle,
@@ -348,11 +350,22 @@ impl PacketHandler {
         Err(Error::NotImplemented)
     }
 
-    pub fn new_outgoing_connection(service_id: V3OnionServiceId) -> ConnectionHandle {
+    pub fn new_outgoing_connection(&self, service_id: V3OnionServiceId) -> ConnectionHandle {
         INVALID_CONNECTION_HANDLE
     }
 
-    pub fn new_incoming_connection() -> ConnectionHandle {
-        INVALID_CONNECTION_HANDLE
+    pub fn new_incoming_connection(&mut self) -> ConnectionHandle {
+        let handle = self.next_connection_handle;
+        self.next_connection_handle += 1u32;
+
+        let connection = Connection{
+            channel_map: Default::default(),
+            target: None,
+            direction: Direction::Incoming,
+        };
+
+        self.connections.insert(handle, connection);
+
+        handle
     }
 }

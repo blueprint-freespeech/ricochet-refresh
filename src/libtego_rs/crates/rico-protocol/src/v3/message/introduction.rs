@@ -56,7 +56,7 @@ impl TryFrom<&[u8]> for IntroductionPacket {
                 if count >= 3usize + bytes[3] as usize {
                     Err(Self::Error::NeedMoreBytes)
                 } else {
-                    let version_count = bytes[3] as usize;
+                    let version_count = bytes[2] as usize;
                     let mut versions: Vec<Version> = Vec::with_capacity(version_count);
                     for i in 0..version_count {
                         versions.push(bytes[3 + i].try_into()?);
