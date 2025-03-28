@@ -57,6 +57,10 @@ pub enum Error {
     #[error("type conversion failed: {0}")]
     TypeConversionFailed(String),
 
+    // rand_core failure
+    #[error("rand error: {0}")]
+    RandOsError(#[source] rand_core::OsError),
+
     #[error("not implemented")]
     NotImplemented,
 }

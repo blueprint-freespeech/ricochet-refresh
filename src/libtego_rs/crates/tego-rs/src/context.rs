@@ -1,11 +1,13 @@
 // standard
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap};
 use std::ffi::CString;
+use std::io::{ErrorKind, Read, Write};
 use std::path::PathBuf;
 use std::sync::{atomic::{AtomicBool, Ordering}, Arc, Condvar, Mutex, Weak};
 
 // extern
 use anyhow::{Context as AnyhowContext ,Result};
+use rico_protocol::v3::packet_handler::*;
 use tor_interface::proxy::{ProxyConfig};
 use tor_interface::legacy_tor_client::*;
 use tor_interface::legacy_tor_version::LegacyTorVersion;
@@ -148,6 +150,14 @@ impl Context {
         // bootstrap tor daemon
         tor_client.bootstrap()?;
 
+        // our ricochet-refresh packet handler
+        let mut packet_handler = PacketHandler::new(V3OnionServiceId::from_private_key(&private_key));
+        // our current connections
+        let mut connections: BTreeMap<ConnectionHandle, Connection> = Default::default();
+        // byte read buffer
+        const READ_BUFFER_SIZE: usize = 1024;
+        let mut read_buffer: [u8; READ_BUFFER_SIZE] = [0u8; READ_BUFFER_SIZE];
+
         loop {
             // get events
             let events = tor_client.update()?;
@@ -211,7 +221,7 @@ impl Context {
                 }
             }
 
-            // get pending commands
+            // get and handle pending commands
             let command_queue: Vec<Command> = {
                 let command_queue = command_queue.upgrade().context("command_queue dropped")?;
                 let mut command_queue = command_queue.lock().expect("command_queue mutex poisoned");
@@ -222,10 +232,113 @@ impl Context {
                 match cmd {
                     Command::EndEventLoop => return Ok(()),
                     Command::BeginServerHandshake{stream} => {
-                        println!("begin server handshake");
+                        let handle = packet_handler.new_incoming_connection();
+
+                        let connection = Connection{
+                            service_id: None,
+                            stream,
+                            read_bytes: Default::default(),
+                        };
+
+                        println!("begin server handshake: {connection:?}");
+
+                        connections.insert(handle, connection);
+
                     },
                 }
             }
+
+            // read any pending bytes and update the packet handler
+            connections.retain(|&handle, connection| -> bool {
+                match connection.stream.read(&mut read_buffer) {
+                    Err(err) => match err.kind() {
+                        ErrorKind::WouldBlock | ErrorKind::TimedOut => true,
+                        _ => false,
+                    },
+                    Ok(0) => false,
+                    Ok(size) => {
+                        let read_buffer = &read_buffer[..size];
+                        connection.read_bytes.write(read_buffer);
+                        let mut read_bytes = connection.read_bytes.as_slice();
+                        // total handled bytes
+                        let mut trim_count = 0usize;
+
+                        let mut read_packets: Vec<Packet> = Default::default();
+
+                        loop {
+                            match packet_handler.try_parse_packet(handle, read_bytes) {
+                                Ok((packet, size)) => {
+                                    println!("read packet: {packet:?}");
+                                    // move slice up by number of handled bytes
+                                    read_bytes = &read_bytes[size..];
+                                    trim_count += size;
+                                    // save off read bytes for handling
+                                    read_packets.push(packet);
+                                },
+                                Err(rico_protocol::v3::message::Error::NeedMoreBytes) => {
+                                    break;
+                                },
+                                Err(err) => {
+                                    // TODO: report error somewhere?
+                                    println!("err: {err:?}");
+                                    // drop connection
+                                    return false;
+                                },
+                            }
+                        }
+                        // drop handled bytes off the front
+                        connection.read_bytes.drain(0..trim_count);
+
+                        // handle packets and queue responses
+                        let mut write_packets: Vec<Packet> = Default::default();
+                        for packet in read_packets.drain(..) {
+                            match packet_handler.handle_packet(handle, packet) {
+                                Ok(Some(Event::IntroductionReceived{reply})) => {
+                                    println!("--- introduction received ---");
+                                    write_packets.push(reply);
+                                },
+                                Ok(Some(Event::OpenChannelAuthHiddenServiceReceived{reply})) => {
+                                    println!("--- open auth hidden service received ---");
+                                    write_packets.push(reply);
+                                },
+                        Ok(Some(Event::ClientAuthenticated{service_id, reply})) => {
+                            println!("--- client authorised: {service_id:?} ---");
+                            connection.service_id = Some(service_id);
+                                    write_packets.push(reply);
+                                },
+                                // errors
+                                Ok(Some(Event::FatalProtocolFailure)) => {
+                                    println!("fatal protocol error, removing connection");
+                                    return false;
+                                }
+                                Err(err) => panic!("error: {err:?}"),
+                                _ => (),
+                            }
+                        }
+
+                        // write replies
+                        if !write_packets.is_empty() {
+                            // serialise out packets to bytes
+                            let mut write_bytes: Vec<u8> = Default::default();
+                            for packet in write_packets.drain(..) {
+                                println!("write packet: {packet:?}");
+                                packet.write_to_vec(&mut write_bytes);
+                            }
+
+                            // send bytes
+                            if let Ok(_written) = connection.stream.write(write_bytes.as_slice()) {
+                                true
+                            } else {
+                                // TODO: error reporting, remove user?
+                                // drop connection
+                                false
+                            }
+                        } else {
+                            true
+                        }
+                    },
+                }
+            });
         }
     }
 
@@ -234,10 +347,10 @@ impl Context {
         listener: OnionListener,
         command_queue: &Weak<Mutex<Vec<Command>>>,
     ) -> Result<()> {
-        println!("listener loop begin!");
         listener.set_nonblocking(false);
         while let Ok(stream) = listener.accept() {
             if let Some(stream) = stream {
+                stream.set_nonblocking(true)?;
                 println!("stream: {stream:?}");
                 let command_queue = command_queue.upgrade().context("command_queue dropped")?;
                 let mut command_queue = command_queue.lock().expect("command_queue mutex poisoned");
@@ -258,6 +371,14 @@ impl Drop for Context {
             complete = cvar.wait(complete).unwrap();
         }
     }
+}
+
+#[derive(Debug)]
+struct Connection {
+    pub service_id: Option<V3OnionServiceId>,
+    pub stream: OnionStream,
+    // buffer of unhandled read bytes
+    pub read_bytes: Vec<u8>,
 }
 
 enum Command {

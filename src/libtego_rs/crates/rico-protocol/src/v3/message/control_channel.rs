@@ -13,7 +13,7 @@ impl Packet {
         let mut pb: protos::ControlChannel::Packet = Default::default();
         match self {
             Packet::OpenChannel(open_channel) => {
-                let channel_identifier = Some(open_channel.channel_identifier());
+                let channel_identifier = Some(open_channel.channel_identifier() as i32);
                 let channel_type = open_channel.channel_type();
                 let channel_type: &str = channel_type.into();
                 let channel_type = Some(channel_type.to_string());
@@ -55,17 +55,21 @@ impl Packet {
                 pb.open_channel = Some(open_channel).into();
             },
             Packet::ChannelResult(channel_result) => {
-                let channel_identifier = Some(channel_result.channel_identifier);
+                let channel_identifier = Some(channel_result.channel_identifier as i32);
                 let opened = Some(channel_result.opened);
                 let common_error = &channel_result.common_error;
-                let common_error = match common_error {
-                    CommonError::GenericError => protos::ControlChannel::channel_result::CommonError::GenericError,
-                    CommonError::UnknownTypeError => protos::ControlChannel::channel_result::CommonError::UnknownTypeError,
-                    CommonError::UnauthorizedError => protos::ControlChannel::channel_result::CommonError::UnauthorizedError,
-                    CommonError::BadUsageError => protos::ControlChannel::channel_result::CommonError::BadUsageError,
-                    CommonError::FailedError => protos::ControlChannel::channel_result::CommonError::FailedError,
+                let common_error = if let Some(common_error) = common_error {
+                    let common_error = match common_error {
+                        CommonError::GenericError => protos::ControlChannel::channel_result::CommonError::GenericError,
+                        CommonError::UnknownTypeError => protos::ControlChannel::channel_result::CommonError::UnknownTypeError,
+                        CommonError::UnauthorizedError => protos::ControlChannel::channel_result::CommonError::UnauthorizedError,
+                        CommonError::BadUsageError => protos::ControlChannel::channel_result::CommonError::BadUsageError,
+                        CommonError::FailedError => protos::ControlChannel::channel_result::CommonError::FailedError,
+                    };
+                    Some(protobuf::EnumOrUnknown::new(common_error))
+                } else {
+                    None
                 };
-                let common_error = Some(protobuf::EnumOrUnknown::new(common_error));
                 let extension = channel_result.extension();
 
                 // construct ChannelResult packet
@@ -182,14 +186,18 @@ impl TryFrom<&[u8]> for Packet {
 
                 let opened = channel_result.opened.ok_or(Self::Error::InvalidProtobufMessage)?;
 
-                let common_error = channel_result.common_error.ok_or(Self::Error::InvalidProtobufMessage)?;
-                let common_error = match common_error.value() {
-                    0 => CommonError::GenericError,
-                    1 => CommonError::UnknownTypeError,
-                    2 => CommonError::UnauthorizedError,
-                    3 => CommonError::BadUsageError,
-                    4 => CommonError::FailedError,
-                    _ => return Err(Self::Error::InvalidProtobufMessage),
+                let common_error = if let Some(common_error) = channel_result.common_error {
+                    let common_error = match common_error.value() {
+                        0 => CommonError::GenericError,
+                        1 => CommonError::UnknownTypeError,
+                        2 => CommonError::UnauthorizedError,
+                        3 => CommonError::BadUsageError,
+                        4 => CommonError::FailedError,
+                        _ => return Err(Self::Error::InvalidProtobufMessage),
+                    };
+                    Some(common_error)
+                } else {
+                    None
                 };
 
                 // extension fields
@@ -235,8 +243,8 @@ impl TryFrom<&[u8]> for Packet {
 
 #[derive(Debug, PartialEq)]
 pub struct OpenChannel {
-    // TODO: spec needs updating, channel_identifier must be positive and non-zero, and less than u16::MAX
-    channel_identifier: i32,
+    // TODO: spec needs updating, channel_identifier must be positive and non-zero, and less than or equal to u16::MAX
+    channel_identifier: u16,
     channel_type: ChannelType,
     extension: Option<OpenChannelExtension>,
 }
@@ -250,11 +258,12 @@ impl OpenChannel {
            channel_identifier > u16::MAX as i32 {
             Err(crate::Error::PacketConstructionFailed("channel_identifier must be postive, non-zero, and less than u16::MAX".to_string()))
         } else {
+            let channel_identifier = channel_identifier as u16;
             Ok(Self{channel_identifier, channel_type, extension})
         }
     }
 
-    pub fn channel_identifier(&self) -> i32 {
+    pub fn channel_identifier(&self) -> u16 {
         self.channel_identifier
     }
 
@@ -311,10 +320,10 @@ pub enum OpenChannelExtension {
 
 #[derive(Debug, PartialEq)]
 pub struct ChannelResult {
-    // TODO: spec needs updating, channel_identifier must be positive and non-zero, and less than u16::MAX
-    channel_identifier: i32,
+    // TODO: spec needs updating, channel_identifier must be positive and non-zero, and less than or equal to u16::MAX
+    channel_identifier: u16,
     opened: bool,
-    common_error: CommonError,
+    common_error: Option<CommonError>,
     extension: Option<ChannelResultExtension>,
 }
 
@@ -322,17 +331,18 @@ impl ChannelResult {
     pub fn new(
         channel_identifier: i32,
         opened: bool,
-        common_error: CommonError,
+        common_error: Option<CommonError>,
         extension: Option<ChannelResultExtension>) -> Result<Self, crate::Error> {
         if channel_identifier < 1 ||
            channel_identifier > u16::MAX as i32 {
-            Err(crate::Error::PacketConstructionFailed("channel_identifier must be postive, non-zero, and less than u16::MAX".to_string()))
+            Err(crate::Error::PacketConstructionFailed("channel_identifier must be postive, non-zero, and less than or equal to u16::MAX".to_string()))
         } else {
+            let channel_identifier = channel_identifier as u16;
             Ok(Self{channel_identifier, opened, common_error, extension})
         }
     }
 
-    pub fn channel_identifier(&self) -> i32 {
+    pub fn channel_identifier(&self) -> u16 {
         self.channel_identifier
     }
 
@@ -340,7 +350,7 @@ impl ChannelResult {
         self.opened
     }
 
-    pub fn common_error(&self) -> &CommonError {
+    pub fn common_error(&self) -> &Option<CommonError> {
         &self.common_error
     }
 

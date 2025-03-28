@@ -13,6 +13,7 @@ cbindgen = { version = "0.28" }
 
 [dependencies]
 anyhow = "1.0"
+rico-protocol = { path = "../rico-protocol" }
 tor-interface = {version = "0.6", features = ["legacy-tor-provider"]}
 which = "7.0"
 

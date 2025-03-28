@@ -74,7 +74,7 @@ fn test_round_trip() -> anyhow::Result<()> {
 
         let response = contact_request_channel::Response{status: contact_request_channel::Status::Pending};
 
-        let channel_result = control_channel::ChannelResult::new(1i32, false, control_channel::CommonError::GenericError, Some(control_channel::ChannelResultExtension::ContactRequestChannel(contact_request_channel::ChannelResult{response})))?;
+        let channel_result = control_channel::ChannelResult::new(1i32, false, Some(control_channel::CommonError::GenericError), Some(control_channel::ChannelResultExtension::ContactRequestChannel(contact_request_channel::ChannelResult{response})))?;
 
         println!("{channel_result:?}");
 
@@ -104,7 +104,7 @@ fn test_round_trip() -> anyhow::Result<()> {
 
         let server_cookie: [u8; 16] = Default::default();
 
-        let channel_result = control_channel::ChannelResult::new(1i32, false, control_channel::CommonError::GenericError, Some(control_channel::ChannelResultExtension::AuthHiddenService(auth_hidden_service::ChannelResult{server_cookie})))?;
+        let channel_result = control_channel::ChannelResult::new(1i32, false, Some(control_channel::CommonError::GenericError), Some(control_channel::ChannelResultExtension::AuthHiddenService(auth_hidden_service::ChannelResult{server_cookie})))?;
 
         println!("{channel_result:?}");
 

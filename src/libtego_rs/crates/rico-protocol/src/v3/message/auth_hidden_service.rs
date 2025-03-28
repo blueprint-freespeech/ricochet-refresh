@@ -1,6 +1,15 @@
+// std
+use std::io::Write;
+
+//extern
+use sha2::Sha256;
+use hmac::{Hmac, Mac};
+use tor_interface::tor_crypto::{V3OnionServiceId, V3_ONION_SERVICE_ID_STRING_LENGTH};
+
 pub(crate) const CHANNEL_TYPE: &'static str = "im.ricochet.auth.hidden-service";
 pub(crate) const CLIENT_COOKIE_SIZE: usize = 16;
 pub(crate) const SERVER_COOKIE_SIZE: usize = 16;
+pub(crate) const PROOF_SIZE: usize = 32;
 pub(crate) const PROOF_SIGNATURE_SIZE: usize = 64;
 
 #[derive(Debug, PartialEq)]
@@ -116,7 +125,7 @@ pub struct Proof {
 }
 
 impl Proof {
-    pub fn new(signature: [u8; PROOF_SIGNATURE_SIZE], service_id: tor_interface::tor_crypto::V3OnionServiceId) -> std::result::Result<Self, crate::Error> {
+    pub fn new(signature: [u8; PROOF_SIGNATURE_SIZE], service_id: V3OnionServiceId) -> std::result::Result<Self, crate::Error> {
         Ok(Self{signature, service_id})
     }
 
@@ -124,9 +133,38 @@ impl Proof {
         &self.signature
     }
 
-    pub fn service_id(&self) -> &tor_interface::tor_crypto::V3OnionServiceId {
+    pub fn service_id(&self) -> &V3OnionServiceId {
         &self.service_id
     }
+
+    pub fn message(
+        client_cookie: &[u8; CLIENT_COOKIE_SIZE],
+        server_cookie: &[u8; SERVER_COOKIE_SIZE],
+        client_service_id: &V3OnionServiceId,
+        server_service_id: &V3OnionServiceId) -> [u8; PROOF_SIZE] {
+
+        let mut key: Vec<u8> = Vec::with_capacity(
+            CLIENT_COOKIE_SIZE +
+            SERVER_COOKIE_SIZE
+        );
+        key.write(client_cookie);
+        key.write(server_cookie);
+
+        let mut message: Vec<u8> = Vec::with_capacity(
+            V3_ONION_SERVICE_ID_STRING_LENGTH +
+            V3_ONION_SERVICE_ID_STRING_LENGTH
+        );
+        message.write(client_service_id.as_bytes());
+        message.write(server_service_id.as_bytes());
+
+        type HmacSha256 = Hmac<Sha256>;
+        let mut mac = HmacSha256::new_from_slice(key.as_slice()).expect("HMAC-SHA256 creation failed");
+        mac.update(message.as_slice());
+
+        let result = mac.finalize().into_bytes();
+        result.try_into().expect("message wrong size")
+    }
+
 }
 
 #[derive(Debug, PartialEq)]

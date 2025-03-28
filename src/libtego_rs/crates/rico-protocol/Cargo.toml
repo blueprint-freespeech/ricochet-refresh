@@ -11,9 +11,13 @@ repository = "https://github.com/blueprint-freespeech/ricochet-refresh"
 protobuf-codegen = "3.0"
 
 [dependencies]
+hmac = "0.12"
 protobuf = "3.0"
+rand = "0.9"
+rand_core = "0.9"
+sha2 = "0.10"
 thiserror = "1.0"
-tor-interface = "0.5"
+tor-interface = "0.6"
 unicode-general-category = "1.0"
 
 [dev-dependencies]

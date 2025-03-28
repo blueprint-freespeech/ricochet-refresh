@@ -2,7 +2,8 @@
 use std::collections::BTreeMap;
 
 // extern
-use tor_interface::tor_crypto::V3OnionServiceId;
+use rand::{TryRngCore, rngs::OsRng};
+use tor_interface::tor_crypto::{Ed25519PublicKey, Ed25519Signature, V3OnionServiceId};
 
 //
 use crate::v3::message::*;
@@ -25,7 +26,7 @@ pub enum Packet {
         channel: u16,
         packet: chat_channel::Packet,
     },
-    // used to authorise connecting clients
+    // used to authenticate connecting clients
     AuthHiddenServicePacket{
         channel: u16,
         packet: auth_hidden_service::Packet,
@@ -98,7 +99,10 @@ impl Packet {
 pub enum Channel {
     Control,
     Chat,
-    AuthHiddenService,
+    AuthHiddenService{
+        client_cookie: [u8; auth_hidden_service::CLIENT_COOKIE_SIZE],
+        server_cookie: [u8; auth_hidden_service::SERVER_COOKIE_SIZE],
+    },
     FileTransfer,
 }
 
@@ -112,6 +116,7 @@ struct Connection {
     channel_map: BTreeMap<u16, Channel>,
     target: Option<V3OnionServiceId>,
     direction: Direction,
+    peer_service_id: Option<V3OnionServiceId>
 }
 
 pub type ConnectionHandle = u32;
@@ -122,18 +127,33 @@ pub enum Event {
         reply: Packet,
     },
     IntroductionResponseReceived,
+    OpenChannelAuthHiddenServiceReceived{
+        reply: Packet,
+    },
+    ClientAuthenticated{
+        reply: Packet,
+        service_id: V3OnionServiceId,
+    },
     ProtocolFailure,
     FatalProtocolFailure,
 }
 
-#[derive(Default)]
 pub struct PacketHandler {
     next_connection_handle: ConnectionHandle,
     connections: BTreeMap<ConnectionHandle, Connection>,
+    service_id: V3OnionServiceId,
 }
 
 
 impl PacketHandler {
+    pub fn new(service_id: V3OnionServiceId) -> Self {
+        Self {
+            next_connection_handle: Default::default(),
+            connections: Default::default(),
+            service_id,
+        }
+    }
+
     // On successful packet read returns a (packet, bytes read) tuple
     // If needs more bytes, returns Ok(None)
     // Consumers must drop the returned number of bytes from the start of their
@@ -192,7 +212,7 @@ impl PacketHandler {
                             let packet = chat_channel::Packet::try_from(bytes)?;
                             Packet::ChatChannelPacket{channel, packet}
                         },
-                        Some(Channel::AuthHiddenService) => {
+                        Some(Channel::AuthHiddenService{..}) => {
                             let packet = auth_hidden_service::Packet::try_from(bytes)?;
                             Packet::AuthHiddenServicePacket{channel, packet}
                         },
@@ -316,7 +336,60 @@ impl PacketHandler {
         &mut self,
         connection_handle: ConnectionHandle,
         packet: control_channel::Packet) -> Result<Option<Event>, Error> {
-        Err(Error::NotImplemented)
+
+        match packet {
+            control_channel::Packet::OpenChannel(open_channel) => {
+                let channel_identifier = open_channel.channel_identifier();
+                let protocol_failure = {
+                    let connection = self.connection(connection_handle)?;
+
+                    // client-side may only open odd-numbered connections
+                    (!(channel_identifier % 2u16 == 1u16 &&
+                    connection.direction == Direction::Incoming) &&
+                    // server-side may only open even-numbered connections
+                    !(channel_identifier % 2u16 == 0u16 &&
+                    connection.direction == Direction::Outgoing)) ||
+                    // requested channel already open
+                    connection.channel_map.contains_key(&channel_identifier)
+                };
+                if protocol_failure {
+                    let _ = self.connections.remove(&connection_handle);
+                    return Ok(Some(Event::FatalProtocolFailure))
+                }
+
+                use control_channel::{ChannelResultExtension, ChannelResult, ChannelType, OpenChannelExtension};
+                match (open_channel.channel_type(), open_channel.extension()) {
+                    // AuthHiddenService
+                    (ChannelType::AuthHiddenService, Some(OpenChannelExtension::AuthHiddenService(extension))) => {
+
+                        // build ChannelResult packet
+                        let mut server_cookie: [u8; auth_hidden_service::SERVER_COOKIE_SIZE] = Default::default();
+                        OsRng.try_fill_bytes(&mut server_cookie)
+                            .map_err(Error::RandOsError)?;
+                        let channel_result_extension = ChannelResultExtension::AuthHiddenService(auth_hidden_service::ChannelResult{server_cookie: server_cookie.clone()});
+
+                        // save off channel state
+                        let client_cookie = extension.client_cookie;
+                        let mut connection = self.connection_mut(connection_handle)?;
+                        // TODO: handle channel already exists?
+                        connection.channel_map.insert(channel_identifier, Channel::AuthHiddenService{client_cookie, server_cookie});
+
+                        // buld reply packet
+                        let channel_result = ChannelResult::new(
+                            channel_identifier as i32,
+                            true,
+                            None,
+                            Some(channel_result_extension))?;
+                        let packet = control_channel::Packet::ChannelResult(channel_result);
+                        let reply = Packet::ControlChannelPacket(packet);
+
+                        Ok(Some(Event::OpenChannelAuthHiddenServiceReceived{reply}))
+                    },
+                    _ => Err(Error::NotImplemented)
+                }
+            },
+            control_channel::Packet::ChannelResult(channel_result) => Err(Error::NotImplemented)
+        }
     }
 
     fn handle_close_channel_packet(
@@ -339,7 +412,63 @@ impl PacketHandler {
         connection_handle: ConnectionHandle,
         channel: u16,
         packet: auth_hidden_service::Packet) -> Result<Option<Event>, Error> {
-        Err(Error::NotImplemented)
+
+        match packet {
+            auth_hidden_service::Packet::Proof(proof) => {
+                let protocol_failure = {
+                    let connection = self.connection(connection_handle)?;
+
+                    // only connecting clients should be sending a proof packet
+                    connection.direction != Direction::Incoming ||
+                    // channel has wrong data
+                    match connection.channel_map.get(&channel) {
+                        Some(Channel::AuthHiddenService{..}) => false,
+                        _ => true
+                    }
+                };
+                if protocol_failure {
+                    let _ = self.connections.remove(&connection_handle);
+                    return Ok(Some(Event::FatalProtocolFailure))
+                }
+
+                let server_service_id = self.service_id.clone();
+                let mut connection = self.connection_mut(connection_handle)?;
+                match connection.channel_map.get(&channel) {
+                    Some(Channel::AuthHiddenService{client_cookie, server_cookie}) => {
+                        let client_service_id = proof.service_id();
+
+                        let message = auth_hidden_service::Proof::message(
+                            client_cookie,
+                            server_cookie,
+                            client_service_id,
+                            &server_service_id);
+
+                        let signature = Ed25519Signature::from_raw(proof.signature()).expect("ed25519 signature creation should never fail");
+
+                        let client_public_key = Ed25519PublicKey::from_service_id(client_service_id).expect("v3 onion service id to ed25519 public key conversion should never fail");
+
+                        if signature.verify(&message, &client_public_key) {
+                            connection.peer_service_id = Some(client_service_id.clone());
+
+                            // build reply packet
+                            // TODO: handle known contacts
+                            let result = auth_hidden_service::Result::new(true, Some(false))?;
+                            let packet = auth_hidden_service::Packet::Result(result);
+                            let reply = Packet::AuthHiddenServicePacket{channel, packet};
+
+                            let service_id = client_service_id.clone();
+                            Ok(Some(Event::ClientAuthenticated{service_id, reply}))
+                        } else {
+                            println!("bad signature, impersonator!");
+                            let _ = self.connections.remove(&connection_handle);
+                            Ok(Some(Event::FatalProtocolFailure))
+                        }
+                    },
+                    _ => unreachable!("already verified this is an auth hiddnen service channel"),
+                }
+            },
+            _ => Err(Error::NotImplemented)
+        }
     }
 
     fn handle_file_channel_packet(
@@ -362,6 +491,7 @@ impl PacketHandler {
             channel_map: Default::default(),
             target: None,
             direction: Direction::Incoming,
+            peer_service_id: None,
         };
 
         self.connections.insert(handle, connection);
