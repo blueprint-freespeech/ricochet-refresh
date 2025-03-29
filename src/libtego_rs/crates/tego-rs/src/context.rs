@@ -297,6 +297,7 @@ impl Context {
                                     println!("--- introduction received ---");
                                     write_packets.push(reply);
                                 },
+                                Ok(Some(Event::IntroductionResponseReceived)) => todo!(),
                                 Ok(Some(Event::OpenChannelAuthHiddenServiceReceived{reply})) => {
                                     println!("--- open auth hidden service received ---");
                                     write_packets.push(reply);
@@ -306,13 +307,19 @@ impl Context {
                             connection.service_id = Some(service_id);
                                     write_packets.push(reply);
                                 },
+                                Ok(Some(Event::ChannelClosed{channel, data})) => {
+                                    println!("--- channel closed: {channel}, {data:?}");
+                                },
                                 // errors
+                                Ok(Some(Event::ProtocolFailure{message})) => {
+                                    println!("non-fatal protocol failure: {message}");
+                                }
                                 Ok(Some(Event::FatalProtocolFailure)) => {
                                     println!("fatal protocol error, removing connection");
                                     return false;
                                 }
                                 Err(err) => panic!("error: {err:?}"),
-                                _ => (),
+                                Ok(None) => panic!("unexpected None"),
                             }
                         }
 

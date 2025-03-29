@@ -134,7 +134,13 @@ pub enum Event {
         reply: Packet,
         service_id: V3OnionServiceId,
     },
-    ProtocolFailure,
+    ChannelClosed{
+        channel: u16,
+        data: Channel
+    },
+    ProtocolFailure{
+        message: String
+    },
     FatalProtocolFailure,
 }
 
@@ -396,7 +402,13 @@ impl PacketHandler {
         &mut self,
         connection_handle: ConnectionHandle,
         channel: u16) -> Result<Option<Event>, Error> {
-        Err(Error::NotImplemented)
+        let connection = self.connection_mut(connection_handle)?;
+        if let Some(data) = connection.channel_map.remove(&channel) {
+            Ok(Some(Event::ChannelClosed{channel, data}))
+        } else {
+            Ok(Some(Event::ProtocolFailure{message:
+                format!("requested closing channel which does not exist: {channel}")}))
+        }
     }
 
     fn handle_chat_channel_packet(
