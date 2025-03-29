@@ -154,7 +154,7 @@ impl Context {
         let mut packet_handler = PacketHandler::new(V3OnionServiceId::from_private_key(&private_key));
         // our current connections
         let mut connections: BTreeMap<ConnectionHandle, Connection> = Default::default();
-        // queue of callbacks
+        // queue of frontend callbacks
         let mut callback_queue: Vec<CallbackData> = Default::default();
 
         // byte read buffer
@@ -162,11 +162,8 @@ impl Context {
         let mut read_buffer: [u8; READ_BUFFER_SIZE] = [0u8; READ_BUFFER_SIZE];
 
         loop {
-            // get events
-            let events = tor_client.update()?;
-
-            // handle events
-            for e in events {
+            // handle tor events
+            for e in tor_client.update()? {
                 match e {
                     TorEvent::BootstrapStatus{progress, tag, summary} => {
                         callback_queue.push(
@@ -231,111 +228,113 @@ impl Context {
                         println!("begin server handshake: {connection:?}");
 
                         connections.insert(handle, connection);
-
                     },
                 }
             }
 
             // read any pending bytes and update the packet handler
             connections.retain(|&handle, connection| -> bool {
+                // handle reading
                 match connection.stream.read(&mut read_buffer) {
                     Err(err) => match err.kind() {
-                        ErrorKind::WouldBlock | ErrorKind::TimedOut => true,
-                        _ => false,
+                        ErrorKind::WouldBlock | ErrorKind::TimedOut => return true,
+                        _ => return false,
                     },
-                    Ok(0) => false,
+                    Ok(0) => return false,
                     Ok(size) => {
                         let read_buffer = &read_buffer[..size];
                         connection.read_bytes.write(read_buffer);
-                        let mut read_bytes = connection.read_bytes.as_slice();
-                        // total handled bytes
-                        let mut trim_count = 0usize;
+                    },
+                }
 
-                        let mut read_packets: Vec<Packet> = Default::default();
+                let mut read_bytes = connection.read_bytes.as_slice();
+                // total handled bytes
+                let mut trim_count = 0usize;
 
-                        loop {
-                            match packet_handler.try_parse_packet(handle, read_bytes) {
-                                Ok((packet, size)) => {
-                                    println!("read packet: {packet:?}");
-                                    // move slice up by number of handled bytes
-                                    read_bytes = &read_bytes[size..];
-                                    trim_count += size;
-                                    // save off read bytes for handling
-                                    read_packets.push(packet);
-                                },
-                                Err(rico_protocol::v3::message::Error::NeedMoreBytes) => {
-                                    break;
-                                },
-                                Err(err) => {
-                                    // TODO: report error somewhere?
-                                    println!("err: {err:?}");
-                                    // drop connection
-                                    return false;
-                                },
-                            }
-                        }
-                        // drop handled bytes off the front
-                        connection.read_bytes.drain(0..trim_count);
+                let mut read_packets: Vec<Packet> = Default::default();
 
-                        // handle packets and queue responses
-                        let mut write_packets: Vec<Packet> = Default::default();
-                        for packet in read_packets.drain(..) {
-                            match packet_handler.handle_packet(handle, packet) {
-                                Ok(Some(Event::IntroductionReceived{reply})) => {
-                                    println!("--- introduction received ---");
-                                    write_packets.push(reply);
-                                },
-                                Ok(Some(Event::IntroductionResponseReceived)) => todo!(),
-                                Ok(Some(Event::OpenChannelAuthHiddenServiceReceived{reply})) => {
-                                    println!("--- open auth hidden service received ---");
-                                    write_packets.push(reply);
-                                },
+                // parse read bytes into packets
+                loop {
+                    match packet_handler.try_parse_packet(handle, read_bytes) {
+                        Ok((packet, size)) => {
+                            println!("read packet: {packet:?}");
+                            // move slice up by number of handled bytes
+                            read_bytes = &read_bytes[size..];
+                            trim_count += size;
+                            // save off read bytes for handling
+                            read_packets.push(packet);
+                        },
+                        Err(rico_protocol::v3::message::Error::NeedMoreBytes) => {
+                            break;
+                        },
+                        Err(err) => {
+                            // TODO: report error somewhere?
+                            println!("err: {err:?}");
+                            // drop connection
+                            return false;
+                        },
+                    }
+                }
+                // drop handled bytes off the front
+                connection.read_bytes.drain(0..trim_count);
+
+                // handle packets and queue responses
+                let mut write_packets: Vec<Packet> = Default::default();
+                for packet in read_packets.drain(..) {
+                    match packet_handler.handle_packet(handle, packet) {
+                        Ok(Some(Event::IntroductionReceived{reply})) => {
+                            println!("--- introduction received ---");
+                            write_packets.push(reply);
+                        },
+                        Ok(Some(Event::IntroductionResponseReceived)) => todo!(),
+                        Ok(Some(Event::OpenChannelAuthHiddenServiceReceived{reply})) => {
+                            println!("--- open auth hidden service received ---");
+                            write_packets.push(reply);
+                        },
                         Ok(Some(Event::ClientAuthenticated{service_id, reply})) => {
                             println!("--- client authorised: {service_id:?} ---");
                             connection.service_id = Some(service_id);
-                                    write_packets.push(reply);
-                                },
-                                Ok(Some(Event::ChannelClosed{channel, data})) => {
-                                    println!("--- channel closed: {channel}, {data:?}");
-                                },
-                                // errors
-                                Ok(Some(Event::ProtocolFailure{message})) => {
-                                    println!("non-fatal protocol failure: {message}");
-                                }
-                                Ok(Some(Event::FatalProtocolFailure)) => {
-                                    println!("fatal protocol error, removing connection");
-                                    return false;
-                                }
-                                Err(err) => panic!("error: {err:?}"),
-                                Ok(None) => panic!("unexpected None"),
-                            }
+                            write_packets.push(reply);
+                        },
+                        Ok(Some(Event::ChannelClosed{channel, data})) => {
+                            println!("--- channel closed: {channel}, {data:?} ---");
+                        },
+                        // errors
+                        Ok(Some(Event::ProtocolFailure{message})) => {
+                            println!("--- non-fatal protocol failure: {message} ---");
                         }
-
-                        // write replies
-                        if !write_packets.is_empty() {
-                            // serialise out packets to bytes
-                            let mut write_bytes: Vec<u8> = Default::default();
-                            for packet in write_packets.drain(..) {
-                                println!("write packet: {packet:?}");
-                                packet.write_to_vec(&mut write_bytes);
-                            }
-
-                            // send bytes
-                            if let Ok(_written) = connection.stream.write(write_bytes.as_slice()) {
-                                true
-                            } else {
-                                // TODO: error reporting, remove user?
-                                // drop connection
-                                false
-                            }
-                        } else {
-                            true
+                        Ok(Some(Event::FatalProtocolFailure)) => {
+                            println!("--- fatal protocol error, removing connection ---");
+                            return false;
                         }
-                    },
+                        Err(err) => panic!("error: {err:?}"),
+                        Ok(None) => panic!("unexpected None"),
+                    }
+                }
+
+                // write replies
+                if !write_packets.is_empty() {
+                    // serialise out packets to bytes
+                    let mut write_bytes: Vec<u8> = Default::default();
+                    for packet in write_packets.drain(..) {
+                        println!("write packet: {packet:?}");
+                        packet.write_to_vec(&mut write_bytes);
+                    }
+
+                    // send bytes
+                    if let Ok(_written) = connection.stream.write(write_bytes.as_slice()) {
+                        true
+                    } else {
+                        // TODO: error reporting, remove user?
+                        // drop connection
+                        false
+                    }
+                } else {
+                    true
                 }
             });
 
-            // handle callbacks
+            // handle callbacks back to frontend
             let callbacks = callbacks.upgrade().context("callbacks dropped")?;
             let callbacks = callbacks.lock().expect("callbacks mutex poisoned");
             for callback_data in callback_queue.drain(..) {
