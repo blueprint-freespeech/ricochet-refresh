@@ -154,6 +154,9 @@ impl Context {
         let mut packet_handler = PacketHandler::new(V3OnionServiceId::from_private_key(&private_key));
         // our current connections
         let mut connections: BTreeMap<ConnectionHandle, Connection> = Default::default();
+        // queue of callbacks
+        let mut callback_queue: Vec<CallbackData> = Default::default();
+
         // byte read buffer
         const READ_BUFFER_SIZE: usize = 1024;
         let mut read_buffer: [u8; READ_BUFFER_SIZE] = [0u8; READ_BUFFER_SIZE];
@@ -162,32 +165,23 @@ impl Context {
             // get events
             let events = tor_client.update()?;
 
-            // handle callbacks
-            let callbacks = callbacks.upgrade().context("callbacks dropped")?;
-            let callbacks = callbacks.lock().expect("callbacks mutex poisoned");
-
             // handle events
             for e in events {
                 match e {
                     TorEvent::BootstrapStatus{progress, tag, summary} => {
-                        if let Some(on_tor_bootstrap_status_changed) = callbacks.on_tor_bootstrap_status_changed {
-                            on_tor_bootstrap_status_changed(tego_key as *mut tego_context, progress as i32, tag.as_str().into());
-                        }
+                        callback_queue.push(
+                            CallbackData::TorBootstrapStatusChanged{progress, tag});
                     },
                     TorEvent::BootstrapComplete => {
                         if let Some(connect_complete) = connect_complete.upgrade() {
                             connect_complete.store(true, Ordering::Relaxed);
                         }
 
-                        if let Some(on_tor_network_status_changed) = callbacks.on_tor_network_status_changed {
-                            use tego_tor_network_status::tego_tor_network_status_ready;
-                            on_tor_network_status_changed(tego_key as *mut tego_context, tego_tor_network_status_ready);
-                        }
+                        callback_queue.push(
+                            CallbackData::TorNetworkStatusChanged{status: tego_tor_network_status::tego_tor_network_status_ready});
 
-                        if let Some(on_host_onion_service_state_changed) = callbacks.on_host_onion_service_state_changed {
-                            use tego_host_onion_service_state::tego_host_onion_service_state_service_added;
-                            on_host_onion_service_state_changed(tego_key as *mut tego_context, tego_host_onion_service_state_service_added);
-                        }
+                        callback_queue.push(
+                            CallbackData::HostOnionServiceStateChanged{state: tego_host_onion_service_state::tego_host_onion_service_state_service_added});
 
                         // start onion service
                         let listener = tor_client.listener(&private_key, 9878u16, None)?;
@@ -200,22 +194,16 @@ impl Context {
                             }})?;
                     },
                     TorEvent::LogReceived{line} => {
-                        if let Some(on_tor_log_received) = callbacks.on_tor_log_received {
-                            let line = CString::new(line.as_str()).unwrap();
-                            let line_len = line.as_bytes().len();
-                            on_tor_log_received(tego_key as *mut tego_context, line.as_c_str().as_ptr(), line_len);
-                        }
-
                         if let Some(tor_logs) = tor_logs.upgrade() {
-                            let mut tor_logs = tor_logs.lock().unwrap();
-                            tor_logs.push(line);
+                            let mut tor_logs = tor_logs.lock().expect("tor_logs mutex poisoned");
+                            tor_logs.push(line.clone());
                         }
+                        callback_queue.push(
+                            CallbackData::TorLogReceived{line});
                     },
                     TorEvent::OnionServicePublished{service_id : _} => {
-                        if let Some(on_host_onion_service_state_changed) = callbacks.on_host_onion_service_state_changed {
-                            use tego_host_onion_service_state::tego_host_onion_service_state_service_published;
-                            on_host_onion_service_state_changed(tego_key as *mut tego_context, tego_host_onion_service_state_service_published);
-                        }
+                        callback_queue.push(
+                            CallbackData::HostOnionServiceStateChanged{state: tego_host_onion_service_state::tego_host_onion_service_state_service_published});
                     },
                     _ => (),
                 }
@@ -346,6 +334,37 @@ impl Context {
                     },
                 }
             });
+
+            // handle callbacks
+            let callbacks = callbacks.upgrade().context("callbacks dropped")?;
+            let callbacks = callbacks.lock().expect("callbacks mutex poisoned");
+            for callback_data in callback_queue.drain(..) {
+                match callback_data {
+                    CallbackData::TorNetworkStatusChanged{status} => {
+                        if let Some(on_tor_network_status_changed) = callbacks.on_tor_network_status_changed {
+                            on_tor_network_status_changed(tego_key as *mut tego_context, status);
+                        }
+                    },
+                    CallbackData::TorBootstrapStatusChanged{progress, tag} => {
+                        if let Some(on_tor_bootstrap_status_changed) = callbacks.on_tor_bootstrap_status_changed {
+                            on_tor_bootstrap_status_changed(tego_key as *mut tego_context, progress as i32, tag.as_str().into());
+                        }
+                    },
+                    CallbackData::TorLogReceived{line} => {
+                        if let Some(on_tor_log_received) = callbacks.on_tor_log_received {
+                            let line = CString::new(line.as_str()).unwrap();
+                            let line_len = line.as_bytes().len();
+                            on_tor_log_received(tego_key as *mut tego_context, line.as_c_str().as_ptr(), line_len);
+                        }
+                    }
+                    CallbackData::HostOnionServiceStateChanged{state} => {
+                        if let Some(on_host_onion_service_state_changed) = callbacks.on_host_onion_service_state_changed {
+                            on_host_onion_service_state_changed(tego_key as *mut tego_context, state);
+                        }
+                    }
+                    _ => panic!("not implemented"),
+                }
+            }
         }
     }
 
@@ -395,6 +414,28 @@ enum Command {
     BeginServerHandshake{
         stream: OnionStream
     },
+}
+
+enum CallbackData {
+    TorErrorOccurred,
+    UpdateTorDaemonConfigSucceeded,
+    TorControlStatusChanged,
+    TorProcessStatusChanged,
+    TorNetworkStatusChanged{status: tego_tor_network_status},
+    TorBootstrapStatusChanged{progress: u32, tag: String},
+    TorLogReceived{line: String},
+    HostOnionServiceStateChanged{state: tego_host_onion_service_state},
+    ChatRequestReceived,
+    ChatRequestResponseReceived,
+    MessageReceived,
+    MessageAcknowledged,
+    FileTransferRequestReceived,
+    FileTransferRequestAcknowledged,
+    FileTransferRequestResponseReceived,
+    FileTransferProgress,
+    FileTransferComplete,
+    UserStatusChanged,
+    NewIdentityCreated,
 }
 
 #[derive(Default)]
