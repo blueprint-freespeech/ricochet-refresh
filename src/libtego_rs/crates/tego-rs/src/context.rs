@@ -16,6 +16,7 @@ use tor_interface::tor_provider::{OnionListener, OnionStream, TorEvent, TorProvi
 
 // internal crates
 use crate::ffi::*;
+use crate::user_id::UserId;
 
 #[derive(Default)]
 pub(crate) struct Context {
@@ -110,6 +111,13 @@ impl Context {
         command_queue.push(cmd);
     }
 
+    pub fn acknowledge_chat_request(
+        &self,
+        service_id: V3OnionServiceId,
+        response: tego_chat_acknowledge) -> () {
+        self.push_command(Command::AcknowledgeChatRequest{service_id, response});
+    }
+
     fn tor_bin_path() -> Result<PathBuf> {
         let bin_name = format!("tor{}", std::env::consts::EXE_SUFFIX);
 
@@ -154,6 +162,7 @@ impl Context {
         let mut packet_handler = PacketHandler::new(V3OnionServiceId::from_private_key(&private_key));
         // our current connections
         let mut connections: BTreeMap<ConnectionHandle, Connection> = Default::default();
+
         // queue of frontend callbacks
         let mut callback_queue: Vec<CallbackData> = Default::default();
 
@@ -223,24 +232,51 @@ impl Context {
                             service_id: None,
                             stream,
                             read_bytes: Default::default(),
+                            write_packets: Default::default(),
                         };
 
                         println!("begin server handshake: {connection:?}");
 
                         connections.insert(handle, connection);
                     },
+                    Command::AcknowledgeChatRequest{service_id, response} => {
+                        use tego_chat_acknowledge::*;
+                        let result = match response {
+                            tego_chat_acknowledge_accept => packet_handler.accept_contact_request(&service_id),
+                            tego_chat_acknowledge_reject => todo!(),
+                            tego_chat_acknowledge_block => todo!(),
+                        };
+
+                        match result {
+                            Ok((connection_handle, packet)) => {
+                                if let Some(connection) = connections.get_mut(&connection_handle) {
+                                    connection.write_packets.push(packet);
+                                }
+                            },
+                            Err(err) => todo!(),
+                        }
+                    },
                 }
             }
 
             // read any pending bytes and update the packet handler
             connections.retain(|&handle, connection| -> bool {
+
+                let mut retain = true;
+
                 // handle reading
                 match connection.stream.read(&mut read_buffer) {
                     Err(err) => match err.kind() {
-                        ErrorKind::WouldBlock | ErrorKind::TimedOut => return true,
-                        _ => return false,
+                        ErrorKind::WouldBlock | ErrorKind::TimedOut => (),
+                        _ => {
+                            println!("retain = false; err: {err:?}");
+                            retain = false; // some error
+                        },
                     },
-                    Ok(0) => return false,
+                    Ok(0) => {
+                        println!("retain = false; end of stream");
+                        retain = false; // end of stream
+                    },
                     Ok(size) => {
                         let read_buffer = &read_buffer[..size];
                         connection.read_bytes.write(read_buffer);
@@ -257,7 +293,7 @@ impl Context {
                 loop {
                     match packet_handler.try_parse_packet(handle, read_bytes) {
                         Ok((packet, size)) => {
-                            println!("read packet: {packet:?}");
+                            println!("<< read packet: {packet:?}");
                             // move slice up by number of handled bytes
                             read_bytes = &read_bytes[size..];
                             trim_count += size;
@@ -269,9 +305,12 @@ impl Context {
                         },
                         Err(err) => {
                             // TODO: report error somewhere?
-                            println!("err: {err:?}");
+                            println!("- error: {err:?}");
+                            println!("read_bytes: {read_bytes:?}");
                             // drop connection
-                            return false;
+                            println!("retain = false; protobuf error");
+                            retain = false;
+                            break;
                         },
                     }
                 }
@@ -279,7 +318,7 @@ impl Context {
                 connection.read_bytes.drain(0..trim_count);
 
                 // handle packets and queue responses
-                let mut write_packets: Vec<Packet> = Default::default();
+                let write_packets = &mut connection.write_packets;
                 for packet in read_packets.drain(..) {
                     match packet_handler.handle_packet(handle, packet) {
                         Ok(Some(Event::IntroductionReceived{reply})) => {
@@ -296,6 +335,10 @@ impl Context {
                             connection.service_id = Some(service_id);
                             write_packets.push(reply);
                         },
+                        Ok(Some(Event::ContactRequestReceived{service_id, nickname: _, message_text})) => {
+                            println!("--- contact request received, peer: {service_id:?}, message_text: \"{message_text}\"");
+                            callback_queue.push(CallbackData::ChatRequestReceived{service_id, message: message_text});
+                        },
                         Ok(Some(Event::ChannelClosed{channel, data})) => {
                             println!("--- channel closed: {channel}, {data:?} ---");
                         },
@@ -305,7 +348,8 @@ impl Context {
                         }
                         Ok(Some(Event::FatalProtocolFailure)) => {
                             println!("--- fatal protocol error, removing connection ---");
-                            return false;
+                            println!("retain = false; FatalProtocolError");
+                            retain = false;
                         }
                         Err(err) => panic!("error: {err:?}"),
                         Ok(None) => panic!("unexpected None"),
@@ -317,21 +361,17 @@ impl Context {
                     // serialise out packets to bytes
                     let mut write_bytes: Vec<u8> = Default::default();
                     for packet in write_packets.drain(..) {
-                        println!("write packet: {packet:?}");
+                        println!(">> write packet: {packet:?}");
                         packet.write_to_vec(&mut write_bytes);
                     }
 
                     // send bytes
-                    if let Ok(_written) = connection.stream.write(write_bytes.as_slice()) {
-                        true
-                    } else {
-                        // TODO: error reporting, remove user?
-                        // drop connection
-                        false
+                    if !connection.stream.write(write_bytes.as_slice()).is_ok() {
+                        println!("retain = false; write failed");
+                        retain = false;
                     }
-                } else {
-                    true
                 }
+                retain
             });
 
             // handle callbacks back to frontend
@@ -355,12 +395,21 @@ impl Context {
                             let line_len = line.as_bytes().len();
                             on_tor_log_received(tego_key as *mut tego_context, line.as_c_str().as_ptr(), line_len);
                         }
-                    }
+                    },
                     CallbackData::HostOnionServiceStateChanged{state} => {
                         if let Some(on_host_onion_service_state_changed) = callbacks.on_host_onion_service_state_changed {
                             on_host_onion_service_state_changed(tego_key as *mut tego_context, state);
                         }
-                    }
+                    },
+                    CallbackData::ChatRequestReceived{service_id, message} => {
+                        if let Some(on_chat_request_received) = callbacks.on_chat_request_received {
+                            let sender = get_object_map().insert(TegoObject::UserId(UserId{service_id}));
+                            let message = CString::new(message.as_str()).unwrap();
+                            let message_len = message.as_bytes().len();
+                            on_chat_request_received(tego_key as *mut tego_context, sender as *const tego_user_id, message.as_c_str().as_ptr(), message_len);
+                            get_object_map().remove(&sender);
+                        }
+                    },
                     _ => panic!("not implemented"),
                 }
             }
@@ -404,6 +453,8 @@ struct Connection {
     pub stream: OnionStream,
     // buffer of unhandled read bytes
     pub read_bytes: Vec<u8>,
+    // buffer of packets to write
+    pub write_packets: Vec<Packet>,
 }
 
 enum Command {
@@ -412,6 +463,10 @@ enum Command {
     // client connects to our listener triggering an incoming handshake
     BeginServerHandshake{
         stream: OnionStream
+    },
+    AcknowledgeChatRequest{
+        service_id: V3OnionServiceId,
+        response: tego_chat_acknowledge,
     },
 }
 
@@ -424,7 +479,7 @@ enum CallbackData {
     TorBootstrapStatusChanged{progress: u32, tag: String},
     TorLogReceived{line: String},
     HostOnionServiceStateChanged{state: tego_host_onion_service_state},
-    ChatRequestReceived,
+    ChatRequestReceived{service_id: V3OnionServiceId, message: String},
     ChatRequestResponseReceived,
     MessageReceived,
     MessageAcknowledged,

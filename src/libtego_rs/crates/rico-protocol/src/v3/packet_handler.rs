@@ -116,7 +116,8 @@ struct Connection {
     channel_map: BTreeMap<u16, Channel>,
     target: Option<V3OnionServiceId>,
     direction: Direction,
-    peer_service_id: Option<V3OnionServiceId>
+    peer_service_id: Option<V3OnionServiceId>,
+    contact_request_channel_identifier: Option<u16>,
 }
 
 pub type ConnectionHandle = u32;
@@ -134,6 +135,11 @@ pub enum Event {
         reply: Packet,
         service_id: V3OnionServiceId,
     },
+    ContactRequestReceived{
+        service_id: V3OnionServiceId,
+        nickname: String,
+        message_text: String,
+    },
     ChannelClosed{
         channel: u16,
         data: Channel
@@ -147,6 +153,7 @@ pub enum Event {
 pub struct PacketHandler {
     next_connection_handle: ConnectionHandle,
     connections: BTreeMap<ConnectionHandle, Connection>,
+    service_id_to_connection_handle: BTreeMap<V3OnionServiceId, ConnectionHandle>,
     service_id: V3OnionServiceId,
 }
 
@@ -156,6 +163,7 @@ impl PacketHandler {
         Self {
             next_connection_handle: Default::default(),
             connections: Default::default(),
+            service_id_to_connection_handle: Default::default(),
             service_id,
         }
     }
@@ -253,6 +261,33 @@ impl PacketHandler {
             Packet::AuthHiddenServicePacket{channel, packet} => self.handle_auth_hidden_service_packet(connection_handle, channel, packet),
             Packet::FileChannelPacket{channel, packet} => self.handle_file_channel_packet(connection_handle, channel, packet),
         }
+    }
+
+    pub fn accept_contact_request(
+        &mut self,
+        service_id: &V3OnionServiceId) -> Result<(ConnectionHandle, Packet), Error> {
+        if let Some(connection_handle) = self.service_id_to_connection_handle.get(service_id) {
+            if let Some(connection) = self.connections.get_mut(&connection_handle) {
+                if let Some(channel_identifier) = connection.contact_request_channel_identifier {
+                    // build reply packeet
+                    use control_channel::ChannelResultExtension;
+                    use contact_request_channel::*;
+                    let channel_result_extension = ChannelResultExtension::ContactRequestChannel(contact_request_channel::ChannelResult{response: Response{status: Status::Accepted}});
+
+                    let channel_result = control_channel::ChannelResult::new(
+                        channel_identifier as i32,
+                        true,
+                        None,
+                        Some(channel_result_extension))?;
+                    let packet = control_channel::Packet::ChannelResult(channel_result);
+                    let reply = Packet::ControlChannelPacket(packet);
+
+                    return Ok((*connection_handle, reply))
+                }
+            }
+        }
+
+         Err(Error::NotImplemented)
     }
 
     fn connection(
@@ -391,6 +426,20 @@ impl PacketHandler {
 
                         Ok(Some(Event::OpenChannelAuthHiddenServiceReceived{reply}))
                     },
+                    // ContactRequest
+                    (ChannelType::ContactRequest, Some(OpenChannelExtension::ContactRequestChannel(extension))) => {
+                        let connection = self.connection_mut(connection_handle)?;
+                        if let Some(service_id) = &connection.peer_service_id {
+                            connection.contact_request_channel_identifier = Some(channel_identifier);
+                            Ok(Some(Event::ContactRequestReceived{
+                                service_id: service_id.clone(),
+                                nickname: (&extension.contact_request.nickname).into(),
+                                message_text: (&extension.contact_request.message_text).into(),
+                            }))
+                        } else {
+                            Ok(Some(Event::FatalProtocolFailure))
+                        }
+                    },
                     _ => Err(Error::NotImplemented)
                 }
             },
@@ -468,6 +517,7 @@ impl PacketHandler {
                             let packet = auth_hidden_service::Packet::Result(result);
                             let reply = Packet::AuthHiddenServicePacket{channel, packet};
 
+                            self.service_id_to_connection_handle.insert(client_service_id.clone(), connection_handle);
                             let service_id = client_service_id.clone();
                             Ok(Some(Event::ClientAuthenticated{service_id, reply}))
                         } else {
@@ -504,6 +554,7 @@ impl PacketHandler {
             target: None,
             direction: Direction::Incoming,
             peer_service_id: None,
+            contact_request_channel_identifier: None,
         };
 
         self.connections.insert(handle, connection);

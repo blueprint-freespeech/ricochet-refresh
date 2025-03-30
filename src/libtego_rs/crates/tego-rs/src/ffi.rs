@@ -1581,12 +1581,39 @@ pub enum tego_chat_acknowledge {
 /// @param error : filled on error
 #[no_mangle]
 pub extern "C" fn tego_context_acknowledge_chat_request(
-    _context: *mut tego_context,
-    _user: *const tego_user_id,
-    _response: tego_chat_acknowledge,
+    context: *mut tego_context,
+    user: *const tego_user_id,
+    response: tego_chat_acknowledge,
     error: *mut *mut tego_error) -> () {
     translate_failures((), error, || -> Result<()> {
-        bail_not_implemented!()
+
+        let key = user as TegoKey;
+        let service_id = match get_object_map().get(&key) {
+            Some(TegoObject::UserId(user_id)) => {
+                user_id.service_id.clone()
+            },
+            Some(_) => bail!("not a tego_user_id pointer: {:?}", key as *const c_void),
+            Noen => bail!("not a valid pointer: {:?}", key as *const c_void),
+        };
+
+        use tego_chat_acknowledge::*;
+        match response {
+            tego_chat_acknowledge_accept |
+            tego_chat_acknowledge_reject |
+            tego_chat_acknowledge_block => (),
+            other => bail!("not a valid tego_chat_acknowledge: {:?}", other as c_int),
+        }
+
+        let key = context as TegoKey;
+        match get_object_map().get(&key) {
+            Some(TegoObject::Context(context)) => {
+                context.acknowledge_chat_request(service_id, response)
+            },
+            Some(_) => bail!("not a tego_context pointer: {:?}", key as *const c_void),
+            None => bail!("not a valid pointer: {:?}", key as *const c_void),
+        }
+
+      Ok(())
     })
 }
 
