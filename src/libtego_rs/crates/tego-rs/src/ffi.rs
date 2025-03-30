@@ -1424,6 +1424,7 @@ pub extern "C" fn tego_file_hash_string_size(
     _file_hash: *const tego_file_hash,
     error: *mut *mut tego_error) -> usize {
     translate_failures(0usize, error, || -> Result<usize> {
+        println!("tego_file_hash_string_size() not implemented");
         bail_not_implemented!()
     })
 }
@@ -1444,6 +1445,7 @@ pub extern "C" fn tego_file_hash_to_string(
     _hash_string_size: usize,
     error: *mut *mut tego_error) -> usize {
     translate_failures(0usize, error, || -> Result<usize> {
+        println!("tego_file_hash_to_string() not implemented");
         bail_not_implemented!()
     })
 }
@@ -1466,6 +1468,7 @@ pub extern "C" fn tego_context_send_message(
     _out_id: *mut tego_message_id,
     error: *mut *mut tego_error) -> () {
     translate_failures((), error, || -> Result<()> {
+        println!("tego_context_send_message() not implemented");
         bail_not_implemented!()
     })
 }
@@ -1491,6 +1494,7 @@ pub extern "C" fn tego_context_send_file_transfer_request(
     _out_file_size: *mut tego_file_size,
     error: *mut *mut tego_error) -> () {
     translate_failures((), error, || -> Result<()> {
+        println!("tego_context_send_file_transfer_request() not implemented");
         bail_not_implemented!()
     })
 }
@@ -1522,6 +1526,7 @@ pub extern "C" fn tego_context_respond_file_transfer_request(
     _dest_path_length: usize,
     error: *mut *mut tego_error) -> () {
     translate_failures((), error, || -> Result<()> {
+        println!("tego_context_respond_file_transfer_request() not implemented");
         bail_not_implemented!()
     })
 }
@@ -1539,6 +1544,7 @@ pub extern "C" fn tego_context_cancel_file_transfer(
     _id: tego_file_transfer_id,
     error: *mut *mut tego_error) -> () {
     translate_failures((), error, || -> Result<()> {
+        println!("tego_context_cancel_file_transfer() not implemented");
         bail_not_implemented!()
     })
 }
@@ -1558,6 +1564,7 @@ pub extern "C" fn tego_context_send_chat_request(
     _message_length: usize,
     error: *mut *mut tego_error) -> () {
     translate_failures((), error, || -> Result<()> {
+        println!("tego_context_send_chat_request() not implemented");
         bail_not_implemented!()
     })
 }
@@ -1630,6 +1637,7 @@ pub extern "C" fn tego_context_forget_user(
     _user: *const tego_user_id,
     error: *mut *mut tego_error) -> () {
     translate_failures((), error, || -> Result<()> {
+        println!("tego_context_forget_user() not implemented");
         bail_not_implemented!()
     })
 }
