@@ -381,11 +381,10 @@ impl PacketHandler {
 
     // Handle a received packet and returns an event which needs to be handled by
     // the caller
-    // TODO: maybe this should be a Result<Event, Error>
     pub fn handle_packet(
         &mut self,
         connection_handle: ConnectionHandle,
-        packet: Packet) -> Result<Option<Event>, Error> {
+        packet: Packet) -> Result<Event, Error> {
 
         match packet {
             Packet::IntroductionPacket(packet) => self.handle_introduction_packet(connection_handle, packet),
@@ -444,7 +443,7 @@ impl PacketHandler {
     fn handle_introduction_packet(
         &mut self,
         connection_handle: ConnectionHandle,
-        packet: introduction::IntroductionPacket) -> Result<Option<Event>, Error> {
+        packet: introduction::IntroductionPacket) -> Result<Event, Error> {
 
         use introduction::*;
 
@@ -459,7 +458,7 @@ impl PacketHandler {
 
         if protocol_failure {
             let _ = self.connections.remove(&connection_handle);
-            Ok(Some(Event::FatalProtocolFailure))
+            Ok(Event::FatalProtocolFailure)
         } else {
             let version = if packet.versions().contains(&Version::RicochetRefresh3) {
                 let mut connection = self.connection_mut(connection_handle)?;
@@ -472,14 +471,14 @@ impl PacketHandler {
             };
 
             let reply = Packet::IntroductionResponsePacket(IntroductionResponsePacket{version});
-            Ok(Some(Event::IntroductionReceived{reply}))
+            Ok(Event::IntroductionReceived{reply})
         }
     }
 
     fn handle_introduction_response_packet(
         &mut self,
         connection_handle: ConnectionHandle,
-        packet: introduction::IntroductionResponsePacket) -> Result<Option<Event>, Error> {
+        packet: introduction::IntroductionResponsePacket) -> Result<Event, Error> {
 
         use introduction::*;
 
@@ -494,16 +493,16 @@ impl PacketHandler {
 
         if protocol_failure {
             let _ = self.connections.remove(&connection_handle);
-            Ok(Some(Event::FatalProtocolFailure))
+            Ok(Event::FatalProtocolFailure)
         } else {
             if let Some(Version::RicochetRefresh3) = packet.version {
                 let mut connection = self.connection_mut(connection_handle)?;
                 let _ = connection.channel_map.insert(0u16, ChannelData::Control);
-                Ok(Some(Event::IntroductionResponseReceived))
+                Ok(Event::IntroductionResponseReceived)
             } else {
                 // version not supported
                 let _ = self.connections.remove(&connection_handle);
-                Ok(Some(Event::FatalProtocolFailure))
+                Ok(Event::FatalProtocolFailure)
             }
         }
     }
@@ -511,7 +510,7 @@ impl PacketHandler {
     fn handle_control_channel_packet(
         &mut self,
         connection_handle: ConnectionHandle,
-        packet: control_channel::Packet) -> Result<Option<Event>, Error> {
+        packet: control_channel::Packet) -> Result<Event, Error> {
 
         match packet {
             control_channel::Packet::OpenChannel(open_channel) => {
@@ -530,7 +529,7 @@ impl PacketHandler {
                 };
                 if protocol_failure {
                     let _ = self.connections.remove(&connection_handle);
-                    return Ok(Some(Event::FatalProtocolFailure))
+                    return Ok(Event::FatalProtocolFailure)
                 }
 
                 use control_channel::{ChannelResultExtension, ChannelResult, ChannelType, OpenChannelExtension};
@@ -558,20 +557,20 @@ impl PacketHandler {
                         let packet = control_channel::Packet::ChannelResult(channel_result);
                         let reply = Packet::ControlChannelPacket(packet);
 
-                        Ok(Some(Event::OpenChannelAuthHiddenServiceReceived{reply}))
+                        Ok(Event::OpenChannelAuthHiddenServiceReceived{reply})
                     },
                     // ContactRequest
                     (ChannelType::ContactRequest, Some(OpenChannelExtension::ContactRequestChannel(extension))) => {
                         let connection = self.connection_mut(connection_handle)?;
                         if let Some(service_id) = &connection.peer_service_id {
                             connection.channel_map.insert(channel_identifier, ChannelData::IncomingContactRequest)?;
-                            Ok(Some(Event::ContactRequestReceived{
+                            Ok(Event::ContactRequestReceived{
                                 service_id: service_id.clone(),
                                 nickname: (&extension.contact_request.nickname).into(),
                                 message_text: (&extension.contact_request.message_text).into(),
-                            }))
+                            })
                         } else {
-                            Ok(Some(Event::FatalProtocolFailure))
+                            Ok(Event::FatalProtocolFailure)
                         }
                     },
                     // Chat
@@ -587,7 +586,7 @@ impl PacketHandler {
                             None)?;
                         let packet = control_channel::Packet::ChannelResult(channel_result);
                         let reply = Packet::ControlChannelPacket(packet);
-                        Ok(Some(Event::ChatChannelOpened{reply}))
+                        Ok(Event::ChatChannelOpened{reply})
                     }
                     // FileTransfer
                     (ChannelType::FileTransfer, None) => {
@@ -602,7 +601,7 @@ impl PacketHandler {
                             None)?;
                         let packet = control_channel::Packet::ChannelResult(channel_result);
                         let reply = Packet::ControlChannelPacket(packet);
-                        Ok(Some(Event::FileTransferChannelOpened{reply}))
+                        Ok(Event::FileTransferChannelOpened{reply})
                     },
                     _ => Err(Error::NotImplemented)
                 }
@@ -614,13 +613,13 @@ impl PacketHandler {
     fn handle_close_channel_packet(
         &mut self,
         connection_handle: ConnectionHandle,
-        channel_id: u16) -> Result<Option<Event>, Error> {
+        channel_id: u16) -> Result<Event, Error> {
         let connection = self.connection_mut(connection_handle)?;
         if let Some(data) = connection.channel_map.remove_by_id(&channel_id) {
-            Ok(Some(Event::ChannelClosed{id: channel_id, data}))
+            Ok(Event::ChannelClosed{id: channel_id, data})
         } else {
-            Ok(Some(Event::ProtocolFailure{message:
-                format!("requested closing channel which does not exist: {channel_id}")}))
+            Ok(Event::ProtocolFailure{message:
+                format!("requested closing channel which does not exist: {channel_id}")})
         }
     }
 
@@ -628,7 +627,7 @@ impl PacketHandler {
         &mut self,
         connection_handle: ConnectionHandle,
         channel: u16,
-        packet: chat_channel::Packet) -> Result<Option<Event>, Error> {
+        packet: chat_channel::Packet) -> Result<Event, Error> {
         Err(Error::NotImplemented)
     }
 
@@ -636,7 +635,7 @@ impl PacketHandler {
         &mut self,
         connection_handle: ConnectionHandle,
         channel: u16,
-        packet: auth_hidden_service::Packet) -> Result<Option<Event>, Error> {
+        packet: auth_hidden_service::Packet) -> Result<Event, Error> {
 
         match packet {
             auth_hidden_service::Packet::Proof(proof) => {
@@ -653,7 +652,7 @@ impl PacketHandler {
                 };
                 if protocol_failure {
                     let _ = self.connections.remove(&connection_handle);
-                    return Ok(Some(Event::FatalProtocolFailure))
+                    return Ok(Event::FatalProtocolFailure)
                 }
 
                 let server_service_id = self.service_id.clone();
@@ -683,11 +682,11 @@ impl PacketHandler {
 
                             self.service_id_to_connection_handle.insert(client_service_id.clone(), connection_handle);
                             let service_id = client_service_id.clone();
-                            Ok(Some(Event::ClientAuthenticated{service_id, reply}))
+                            Ok(Event::ClientAuthenticated{service_id, reply})
                         } else {
                             println!("bad signature, impersonator!");
                             let _ = self.connections.remove(&connection_handle);
-                            Ok(Some(Event::FatalProtocolFailure))
+                            Ok(Event::FatalProtocolFailure)
                         }
                     },
                     _ => unreachable!("already verified this is an auth hiddnen service channel"),
@@ -701,7 +700,7 @@ impl PacketHandler {
         &mut self,
         connection_handle: ConnectionHandle,
         channel: u16,
-        packet: file_channel::Packet) -> Result<Option<Event>, Error> {
+        packet: file_channel::Packet) -> Result<Event, Error> {
         Err(Error::NotImplemented)
     }
 

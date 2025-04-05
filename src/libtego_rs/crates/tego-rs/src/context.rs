@@ -321,46 +321,45 @@ impl Context {
                 let write_packets = &mut connection.write_packets;
                 for packet in read_packets.drain(..) {
                     match packet_handler.handle_packet(handle, packet) {
-                        Ok(Some(Event::IntroductionReceived{reply})) => {
+                        Ok(Event::IntroductionReceived{reply})=> {
                             println!("--- introduction received ---");
                             write_packets.push(reply);
                         },
-                        Ok(Some(Event::IntroductionResponseReceived)) => todo!(),
-                        Ok(Some(Event::OpenChannelAuthHiddenServiceReceived{reply})) => {
+                        Ok(Event::IntroductionResponseReceived) => todo!(),
+                        Ok(Event::OpenChannelAuthHiddenServiceReceived{reply}) => {
                             println!("--- open auth hidden service received ---");
                             write_packets.push(reply);
                         },
-                        Ok(Some(Event::ClientAuthenticated{service_id, reply})) => {
+                        Ok(Event::ClientAuthenticated{service_id, reply}) => {
                             println!("--- client authorised: {service_id:?} ---");
                             connection.service_id = Some(service_id);
                             write_packets.push(reply);
                         },
-                        Ok(Some(Event::ContactRequestReceived{service_id, nickname: _, message_text})) => {
+                        Ok(Event::ContactRequestReceived{service_id, nickname: _, message_text}) => {
                             println!("--- contact request received, peer: {service_id:?}, message_text: \"{message_text}\"");
                             callback_queue.push(CallbackData::ChatRequestReceived{service_id, message: message_text});
                         },
-                        Ok(Some(Event::ChatChannelOpened{reply})) => {
+                        Ok(Event::ChatChannelOpened{reply}) => {
                             println!(" --- chat channel opened ---");
                             write_packets.push(reply);
                         },
-                        Ok(Some(Event::FileTransferChannelOpened{reply})) => {
+                        Ok(Event::FileTransferChannelOpened{reply}) => {
                             println!(" --- file transfer channel opened ---");
                             write_packets.push(reply);
                         },
-                        Ok(Some(Event::ChannelClosed{id, data})) => {
+                        Ok(Event::ChannelClosed{id, data}) => {
                             println!("--- channel closed: {id}, {data:?} ---");
                         },
                         // errors
-                        Ok(Some(Event::ProtocolFailure{message})) => {
+                        Ok(Event::ProtocolFailure{message}) => {
                             println!("--- non-fatal protocol failure: {message} ---");
                         }
-                        Ok(Some(Event::FatalProtocolFailure)) => {
+                        Ok(Event::FatalProtocolFailure) => {
                             println!("--- fatal protocol error, removing connection ---");
                             println!("retain = false; FatalProtocolError");
                             retain = false;
                         }
                         Err(err) => panic!("error: {err:?}"),
-                        Ok(None) => panic!("unexpected None"),
                     }
                 }
 
