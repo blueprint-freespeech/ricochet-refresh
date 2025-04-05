@@ -339,8 +339,16 @@ impl Context {
                             println!("--- contact request received, peer: {service_id:?}, message_text: \"{message_text}\"");
                             callback_queue.push(CallbackData::ChatRequestReceived{service_id, message: message_text});
                         },
-                        Ok(Some(Event::ChannelClosed{channel, data})) => {
-                            println!("--- channel closed: {channel}, {data:?} ---");
+                        Ok(Some(Event::ChatChannelOpened{reply})) => {
+                            println!(" --- chat channel opened ---");
+                            write_packets.push(reply);
+                        },
+                        Ok(Some(Event::FileTransferChannelOpened{reply})) => {
+                            println!(" --- file transfer channel opened ---");
+                            write_packets.push(reply);
+                        },
+                        Ok(Some(Event::ChannelClosed{id, data})) => {
+                            println!("--- channel closed: {id}, {data:?} ---");
                         },
                         // errors
                         Ok(Some(Event::ProtocolFailure{message})) => {

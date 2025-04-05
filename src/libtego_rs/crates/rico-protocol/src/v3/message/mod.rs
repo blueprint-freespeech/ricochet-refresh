@@ -38,6 +38,10 @@ pub enum Error {
     TargetChannelDoesNotExist(u16),
     #[error("target connection does not exist: {0}")]
     TargetConnectionDoesNotExist(u32),
+    #[error("channel already open: {0}")]
+    ChannelAlreadyOpen(u16),
+    #[error("channel type already open: {0:?}")]
+    ChannelTypeAlreadyOpen(crate::v3::packet_handler::ChannelDataType),
 
     // received bytes cannot be parsed or understood
     #[error("bad data stream")]

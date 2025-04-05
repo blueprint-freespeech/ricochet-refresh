@@ -1,4 +1,5 @@
 // std
+use std::cmp::Ord;
 use std::collections::BTreeMap;
 
 // extern
@@ -96,14 +97,136 @@ impl Packet {
 }
 
 #[derive(Debug, PartialEq)]
-pub enum Channel {
+pub enum ChannelData {
     Control,
-    Chat,
-    AuthHiddenService{
+    IncomingChat,
+    OutgoingChat,
+    IncomingContactRequest,
+    OutgoingContactRequest,
+    IncomingAuthHiddenService{
         client_cookie: [u8; auth_hidden_service::CLIENT_COOKIE_SIZE],
         server_cookie: [u8; auth_hidden_service::SERVER_COOKIE_SIZE],
     },
-    FileTransfer,
+    IncomingFileTransfer,
+    OutgoingFileTransfer,
+}
+#[derive(Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub(crate) enum ChannelDataType {
+    Control,
+    IncomingChat,
+    OutgoingChat,
+    IncomingContactRequest,
+    OutgoingContactRequest,
+    IncomingAuthHiddenService,
+    IncomingFileTransfer,
+    OutgoingFileTransfer,
+}
+
+impl From<&ChannelData> for ChannelDataType {
+    fn from(channel_data: &ChannelData) -> ChannelDataType {
+        match channel_data {
+            ChannelData::Control => ChannelDataType::Control,
+            ChannelData::IncomingChat => ChannelDataType::IncomingChat,
+            ChannelData::OutgoingChat => ChannelDataType::OutgoingChat,
+            ChannelData::IncomingContactRequest => ChannelDataType::IncomingContactRequest,
+            ChannelData::OutgoingContactRequest => ChannelDataType::OutgoingContactRequest,
+            ChannelData::IncomingAuthHiddenService{..} => ChannelDataType::IncomingAuthHiddenService,
+            ChannelData::IncomingFileTransfer => ChannelDataType::IncomingFileTransfer,
+            ChannelData::OutgoingFileTransfer => ChannelDataType::OutgoingFileTransfer,
+        }
+    }
+}
+
+
+#[derive(Default)]
+struct ChannelMap {
+    type_to_id: BTreeMap<ChannelDataType, u16>,
+    id_to_channel: BTreeMap<u16, ChannelData>,
+}
+
+impl ChannelMap {
+    pub fn is_empty(&self) -> bool {
+        self.id_to_channel.is_empty()
+    }
+
+    pub fn channel_type_to_id(
+        &self,
+        channel_type: &ChannelDataType) -> Option<&u16> {
+        self.type_to_id.get(channel_type)
+    }
+
+    pub fn channel_id_to_type(
+        &self,
+        channel_id: &u16) -> Option<ChannelDataType> {
+        match self.id_to_channel.get(channel_id) {
+            Some(channel) => Some(channel.into()),
+            None => None,
+        }
+    }
+
+    pub fn insert(
+        &mut self,
+        channel_id: u16,
+        channel_data: ChannelData) -> Result<(), Error> {
+
+        let channel_type: ChannelDataType = (&channel_data).into();
+
+        if self.id_to_channel.contains_key(&channel_id) {
+            Err(Error::ChannelAlreadyOpen(channel_id))
+        } else if self.type_to_id.contains_key(&channel_type) {
+            Err(Error::ChannelTypeAlreadyOpen(channel_type))
+        } else {
+            self.type_to_id.insert(channel_type, channel_id);
+            self.id_to_channel.insert(channel_id, channel_data);
+            Ok(())
+        }
+    }
+
+    pub fn get_by_id(
+        &self,
+        channel_id: &u16) -> Option<&ChannelData> {
+        self.id_to_channel.get(channel_id)
+    }
+
+    pub fn get_by_id_mut(
+        &mut self,
+        channel_id: &u16) -> Option<&mut ChannelData> {
+        self.id_to_channel.get_mut(channel_id)
+    }
+
+    pub fn get_by_type(
+        &self,
+        channel_type: &ChannelDataType) -> Option<&ChannelData> {
+        if let Some(id)  = self.type_to_id.get(channel_type) {
+            let channel = self.id_to_channel.get(id).expect("ChannelMap corrupted");
+            Some(channel)
+        } else {
+            None
+        }
+    }
+
+    pub fn get_by_type_mut(
+        &mut self,
+        channel_type: &ChannelDataType) -> Option<&ChannelData> {
+        if let Some(id)  = self.type_to_id.get(channel_type) {
+            let channel = self.id_to_channel.get_mut(id).expect("ChannelMap corrupted");
+            Some(channel)
+        } else {
+            None
+        }
+    }
+
+    pub fn remove_by_id(
+        &mut self,
+        channel_id: &u16) -> Option<ChannelData> {
+        if let Some(channel) = self.id_to_channel.remove(channel_id) {
+            let channel_type: ChannelDataType = (&channel).into();
+            self.type_to_id.remove(&channel_type).expect("ChannelMap corrupted");
+            Some(channel)
+        } else {
+            None
+        }
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -113,11 +236,10 @@ enum Direction {
 }
 
 struct Connection {
-    channel_map: BTreeMap<u16, Channel>,
+    channel_map: ChannelMap,
     target: Option<V3OnionServiceId>,
     direction: Direction,
     peer_service_id: Option<V3OnionServiceId>,
-    contact_request_channel_identifier: Option<u16>,
 }
 
 pub type ConnectionHandle = u32;
@@ -140,9 +262,15 @@ pub enum Event {
         nickname: String,
         message_text: String,
     },
+    ChatChannelOpened{
+        reply: Packet,
+    },
+    FileTransferChannelOpened{
+        reply: Packet,
+    },
     ChannelClosed{
-        channel: u16,
-        data: Channel
+        id: u16,
+        data: ChannelData
     },
     ProtocolFailure{
         message: String
@@ -217,24 +345,31 @@ impl PacketHandler {
                     Ok((Packet::CloseChannelPacket{channel}, 4))
                 } else {
                     let bytes = &bytes[4..size];
-                    let packet = match channel_map.get(&channel) {
-                        Some(Channel::Control) => {
+                    let packet = match channel_map.get_by_id(&channel) {
+                        Some(ChannelData::Control) => {
                             let packet = control_channel::Packet::try_from(bytes)?;
                             Packet::ControlChannelPacket(packet)
                         },
-                        Some(Channel::Chat) => {
+                        Some(ChannelData::IncomingChat) |
+                        Some(ChannelData::OutgoingChat) => {
                             let packet = chat_channel::Packet::try_from(bytes)?;
                             Packet::ChatChannelPacket{channel, packet}
                         },
-                        Some(Channel::AuthHiddenService{..}) => {
+                        Some(ChannelData::IncomingContactRequest) |
+                        Some(ChannelData::OutgoingContactRequest) => {
+                            return Err(Error::BadDataStream);
+                        },
+                        Some(ChannelData::IncomingAuthHiddenService{..}) => {
                             let packet = auth_hidden_service::Packet::try_from(bytes)?;
                             Packet::AuthHiddenServicePacket{channel, packet}
                         },
-                        Some(Channel::FileTransfer) => {
+                        Some(ChannelData::IncomingFileTransfer) |
+                        Some(ChannelData::OutgoingFileTransfer) => {
                             let packet = file_channel::Packet::try_from(bytes)?;
                             Packet::FileChannelPacket{channel, packet}
                         },
                         None => return Err(Error::TargetChannelDoesNotExist(channel)),
+
                     };
                     Ok((packet, size))
                 }
@@ -268,14 +403,14 @@ impl PacketHandler {
         service_id: &V3OnionServiceId) -> Result<(ConnectionHandle, Packet), Error> {
         if let Some(connection_handle) = self.service_id_to_connection_handle.get(service_id) {
             if let Some(connection) = self.connections.get_mut(&connection_handle) {
-                if let Some(channel_identifier) = connection.contact_request_channel_identifier {
+                if let Some(channel_identifier) = connection.channel_map.channel_type_to_id(&ChannelDataType::IncomingContactRequest) {
                     // build reply packeet
                     use control_channel::ChannelResultExtension;
                     use contact_request_channel::*;
                     let channel_result_extension = ChannelResultExtension::ContactRequestChannel(contact_request_channel::ChannelResult{response: Response{status: Status::Accepted}});
 
                     let channel_result = control_channel::ChannelResult::new(
-                        channel_identifier as i32,
+                        *channel_identifier as i32,
                         true,
                         None,
                         Some(channel_result_extension))?;
@@ -328,7 +463,7 @@ impl PacketHandler {
         } else {
             let version = if packet.versions().contains(&Version::RicochetRefresh3) {
                 let mut connection = self.connection_mut(connection_handle)?;
-                let _ = connection.channel_map.insert(0u16, Channel::Control);
+                let _ = connection.channel_map.insert(0u16, ChannelData::Control);
                 Some(Version::RicochetRefresh3)
             } else {
                 // version not supported
@@ -363,7 +498,7 @@ impl PacketHandler {
         } else {
             if let Some(Version::RicochetRefresh3) = packet.version {
                 let mut connection = self.connection_mut(connection_handle)?;
-                let _ = connection.channel_map.insert(0u16, Channel::Control);
+                let _ = connection.channel_map.insert(0u16, ChannelData::Control);
                 Ok(Some(Event::IntroductionResponseReceived))
             } else {
                 // version not supported
@@ -391,7 +526,7 @@ impl PacketHandler {
                     !(channel_identifier % 2u16 == 0u16 &&
                     connection.direction == Direction::Outgoing)) ||
                     // requested channel already open
-                    connection.channel_map.contains_key(&channel_identifier)
+                    connection.channel_map.get_by_id(&channel_identifier).is_some()
                 };
                 if protocol_failure {
                     let _ = self.connections.remove(&connection_handle);
@@ -400,7 +535,7 @@ impl PacketHandler {
 
                 use control_channel::{ChannelResultExtension, ChannelResult, ChannelType, OpenChannelExtension};
                 match (open_channel.channel_type(), open_channel.extension()) {
-                    // AuthHiddenService
+                    // IncomingAuthHiddenService
                     (ChannelType::AuthHiddenService, Some(OpenChannelExtension::AuthHiddenService(extension))) => {
 
                         // build ChannelResult packet
@@ -412,8 +547,7 @@ impl PacketHandler {
                         // save off channel state
                         let client_cookie = extension.client_cookie;
                         let mut connection = self.connection_mut(connection_handle)?;
-                        // TODO: handle channel already exists?
-                        connection.channel_map.insert(channel_identifier, Channel::AuthHiddenService{client_cookie, server_cookie});
+                        connection.channel_map.insert(channel_identifier, ChannelData::IncomingAuthHiddenService{client_cookie, server_cookie})?;
 
                         // buld reply packet
                         let channel_result = ChannelResult::new(
@@ -430,7 +564,7 @@ impl PacketHandler {
                     (ChannelType::ContactRequest, Some(OpenChannelExtension::ContactRequestChannel(extension))) => {
                         let connection = self.connection_mut(connection_handle)?;
                         if let Some(service_id) = &connection.peer_service_id {
-                            connection.contact_request_channel_identifier = Some(channel_identifier);
+                            connection.channel_map.insert(channel_identifier, ChannelData::IncomingContactRequest)?;
                             Ok(Some(Event::ContactRequestReceived{
                                 service_id: service_id.clone(),
                                 nickname: (&extension.contact_request.nickname).into(),
@@ -439,6 +573,36 @@ impl PacketHandler {
                         } else {
                             Ok(Some(Event::FatalProtocolFailure))
                         }
+                    },
+                    // Chat
+                    (ChannelType::Chat, None) => {
+                        let connection = self.connection_mut(connection_handle)?;
+                        connection.channel_map.insert(channel_identifier, ChannelData::IncomingChat)?;
+
+                        // buld reply packet
+                        let channel_result = ChannelResult::new(
+                            channel_identifier as i32,
+                            true,
+                            None,
+                            None)?;
+                        let packet = control_channel::Packet::ChannelResult(channel_result);
+                        let reply = Packet::ControlChannelPacket(packet);
+                        Ok(Some(Event::ChatChannelOpened{reply}))
+                    }
+                    // FileTransfer
+                    (ChannelType::FileTransfer, None) => {
+                        let connection = self.connection_mut(connection_handle)?;
+                        connection.channel_map.insert(channel_identifier, ChannelData::IncomingFileTransfer)?;
+
+                        // buld reply packet
+                        let channel_result = ChannelResult::new(
+                            channel_identifier as i32,
+                            true,
+                            None,
+                            None)?;
+                        let packet = control_channel::Packet::ChannelResult(channel_result);
+                        let reply = Packet::ControlChannelPacket(packet);
+                        Ok(Some(Event::FileTransferChannelOpened{reply}))
                     },
                     _ => Err(Error::NotImplemented)
                 }
@@ -450,13 +614,13 @@ impl PacketHandler {
     fn handle_close_channel_packet(
         &mut self,
         connection_handle: ConnectionHandle,
-        channel: u16) -> Result<Option<Event>, Error> {
+        channel_id: u16) -> Result<Option<Event>, Error> {
         let connection = self.connection_mut(connection_handle)?;
-        if let Some(data) = connection.channel_map.remove(&channel) {
-            Ok(Some(Event::ChannelClosed{channel, data}))
+        if let Some(data) = connection.channel_map.remove_by_id(&channel_id) {
+            Ok(Some(Event::ChannelClosed{id: channel_id, data}))
         } else {
             Ok(Some(Event::ProtocolFailure{message:
-                format!("requested closing channel which does not exist: {channel}")}))
+                format!("requested closing channel which does not exist: {channel_id}")}))
         }
     }
 
@@ -482,8 +646,8 @@ impl PacketHandler {
                     // only connecting clients should be sending a proof packet
                     connection.direction != Direction::Incoming ||
                     // channel has wrong data
-                    match connection.channel_map.get(&channel) {
-                        Some(Channel::AuthHiddenService{..}) => false,
+                    match connection.channel_map.channel_id_to_type(&channel) {
+                        Some(ChannelDataType::IncomingAuthHiddenService) => false,
                         _ => true
                     }
                 };
@@ -494,8 +658,8 @@ impl PacketHandler {
 
                 let server_service_id = self.service_id.clone();
                 let mut connection = self.connection_mut(connection_handle)?;
-                match connection.channel_map.get(&channel) {
-                    Some(Channel::AuthHiddenService{client_cookie, server_cookie}) => {
+                match connection.channel_map.get_by_id(&channel) {
+                    Some(ChannelData::IncomingAuthHiddenService{client_cookie, server_cookie}) => {
                         let client_service_id = proof.service_id();
 
                         let message = auth_hidden_service::Proof::message(
@@ -554,7 +718,6 @@ impl PacketHandler {
             target: None,
             direction: Direction::Incoming,
             peer_service_id: None,
-            contact_request_channel_identifier: None,
         };
 
         self.connections.insert(handle, connection);
