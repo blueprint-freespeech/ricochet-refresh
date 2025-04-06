@@ -337,17 +337,18 @@ impl Context {
                             println!("--- contact request received, peer: {service_id:?}, message_text: \"{message_text}\"");
                             callback_queue.push(CallbackData::ChatRequestReceived{service_id, message: message_text});
                         },
-                        Ok(Event::IncomingChatChannelOpened) => {
-                            println!(" --- incoming chat channel opened ---");
+                        Ok(Event::IncomingChatChannelOpened{service_id}) => {
+                            println!(" --- incoming chat channel opened, peer: {service_id:?} ---");
                         },
-                        Ok(Event::IncomingFileTransferChannelOpened) => {
-                            println!(" --- incoming file transfer channel opened ---");
+                        Ok(Event::IncomingFileTransferChannelOpened{service_id}) => {
+                            println!(" --- incoming file transfer channel opened, peer: {service_id:?} ---");
                         },
-                        Ok(Event::OutgoingChatChannelOpened) => {
-                            println!(" --- outgoing chat channel opened ---");
+                        Ok(Event::OutgoingChatChannelOpened{service_id}) => {
+                            println!(" --- outgoing chat channel opened, peer: {service_id:?} ---");
+                            callback_queue.push(CallbackData::UserStatusChanged{service_id, status: tego_user_status::tego_user_status_online});
                         },
-                        Ok(Event::OutgoingFileTransferChannelOpened) => {
-                            println!(" --- outgoing file transfer channel opened ---");
+                        Ok(Event::OutgoingFileTransferChannelOpened{service_id}) => {
+                            println!(" --- outgoing file transfer channel opened, peer: {service_id:?} ---");
                         },
                         Ok(Event::ChannelClosed{id, data}) => {
                             println!("--- channel closed: {id}, {data:?} ---");
@@ -417,6 +418,13 @@ impl Context {
                             let message_len = message.as_bytes().len();
                             on_chat_request_received(tego_key as *mut tego_context, sender as *const tego_user_id, message.as_c_str().as_ptr(), message_len);
                             get_object_map().remove(&sender);
+                        }
+                    },
+                    CallbackData::UserStatusChanged{service_id, status} => {
+                        if let Some(on_user_status_changed) = callbacks.on_user_status_changed {
+                            let user = get_object_map().insert(TegoObject::UserId(UserId{service_id}));
+                            on_user_status_changed(tego_key as *mut tego_context, user as *const tego_user_id, status);
+                            get_object_map().remove(&user);
                         }
                     },
                     _ => panic!("not implemented"),
@@ -497,7 +505,7 @@ enum CallbackData {
     FileTransferRequestResponseReceived,
     FileTransferProgress,
     FileTransferComplete,
-    UserStatusChanged,
+    UserStatusChanged{service_id: V3OnionServiceId, status: tego_user_status},
     NewIdentityCreated,
 }
 

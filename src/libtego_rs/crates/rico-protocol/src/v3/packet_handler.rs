@@ -241,7 +241,6 @@ enum Direction {
 
 struct Connection {
     channel_map: ChannelMap,
-    target: Option<V3OnionServiceId>,
     direction: Direction,
     peer_service_id: Option<V3OnionServiceId>,
     next_outgoing_channel_id: u16,
@@ -251,7 +250,6 @@ impl Connection {
     pub fn new_incoming() -> Self {
         Self {
             channel_map: Default::default(),
-            target: None,
             direction: Direction::Incoming,
             peer_service_id: None,
             next_outgoing_channel_id: 2,
@@ -286,10 +284,18 @@ pub enum Event {
         nickname: String,
         message_text: String,
     },
-    IncomingChatChannelOpened,
-    IncomingFileTransferChannelOpened,
-    OutgoingChatChannelOpened,
-    OutgoingFileTransferChannelOpened,
+    IncomingChatChannelOpened{
+        service_id: V3OnionServiceId,
+    },
+    IncomingFileTransferChannelOpened{
+        service_id: V3OnionServiceId,
+    },
+    OutgoingChatChannelOpened{
+        service_id: V3OnionServiceId,
+    },
+    OutgoingFileTransferChannelOpened{
+        service_id: V3OnionServiceId,
+    },
     ChannelClosed{
         id: u16,
         data: ChannelData
@@ -647,13 +653,15 @@ impl PacketHandler {
                     (ChannelType::Chat, None) => {
                         // verify peer is authorised and a contact
                         let connection = self.connection(connection_handle)?;
-                        if let Some(service_id) = &connection.peer_service_id {
+                        let service_id = if let Some(service_id) = &connection.peer_service_id {
                             if !self.contacts.contains(service_id) {
                                 return Ok(Event::FatalProtocolFailure)
+                            } else {
+                                service_id.clone()
                             }
                         } else {
                             return Ok(Event::FatalProtocolFailure)
-                        }
+                        };
 
                         let connection = self.connection_mut(connection_handle)?;
                         connection.channel_map.insert(channel_identifier, ChannelData::IncomingChat)?;
@@ -667,19 +675,21 @@ impl PacketHandler {
                         let packet = control_channel::Packet::ChannelResult(channel_result);
                         let reply = Packet::ControlChannelPacket(packet);
                         replies.push(reply);
-                        Ok(Event::IncomingChatChannelOpened)
+                        Ok(Event::IncomingChatChannelOpened{service_id})
                     }
                     // FileTransfer
                     (ChannelType::FileTransfer, None) => {
                         // verify peer is authorised and a contact
                         let connection = self.connection(connection_handle)?;
-                        if let Some(service_id) = &connection.peer_service_id {
+                        let service_id = if let Some(service_id) = &connection.peer_service_id {
                             if !self.contacts.contains(service_id) {
                                 return Ok(Event::FatalProtocolFailure)
+                            } else {
+                                service_id.clone()
                             }
                         } else {
                             return Ok(Event::FatalProtocolFailure)
-                        }
+                        };
 
                         let connection = self.connection_mut(connection_handle)?;
                         connection.channel_map.insert(channel_identifier, ChannelData::IncomingFileTransfer)?;
@@ -693,7 +703,7 @@ impl PacketHandler {
                         let packet = control_channel::Packet::ChannelResult(channel_result);
                         let reply = Packet::ControlChannelPacket(packet);
                         replies.push(reply);
-                        Ok(Event::IncomingFileTransferChannelOpened)
+                        Ok(Event::IncomingFileTransferChannelOpened{service_id})
                     },
                     _ => Err(Error::NotImplemented)
                 }
@@ -708,10 +718,11 @@ impl PacketHandler {
                     return Ok(Event::ProtocolFailure{message:
                         format!("recived ChannelResult for channel which does not exist: {channel_id}")});
                 };
+                let service_id = &connection.peer_service_id;
 
-                match (channel_type, channel_result.opened(), channel_result.common_error(), channel_result.extension()) {
-                    (ChannelDataType::OutgoingChat, true, None, None) => Ok(Event::OutgoingChatChannelOpened),
-                    (ChannelDataType::OutgoingFileTransfer,true, None, None) => Ok(Event::OutgoingFileTransferChannelOpened),
+                match (channel_type, service_id, channel_result.opened(), channel_result.common_error(), channel_result.extension()) {
+                    (ChannelDataType::OutgoingChat, Some(service_id), true, None, None) => Ok(Event::OutgoingChatChannelOpened{service_id: service_id.clone()}),
+                    (ChannelDataType::OutgoingFileTransfer, Some(service_id), true, None, None) => Ok(Event::OutgoingFileTransferChannelOpened{service_id: service_id.clone()}),
                     _ => Err(Error::NotImplemented),
                 }
             }
