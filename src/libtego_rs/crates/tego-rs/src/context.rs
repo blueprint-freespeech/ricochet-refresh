@@ -350,6 +350,12 @@ impl Context {
                         Ok(Event::OutgoingFileTransferChannelOpened{service_id}) => {
                             println!(" --- outgoing file transfer channel opened, peer: {service_id:?} ---");
                         },
+                        Ok(Event::ChatMessageReceived{service_id, message_text, message_id, time_delta}) => {
+                            println!(" --- chat message receved, peer: {service_id:?}, message: \"{message_text}");
+                            let now = std::time::SystemTime::now();
+                            let timestamp = now.checked_sub(time_delta).unwrap();
+                            callback_queue.push(CallbackData::MessageReceived{service_id, timestamp, message_id, message: message_text});
+                        },
                         Ok(Event::ChannelClosed{id, data}) => {
                             println!("--- channel closed: {id}, {data:?} ---");
                         },
@@ -427,6 +433,20 @@ impl Context {
                             get_object_map().remove(&user);
                         }
                     },
+                    CallbackData::MessageReceived{service_id, timestamp, message_id, message} => {
+                        if let Some(on_message_received) = callbacks.on_message_received {
+                            let user = get_object_map().insert(TegoObject::UserId(UserId{service_id}));
+                            let timestamp = timestamp.duration_since(std::time::UNIX_EPOCH).unwrap();
+                            let timestamp = timestamp.as_millis() as tego_time;
+                            assert!(timestamp > 0);
+
+                            let message = CString::new(message.as_str()).unwrap();
+                            let message_len = message.as_bytes().len();
+                            on_message_received(tego_key as *mut tego_context, user as *const tego_user_id, timestamp, message_id, message.as_c_str().as_ptr(), message_len);
+
+                            get_object_map().remove(&user);
+                        }
+                    },
                     _ => panic!("not implemented"),
                 }
             }
@@ -498,7 +518,7 @@ enum CallbackData {
     HostOnionServiceStateChanged{state: tego_host_onion_service_state},
     ChatRequestReceived{service_id: V3OnionServiceId, message: String},
     ChatRequestResponseReceived,
-    MessageReceived,
+    MessageReceived{service_id: V3OnionServiceId, timestamp: std::time::SystemTime, message_id: tego_message_id, message: String},
     MessageAcknowledged,
     FileTransferRequestReceived,
     FileTransferRequestAcknowledged,

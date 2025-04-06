@@ -296,6 +296,12 @@ pub enum Event {
     OutgoingFileTransferChannelOpened{
         service_id: V3OnionServiceId,
     },
+    ChatMessageReceived{
+        service_id: V3OnionServiceId,
+        message_text: String,
+        message_id: u64,
+        time_delta: std::time::Duration,
+    },
     ChannelClosed{
         id: u16,
         data: ChannelData
@@ -749,7 +755,43 @@ impl PacketHandler {
         channel: u16,
         packet: chat_channel::Packet,
         replies: &mut Vec<Packet>) -> Result<Event, Error> {
-        Err(Error::NotImplemented)
+
+        match packet {
+            chat_channel::Packet::ChatMessage(message) => {
+                let connection = self.connection(connection_handle)?;
+                let service_id = if let Some(service_id) = &connection.peer_service_id {
+                    if !self.contacts.contains(service_id) {
+                        return Ok(Event::FatalProtocolFailure)
+                    } else {
+                        service_id.clone()
+                    }
+                } else {
+                    return Ok(Event::FatalProtocolFailure)
+                };
+
+                let message_text: String = message.message_text().into();
+                let message_id = message.message_id() as u64;
+                let time_delta = if let Some(time_delta) = message.time_delta() {
+                    *time_delta
+                } else {
+                    std::time::Duration::ZERO
+                };
+
+                // build ack reply
+                let accepted = true;
+                let acknowledge = chat_channel::ChatAcknowledge::new(message.message_id(), accepted)?;
+                let packet = chat_channel::Packet::ChatAcknowledge(acknowledge);
+                let reply = Packet::ChatChannelPacket{channel, packet};
+                replies.push(reply);
+
+                Ok(Event::ChatMessageReceived{service_id, message_text, message_id, time_delta})
+            },
+            chat_channel::Packet::ChatAcknowledge(acknowledge) => {
+
+                Err(Error::NotImplemented)
+            },
+        }
+
     }
 
     fn handle_auth_hidden_service_packet(
