@@ -240,17 +240,18 @@ impl Context {
                         connections.insert(handle, connection);
                     },
                     Command::AcknowledgeChatRequest{service_id, response} => {
+                        let mut replies: Vec<Packet> = Default::default();
                         use tego_chat_acknowledge::*;
                         let result = match response {
-                            tego_chat_acknowledge_accept => packet_handler.accept_contact_request(&service_id),
+                            tego_chat_acknowledge_accept => packet_handler.accept_contact_request(service_id, &mut replies),
                             tego_chat_acknowledge_reject => todo!(),
                             tego_chat_acknowledge_block => todo!(),
                         };
 
                         match result {
-                            Ok((connection_handle, packet)) => {
+                            Ok(connection_handle) => {
                                 if let Some(connection) = connections.get_mut(&connection_handle) {
-                                    connection.write_packets.push(packet);
+                                    connection.write_packets.append(&mut replies);
                                 }
                             },
                             Err(err) => todo!(),
@@ -320,32 +321,33 @@ impl Context {
                 // handle packets and queue responses
                 let write_packets = &mut connection.write_packets;
                 for packet in read_packets.drain(..) {
-                    match packet_handler.handle_packet(handle, packet) {
-                        Ok(Event::IntroductionReceived{reply})=> {
+                    match packet_handler.handle_packet(handle, packet, write_packets) {
+                        Ok(Event::IntroductionReceived)=> {
                             println!("--- introduction received ---");
-                            write_packets.push(reply);
                         },
                         Ok(Event::IntroductionResponseReceived) => todo!(),
-                        Ok(Event::OpenChannelAuthHiddenServiceReceived{reply}) => {
+                        Ok(Event::OpenChannelAuthHiddenServiceReceived) => {
                             println!("--- open auth hidden service received ---");
-                            write_packets.push(reply);
                         },
-                        Ok(Event::ClientAuthenticated{service_id, reply}) => {
+                        Ok(Event::ClientAuthenticated{service_id}) => {
                             println!("--- client authorised: {service_id:?} ---");
                             connection.service_id = Some(service_id);
-                            write_packets.push(reply);
                         },
                         Ok(Event::ContactRequestReceived{service_id, nickname: _, message_text}) => {
                             println!("--- contact request received, peer: {service_id:?}, message_text: \"{message_text}\"");
                             callback_queue.push(CallbackData::ChatRequestReceived{service_id, message: message_text});
                         },
-                        Ok(Event::ChatChannelOpened{reply}) => {
-                            println!(" --- chat channel opened ---");
-                            write_packets.push(reply);
+                        Ok(Event::IncomingChatChannelOpened) => {
+                            println!(" --- incoming chat channel opened ---");
                         },
-                        Ok(Event::FileTransferChannelOpened{reply}) => {
-                            println!(" --- file transfer channel opened ---");
-                            write_packets.push(reply);
+                        Ok(Event::IncomingFileTransferChannelOpened) => {
+                            println!(" --- incoming file transfer channel opened ---");
+                        },
+                        Ok(Event::OutgoingChatChannelOpened) => {
+                            println!(" --- outgoing chat channel opened ---");
+                        },
+                        Ok(Event::OutgoingFileTransferChannelOpened) => {
+                            println!(" --- outgoing file transfer channel opened ---");
                         },
                         Ok(Event::ChannelClosed{id, data}) => {
                             println!("--- channel closed: {id}, {data:?} ---");

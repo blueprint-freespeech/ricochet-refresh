@@ -230,6 +230,7 @@ impl TryFrom<&[u8]> for Packet {
 
                         Some(ChannelResultExtension::AuthHiddenService(crate::auth_hidden_service::ChannelResult{server_cookie}))
                     },
+                    (None, None) => None,
                     _ => return Err(Self::Error::InvalidProtobufMessage),
                 };
 

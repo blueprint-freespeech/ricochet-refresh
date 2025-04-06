@@ -8,6 +8,9 @@ pub mod file_channel;
 /// The error type for the [`Message`] type.
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
+    //
+    // somehow badly formatted packets errors
+    //
     #[error("invalid protocol version: {0:#04x}")]
     InvalidVersion(u8),
     #[error("invalid introduction packet")]
@@ -36,13 +39,6 @@ pub enum Error {
     NeedMoreBytes,
     #[error("target channel does not exist: {0}")]
     TargetChannelDoesNotExist(u16),
-    #[error("target connection does not exist: {0}")]
-    TargetConnectionDoesNotExist(u32),
-    #[error("channel already open: {0}")]
-    ChannelAlreadyOpen(u16),
-    #[error("channel type already open: {0:?}")]
-    ChannelTypeAlreadyOpen(crate::v3::packet_handler::ChannelDataType),
-
     // received bytes cannot be parsed or understood
     #[error("bad data stream")]
     BadDataStream,
@@ -57,9 +53,19 @@ pub enum Error {
     #[error("packet construction failed: {0}")]
     PacketConstructionFailed(String),
 
-    // failed to convert type
-    #[error("type conversion failed: {0}")]
-    TypeConversionFailed(String),
+    //
+    // user errors
+    //
+    #[error("target connection does not exist: {0}")]
+    TargetConnectionDoesNotExist(u32),
+    #[error("channel already open: {0}")]
+    ChannelAlreadyOpen(u16),
+    #[error("channel type already open: {0:?}")]
+    ChannelTypeAlreadyOpen(crate::v3::packet_handler::ChannelDataType),
+    #[error("peer is already an accepted contact: {0}")]
+    PeerAlreadyAcceptedContact(tor_interface::tor_crypto::V3OnionServiceId),
+    #[error("peer may not be accepted as it is blocked: {0}")]
+    PeerIsBlocked(tor_interface::tor_crypto::V3OnionServiceId),
 
     // rand_core failure
     #[error("rand error: {0}")]

@@ -1,6 +1,6 @@
 // std
 use std::cmp::Ord;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 // extern
 use rand::{TryRngCore, rngs::OsRng};
@@ -149,6 +149,10 @@ impl ChannelMap {
         self.id_to_channel.is_empty()
     }
 
+    pub fn contains(&self, channel_id: &u16) -> bool {
+        self.id_to_channel.contains_key(channel_id)
+    }
+
     pub fn channel_type_to_id(
         &self,
         channel_type: &ChannelDataType) -> Option<&u16> {
@@ -240,21 +244,41 @@ struct Connection {
     target: Option<V3OnionServiceId>,
     direction: Direction,
     peer_service_id: Option<V3OnionServiceId>,
+    next_outgoing_channel_id: u16,
+}
+
+impl Connection {
+    pub fn new_incoming() -> Self {
+        Self {
+            channel_map: Default::default(),
+            target: None,
+            direction: Direction::Incoming,
+            peer_service_id: None,
+            next_outgoing_channel_id: 2,
+        }
+    }
+
+    pub fn next_channel_id(&mut self) -> u16 {
+        loop {
+            let result = self.next_outgoing_channel_id;
+            let next = ((self.next_outgoing_channel_id as u32 + 2u32) % (u16::MAX as u32)) as u16;
+            self.next_outgoing_channel_id = next;
+            if self.channel_map.contains(&result) {
+                continue;
+            }
+            return result;
+        }
+    }
 }
 
 pub type ConnectionHandle = u32;
 pub const INVALID_CONNECTION_HANDLE: ConnectionHandle = 0xffffffffu32;
 
 pub enum Event {
-    IntroductionReceived{
-        reply: Packet,
-    },
+    IntroductionReceived,
     IntroductionResponseReceived,
-    OpenChannelAuthHiddenServiceReceived{
-        reply: Packet,
-    },
+    OpenChannelAuthHiddenServiceReceived,
     ClientAuthenticated{
-        reply: Packet,
         service_id: V3OnionServiceId,
     },
     ContactRequestReceived{
@@ -262,12 +286,10 @@ pub enum Event {
         nickname: String,
         message_text: String,
     },
-    ChatChannelOpened{
-        reply: Packet,
-    },
-    FileTransferChannelOpened{
-        reply: Packet,
-    },
+    IncomingChatChannelOpened,
+    IncomingFileTransferChannelOpened,
+    OutgoingChatChannelOpened,
+    OutgoingFileTransferChannelOpened,
     ChannelClosed{
         id: u16,
         data: ChannelData
@@ -282,7 +304,12 @@ pub struct PacketHandler {
     next_connection_handle: ConnectionHandle,
     connections: BTreeMap<ConnectionHandle, Connection>,
     service_id_to_connection_handle: BTreeMap<V3OnionServiceId, ConnectionHandle>,
+    // our service id
     service_id: V3OnionServiceId,
+    // set of approved contacts
+    contacts: BTreeSet<V3OnionServiceId>,
+    // set of blocked contacts
+    blocked: BTreeSet<V3OnionServiceId>
 }
 
 
@@ -293,6 +320,8 @@ impl PacketHandler {
             connections: Default::default(),
             service_id_to_connection_handle: Default::default(),
             service_id,
+            contacts: Default::default(),
+            blocked: Default::default(),
         }
     }
 
@@ -384,26 +413,37 @@ impl PacketHandler {
     pub fn handle_packet(
         &mut self,
         connection_handle: ConnectionHandle,
-        packet: Packet) -> Result<Event, Error> {
+        packet: Packet,
+        replies: &mut Vec<Packet>) -> Result<Event, Error> {
 
         match packet {
-            Packet::IntroductionPacket(packet) => self.handle_introduction_packet(connection_handle, packet),
-            Packet::IntroductionResponsePacket(packet) => self.handle_introduction_response_packet(connection_handle, packet),
-            Packet::ControlChannelPacket(packet) => self.handle_control_channel_packet(connection_handle, packet),
-            Packet::CloseChannelPacket{channel} => self.handle_close_channel_packet(connection_handle, channel),
-            Packet::ChatChannelPacket{channel, packet} => self.handle_chat_channel_packet(connection_handle, channel, packet),
-            Packet::AuthHiddenServicePacket{channel, packet} => self.handle_auth_hidden_service_packet(connection_handle, channel, packet),
-            Packet::FileChannelPacket{channel, packet} => self.handle_file_channel_packet(connection_handle, channel, packet),
+            Packet::IntroductionPacket(packet) => self.handle_introduction_packet(connection_handle, packet, replies),
+            Packet::IntroductionResponsePacket(packet) => self.handle_introduction_response_packet(connection_handle, packet, replies),
+            Packet::ControlChannelPacket(packet) => self.handle_control_channel_packet(connection_handle, packet, replies),
+            Packet::CloseChannelPacket{channel} => self.handle_close_channel_packet(connection_handle, channel, replies),
+            Packet::ChatChannelPacket{channel, packet} => self.handle_chat_channel_packet(connection_handle, channel, packet, replies),
+            Packet::AuthHiddenServicePacket{channel, packet} => self.handle_auth_hidden_service_packet(connection_handle, channel, packet, replies),
+            Packet::FileChannelPacket{channel, packet} => self.handle_file_channel_packet(connection_handle, channel, packet, replies),
         }
     }
 
     pub fn accept_contact_request(
         &mut self,
-        service_id: &V3OnionServiceId) -> Result<(ConnectionHandle, Packet), Error> {
-        if let Some(connection_handle) = self.service_id_to_connection_handle.get(service_id) {
+        service_id: V3OnionServiceId,
+        replies: &mut Vec<Packet>) -> Result<ConnectionHandle, Error> {
+        if self.contacts.contains(&service_id) {
+            return Err(Error::PeerAlreadyAcceptedContact(service_id));
+        } else if self.blocked.contains(&service_id) {
+            return Err(Error::PeerIsBlocked(service_id));
+        }
+
+        if let Some(connection_handle) = self.service_id_to_connection_handle.get(&service_id) {
             if let Some(connection) = self.connections.get_mut(&connection_handle) {
                 if let Some(channel_identifier) = connection.channel_map.channel_type_to_id(&ChannelDataType::IncomingContactRequest) {
-                    // build reply packeet
+
+                    let mut pending_replies: Vec<Packet> = Vec::with_capacity(3);
+
+                    // build reply packet
                     use control_channel::ChannelResultExtension;
                     use contact_request_channel::*;
                     let channel_result_extension = ChannelResultExtension::ContactRequestChannel(contact_request_channel::ChannelResult{response: Response{status: Status::Accepted}});
@@ -415,8 +455,33 @@ impl PacketHandler {
                         Some(channel_result_extension))?;
                     let packet = control_channel::Packet::ChannelResult(channel_result);
                     let reply = Packet::ControlChannelPacket(packet);
+                    pending_replies.push(reply);
 
-                    return Ok((*connection_handle, reply))
+                    // build chat channel open packet
+                    let channel_id = connection.next_channel_id();
+                    let open_channel = control_channel::OpenChannel::new(
+                        channel_id as i32,
+                        control_channel::ChannelType::Chat,
+                        None).expect("OpenChannel creation failed");
+                    let packet = control_channel::Packet::OpenChannel(open_channel);
+                    let reply = Packet::ControlChannelPacket(packet);
+                    pending_replies.push(reply);
+                    connection.channel_map.insert(channel_id, ChannelData::OutgoingChat)?;
+
+                    // build file transfer channel open packet
+                    let channel_id = connection.next_channel_id();
+                    let open_channel = control_channel::OpenChannel::new(
+                        channel_id as i32,
+                        control_channel::ChannelType::FileTransfer,
+                        None).expect("OpenChannel creation failed");
+                    let packet = control_channel::Packet::OpenChannel(open_channel);
+                    let reply = Packet::ControlChannelPacket(packet);
+                    pending_replies.push(reply);
+                    connection.channel_map.insert(channel_id, ChannelData::OutgoingFileTransfer)?;
+
+                    self.contacts.insert(service_id);
+                    replies.append(&mut pending_replies);
+                    return Ok(*connection_handle)
                 }
             }
         }
@@ -443,7 +508,8 @@ impl PacketHandler {
     fn handle_introduction_packet(
         &mut self,
         connection_handle: ConnectionHandle,
-        packet: introduction::IntroductionPacket) -> Result<Event, Error> {
+        packet: introduction::IntroductionPacket,
+        replies: &mut Vec<Packet>) -> Result<Event, Error> {
 
         use introduction::*;
 
@@ -471,14 +537,16 @@ impl PacketHandler {
             };
 
             let reply = Packet::IntroductionResponsePacket(IntroductionResponsePacket{version});
-            Ok(Event::IntroductionReceived{reply})
+            replies.push(reply);
+            Ok(Event::IntroductionReceived)
         }
     }
 
     fn handle_introduction_response_packet(
         &mut self,
         connection_handle: ConnectionHandle,
-        packet: introduction::IntroductionResponsePacket) -> Result<Event, Error> {
+        packet: introduction::IntroductionResponsePacket,
+        replies: &mut Vec<Packet>) -> Result<Event, Error> {
 
         use introduction::*;
 
@@ -510,7 +578,8 @@ impl PacketHandler {
     fn handle_control_channel_packet(
         &mut self,
         connection_handle: ConnectionHandle,
-        packet: control_channel::Packet) -> Result<Event, Error> {
+        packet: control_channel::Packet,
+        replies: &mut Vec<Packet>) -> Result<Event, Error> {
 
         match packet {
             control_channel::Packet::OpenChannel(open_channel) => {
@@ -556,8 +625,9 @@ impl PacketHandler {
                             Some(channel_result_extension))?;
                         let packet = control_channel::Packet::ChannelResult(channel_result);
                         let reply = Packet::ControlChannelPacket(packet);
+                        replies.push(reply);
 
-                        Ok(Event::OpenChannelAuthHiddenServiceReceived{reply})
+                        Ok(Event::OpenChannelAuthHiddenServiceReceived)
                     },
                     // ContactRequest
                     (ChannelType::ContactRequest, Some(OpenChannelExtension::ContactRequestChannel(extension))) => {
@@ -575,6 +645,16 @@ impl PacketHandler {
                     },
                     // Chat
                     (ChannelType::Chat, None) => {
+                        // verify peer is authorised and a contact
+                        let connection = self.connection(connection_handle)?;
+                        if let Some(service_id) = &connection.peer_service_id {
+                            if !self.contacts.contains(service_id) {
+                                return Ok(Event::FatalProtocolFailure)
+                            }
+                        } else {
+                            return Ok(Event::FatalProtocolFailure)
+                        }
+
                         let connection = self.connection_mut(connection_handle)?;
                         connection.channel_map.insert(channel_identifier, ChannelData::IncomingChat)?;
 
@@ -586,10 +666,21 @@ impl PacketHandler {
                             None)?;
                         let packet = control_channel::Packet::ChannelResult(channel_result);
                         let reply = Packet::ControlChannelPacket(packet);
-                        Ok(Event::ChatChannelOpened{reply})
+                        replies.push(reply);
+                        Ok(Event::IncomingChatChannelOpened)
                     }
                     // FileTransfer
                     (ChannelType::FileTransfer, None) => {
+                        // verify peer is authorised and a contact
+                        let connection = self.connection(connection_handle)?;
+                        if let Some(service_id) = &connection.peer_service_id {
+                            if !self.contacts.contains(service_id) {
+                                return Ok(Event::FatalProtocolFailure)
+                            }
+                        } else {
+                            return Ok(Event::FatalProtocolFailure)
+                        }
+
                         let connection = self.connection_mut(connection_handle)?;
                         connection.channel_map.insert(channel_identifier, ChannelData::IncomingFileTransfer)?;
 
@@ -601,19 +692,37 @@ impl PacketHandler {
                             None)?;
                         let packet = control_channel::Packet::ChannelResult(channel_result);
                         let reply = Packet::ControlChannelPacket(packet);
-                        Ok(Event::FileTransferChannelOpened{reply})
+                        replies.push(reply);
+                        Ok(Event::IncomingFileTransferChannelOpened)
                     },
                     _ => Err(Error::NotImplemented)
                 }
             },
-            control_channel::Packet::ChannelResult(channel_result) => Err(Error::NotImplemented)
+            control_channel::Packet::ChannelResult(channel_result) => {
+                let connection = self.connection_mut(connection_handle)?;
+                let channel_id = channel_result.channel_identifier();
+                let channel_type = connection.channel_map.channel_id_to_type(&channel_id);
+                let channel_type = if let Some(channel_type) = channel_type {
+                    channel_type
+                } else {
+                    return Ok(Event::ProtocolFailure{message:
+                        format!("recived ChannelResult for channel which does not exist: {channel_id}")});
+                };
+
+                match (channel_type, channel_result.opened(), channel_result.common_error(), channel_result.extension()) {
+                    (ChannelDataType::OutgoingChat, true, None, None) => Ok(Event::OutgoingChatChannelOpened),
+                    (ChannelDataType::OutgoingFileTransfer,true, None, None) => Ok(Event::OutgoingFileTransferChannelOpened),
+                    _ => Err(Error::NotImplemented),
+                }
+            }
         }
     }
 
     fn handle_close_channel_packet(
         &mut self,
         connection_handle: ConnectionHandle,
-        channel_id: u16) -> Result<Event, Error> {
+        channel_id: u16,
+        replies: &mut Vec<Packet>) -> Result<Event, Error> {
         let connection = self.connection_mut(connection_handle)?;
         if let Some(data) = connection.channel_map.remove_by_id(&channel_id) {
             Ok(Event::ChannelClosed{id: channel_id, data})
@@ -627,7 +736,8 @@ impl PacketHandler {
         &mut self,
         connection_handle: ConnectionHandle,
         channel: u16,
-        packet: chat_channel::Packet) -> Result<Event, Error> {
+        packet: chat_channel::Packet,
+        replies: &mut Vec<Packet>) -> Result<Event, Error> {
         Err(Error::NotImplemented)
     }
 
@@ -635,7 +745,8 @@ impl PacketHandler {
         &mut self,
         connection_handle: ConnectionHandle,
         channel: u16,
-        packet: auth_hidden_service::Packet) -> Result<Event, Error> {
+        packet: auth_hidden_service::Packet,
+        replies: &mut Vec<Packet>) -> Result<Event, Error> {
 
         match packet {
             auth_hidden_service::Packet::Proof(proof) => {
@@ -679,10 +790,11 @@ impl PacketHandler {
                             let result = auth_hidden_service::Result::new(true, Some(false))?;
                             let packet = auth_hidden_service::Packet::Result(result);
                             let reply = Packet::AuthHiddenServicePacket{channel, packet};
+                            replies.push(reply);
 
                             self.service_id_to_connection_handle.insert(client_service_id.clone(), connection_handle);
                             let service_id = client_service_id.clone();
-                            Ok(Event::ClientAuthenticated{service_id, reply})
+                            Ok(Event::ClientAuthenticated{service_id})
                         } else {
                             println!("bad signature, impersonator!");
                             let _ = self.connections.remove(&connection_handle);
@@ -700,7 +812,8 @@ impl PacketHandler {
         &mut self,
         connection_handle: ConnectionHandle,
         channel: u16,
-        packet: file_channel::Packet) -> Result<Event, Error> {
+        packet: file_channel::Packet,
+        replies: &mut Vec<Packet>) -> Result<Event, Error> {
         Err(Error::NotImplemented)
     }
 
@@ -712,13 +825,7 @@ impl PacketHandler {
         let handle = self.next_connection_handle;
         self.next_connection_handle += 1u32;
 
-        let connection = Connection{
-            channel_map: Default::default(),
-            target: None,
-            direction: Direction::Incoming,
-            peer_service_id: None,
-        };
-
+        let connection = Connection::new_incoming();
         self.connections.insert(handle, connection);
 
         handle
