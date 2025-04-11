@@ -1461,15 +1461,44 @@ pub extern "C" fn tego_file_hash_to_string(
 /// @param error : filled on error
 #[no_mangle]
 pub extern "C" fn tego_context_send_message(
-    _context: *mut tego_context,
-    _user: *const tego_user_id,
-    _message: *const c_char,
-    _message_length: usize,
-    _out_id: *mut tego_message_id,
+    context: *mut tego_context,
+    user: *const tego_user_id,
+    message: *const c_char,
+    message_length: usize,
+    out_id: *mut tego_message_id,
     error: *mut *mut tego_error) -> () {
     translate_failures((), error, || -> Result<()> {
-        println!("tego_context_send_message() not implemented");
-        bail_not_implemented!()
+        bail_if_null!(context);
+        bail_if_null!(user);
+        bail_if_null!(message);
+        bail_if_equal!(message_length, 0usize);
+        bail_if_null!(out_id);
+
+        let user = user as TegoKey;
+        let user = match get_object_map().get(&user) {
+            Some(TegoObject::UserId(user)) => {
+                user.service_id.clone()
+            },
+            Some(_) => bail!("not a tego_user_id pointer: {:?}", user as *const c_void),
+            None => bail!("not a valid pointer: {:?}", user as *const c_void),
+        };
+
+        let message = unsafe { std::slice::from_raw_parts(message as *const u8, message_length) };
+        let message = std::str::from_utf8(message)?.to_string();
+        use rico_protocol::v3::message::chat_channel::MessageText;
+        let message: MessageText = message.try_into()?;
+
+        let context = context as TegoKey;
+        match get_object_map().get(&context) {
+            Some(TegoObject::Context(context)) => {
+                let message_id = context.send_message(user, message)?;
+                unsafe { *out_id = message_id };
+            },
+            Some(_) => bail!("not a tego_context pointer: {:?}", context as *const c_void),
+            None => bail!("not a valid pointer: {:?}", context as *const c_void),
+        }
+
+        Ok(())
     })
 }
 

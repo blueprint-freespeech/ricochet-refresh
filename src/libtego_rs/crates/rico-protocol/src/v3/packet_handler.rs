@@ -244,6 +244,7 @@ struct Connection {
     direction: Direction,
     peer_service_id: Option<V3OnionServiceId>,
     next_outgoing_channel_id: u16,
+    sent_message_counter: u64,
 }
 
 impl Connection {
@@ -253,6 +254,7 @@ impl Connection {
             direction: Direction::Incoming,
             peer_service_id: None,
             next_outgoing_channel_id: 2,
+            sent_message_counter: 0u64,
         }
     }
 
@@ -271,6 +273,8 @@ impl Connection {
 
 pub type ConnectionHandle = u32;
 pub const INVALID_CONNECTION_HANDLE: ConnectionHandle = 0xffffffffu32;
+
+pub type MessageId = u64;
 
 pub enum Event {
     IntroductionReceived,
@@ -299,8 +303,13 @@ pub enum Event {
     ChatMessageReceived{
         service_id: V3OnionServiceId,
         message_text: String,
-        message_id: u64,
+        message_id: MessageId,
         time_delta: std::time::Duration,
+    },
+    ChatAcknowledgeReceived{
+        service_id: V3OnionServiceId,
+        message_id: MessageId,
+        accepted: bool,
     },
     ChannelClosed{
         id: u16,
@@ -499,6 +508,35 @@ impl PacketHandler {
         }
 
          Err(Error::NotImplemented)
+    }
+
+    pub fn send_message(
+        &mut self,
+        service_id: V3OnionServiceId,
+        message_text: chat_channel::MessageText,
+        replies: &mut Vec<Packet>) -> Result<(ConnectionHandle, MessageId), crate::Error> {
+
+        if let Some(connection_handle) = self.service_id_to_connection_handle.get(&service_id) {
+            let connection_handle = *connection_handle;
+            if let Some(connection) = self.connections.get_mut(&connection_handle) {
+                if let Some(channel) = connection.channel_map.channel_type_to_id(&ChannelDataType::OutgoingChat) {
+                    // get this message's id
+                    let message_id = (connection.sent_message_counter & (MessageId::MAX as u64)) as MessageId;
+                    // and increment counter
+                    connection.sent_message_counter = connection.sent_message_counter + 1;
+
+                    let channel = *channel;
+
+                    let chat_message = chat_channel::ChatMessage::new(message_text, message_id as u32, None)?;
+                    let packet = chat_channel::Packet::ChatMessage(chat_message);
+                    let reply = Packet::ChatChannelPacket{channel, packet};
+                    replies.push(reply);
+
+                    return Ok((connection_handle, message_id));
+                }
+            }
+        }
+        Err(Error::NotImplemented)
     }
 
     fn connection(
@@ -770,7 +808,7 @@ impl PacketHandler {
                 };
 
                 let message_text: String = message.message_text().into();
-                let message_id = message.message_id() as u64;
+                let message_id = message.message_id() as MessageId;
                 let time_delta = if let Some(time_delta) = message.time_delta() {
                     *time_delta
                 } else {
@@ -787,11 +825,21 @@ impl PacketHandler {
                 Ok(Event::ChatMessageReceived{service_id, message_text, message_id, time_delta})
             },
             chat_channel::Packet::ChatAcknowledge(acknowledge) => {
-
-                Err(Error::NotImplemented)
+                let connection = self.connection(connection_handle)?;
+                let service_id = if let Some(service_id) = &connection.peer_service_id {
+                    if !self.contacts.contains(service_id) {
+                        return Ok(Event::FatalProtocolFailure)
+                    } else {
+                        service_id.clone()
+                    }
+                } else {
+                    return Ok(Event::FatalProtocolFailure)
+                };
+                let message_id = acknowledge.message_id() as MessageId;
+                let accepted = acknowledge.accepted();
+                Ok(Event::ChatAcknowledgeReceived{service_id, message_id, accepted})
             },
         }
-
     }
 
     fn handle_auth_hidden_service_packet(

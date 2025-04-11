@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use std::sync::{atomic::{AtomicBool, Ordering}, Arc, Condvar, Mutex, Weak};
 
 // extern
-use anyhow::{Context as AnyhowContext ,Result};
+use anyhow::{Context as AnyhowContext, Result};
 use rico_protocol::v3::packet_handler::*;
 use tor_interface::proxy::{ProxyConfig};
 use tor_interface::legacy_tor_client::*;
@@ -113,6 +113,20 @@ impl Context {
         response: tego_chat_acknowledge) -> () {
         self.push_command(Command::AcknowledgeChatRequest{service_id, response});
     }
+
+    pub fn send_message(
+        &self,
+        service_id: V3OnionServiceId,
+        message_text: rico_protocol::v3::message::chat_channel::MessageText) -> Result<tego_message_id> {
+
+        let message_id: Promise<Result<tego_message_id>> = Default::default();
+        let message_id_future = message_id.get_future();
+        let cmd = Command::SendMessage{service_id, message_text, message_id};
+        self.push_command(cmd);
+
+        message_id_future.wait()
+    }
+
 
     fn tor_bin_path() -> Result<PathBuf> {
         let bin_name = format!("tor{}", std::env::consts::EXE_SUFFIX);
@@ -253,6 +267,19 @@ impl Context {
                             Err(err) => todo!(),
                         }
                     },
+                    Command::SendMessage{service_id, message_text, message_id} => {
+                        let mut replies: Vec<Packet> = Default::default();
+                        let result = match packet_handler.send_message(service_id, message_text, &mut replies) {
+                            Ok((connection_handle, message_id)) => {
+                                if let Some(connection) = connections.get_mut(&connection_handle) {
+                                    connection.write_packets.append(&mut replies);
+                                }
+                                Ok(message_id)
+                            },
+                            Err(err) => Err(err.into()),
+                        };
+                        message_id.resolve(result);
+                    },
                 }
             }
 
@@ -352,6 +379,10 @@ impl Context {
                             let timestamp = now.checked_sub(time_delta).unwrap();
                             callback_queue.push(CallbackData::MessageReceived{service_id, timestamp, message_id, message: message_text});
                         },
+                        Ok(Event::ChatAcknowledgeReceived{service_id, message_id, accepted}) => {
+                            println!(" --- chat ack received, peer: {service_id:?}, message_id: {message_id}, accepted: {accepted}");
+                            callback_queue.push(CallbackData::MessageAcknowledged{service_id, message_id, accepted});
+                        },
                         Ok(Event::ChannelClosed{id, data}) => {
                             println!("--- channel closed: {id}, {data:?} ---");
                         },
@@ -443,6 +474,18 @@ impl Context {
                             get_object_map().remove(&user);
                         }
                     },
+                    CallbackData::MessageAcknowledged{service_id, message_id, accepted} => {
+                        if let Some(on_message_acknowledged) = callbacks.on_message_acknowledged {
+                            let user = get_object_map().insert(TegoObject::UserId(UserId{service_id}));
+                            let accepted = if accepted {
+                                TEGO_TRUE
+                            } else {
+                                TEGO_FALSE
+                            };
+                            on_message_acknowledged(tego_key as *mut tego_context, user as *const tego_user_id, message_id, accepted);
+                            get_object_map().remove(&user);
+                        }
+                    },
                     _ => panic!("not implemented"),
                 }
             }
@@ -498,6 +541,11 @@ enum Command {
         service_id: V3OnionServiceId,
         response: tego_chat_acknowledge,
     },
+    SendMessage{
+        service_id: V3OnionServiceId,
+        message_text: rico_protocol::v3::message::chat_channel::MessageText,
+        message_id: Promise<Result<tego_message_id>>,
+    },
 }
 
 enum CallbackData {
@@ -512,7 +560,7 @@ enum CallbackData {
     ChatRequestReceived{service_id: V3OnionServiceId, message: String},
     ChatRequestResponseReceived,
     MessageReceived{service_id: V3OnionServiceId, timestamp: std::time::SystemTime, message_id: tego_message_id, message: String},
-    MessageAcknowledged,
+    MessageAcknowledged{service_id: V3OnionServiceId, message_id: tego_message_id, accepted: bool},
     FileTransferRequestReceived,
     FileTransferRequestAcknowledged,
     FileTransferRequestResponseReceived,
