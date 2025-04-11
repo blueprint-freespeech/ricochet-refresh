@@ -17,6 +17,7 @@ use tor_interface::tor_provider::{OnionListener, OnionStream, TorEvent, TorProvi
 // internal crates
 use crate::ffi::*;
 use crate::user_id::UserId;
+use crate::promise::{Future, Promise};
 
 #[derive(Default)]
 pub(crate) struct Context {
@@ -32,7 +33,7 @@ pub(crate) struct Context {
     pub tor_logs: Arc<Mutex<Vec<String>>>,
     // flags
     connect_complete: Arc<AtomicBool>,
-    event_loop_complete: Arc<(Mutex<bool>, Condvar)>,
+    event_loop_complete: Promise<()>,
     // command queue
     command_queue: Arc<Mutex<Vec<Command>>>,
     // ricochet-refresh data
@@ -70,7 +71,7 @@ impl Context {
         let tor_logs = Arc::downgrade(&self.tor_logs);
 
         let connect_complete = Arc::downgrade(&self.connect_complete);
-        let event_loop_complete = Arc::downgrade(&self.event_loop_complete);
+        let event_loop_complete = self.event_loop_complete.clone();
 
         let private_key = self.private_key.as_ref().unwrap().clone();
 
@@ -91,12 +92,7 @@ impl Context {
                     &command_queue);
 
                 // signal task completion
-                if let Some(complete) = event_loop_complete.upgrade() {
-                    let (complete, cvar) = &*complete;
-                    let mut complete = complete.lock().unwrap();
-                    *complete = true;
-                    cvar.notify_one();
-                }
+                event_loop_complete.resolve(());
             })?;
 
         Ok(())
@@ -476,11 +472,8 @@ impl Context {
 impl Drop for Context {
     fn drop(&mut self) {
         self.push_command(Command::EndEventLoop);
-        let (complete, cvar) = &*self.event_loop_complete;
-        let mut complete = complete.lock().unwrap();
-        while !*complete {
-            complete = cvar.wait(complete).unwrap();
-        }
+        let complete = self.event_loop_complete.get_future();
+        complete.wait();
     }
 }
 

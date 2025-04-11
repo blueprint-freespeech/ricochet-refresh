@@ -9,6 +9,7 @@ set(tego_rs_sources
     src/lib.rs
     src/macros.rs
     src/object_map.rs
+    src/promise.rs
     src/tor_daemon_config.rs
     src/tor_launch_config.rs
     src/user_id.rs
