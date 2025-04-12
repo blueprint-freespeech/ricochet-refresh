@@ -1629,16 +1629,8 @@ pub extern "C" fn tego_context_acknowledge_chat_request(
                 user_id.service_id.clone()
             },
             Some(_) => bail!("not a tego_user_id pointer: {:?}", key as *const c_void),
-            Noen => bail!("not a valid pointer: {:?}", key as *const c_void),
+            None => bail!("not a valid pointer: {:?}", key as *const c_void),
         };
-
-        use tego_chat_acknowledge::*;
-        match response {
-            tego_chat_acknowledge_accept |
-            tego_chat_acknowledge_reject |
-            tego_chat_acknowledge_block => (),
-            other => bail!("not a valid tego_chat_acknowledge: {:?}", other as c_int),
-        }
 
         let key = context as TegoKey;
         match get_object_map().get(&key) {

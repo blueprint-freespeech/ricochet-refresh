@@ -147,15 +147,15 @@ impl Proof {
             CLIENT_COOKIE_SIZE +
             SERVER_COOKIE_SIZE
         );
-        key.write(client_cookie);
-        key.write(server_cookie);
+        key.write(client_cookie).expect("key write failed");
+        key.write(server_cookie).expect("key write failed");
 
         let mut message: Vec<u8> = Vec::with_capacity(
             V3_ONION_SERVICE_ID_STRING_LENGTH +
             V3_ONION_SERVICE_ID_STRING_LENGTH
         );
-        message.write(client_service_id.as_bytes());
-        message.write(server_service_id.as_bytes());
+        message.write(client_service_id.as_bytes()).expect("message write failed");
+        message.write(server_service_id.as_bytes()).expect("message write failed");
 
         type HmacSha256 = Hmac<Sha256>;
         let mut mac = HmacSha256::new_from_slice(key.as_slice()).expect("HMAC-SHA256 creation failed");

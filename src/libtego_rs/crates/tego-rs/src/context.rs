@@ -3,7 +3,7 @@ use std::collections::{BTreeMap};
 use std::ffi::CString;
 use std::io::{ErrorKind, Read, Write};
 use std::path::PathBuf;
-use std::sync::{atomic::{AtomicBool, Ordering}, Arc, Condvar, Mutex, Weak};
+use std::sync::{atomic::{AtomicBool, Ordering}, Arc, Mutex, Weak};
 
 // extern
 use anyhow::{Context as AnyhowContext, Result};
@@ -17,7 +17,7 @@ use tor_interface::tor_provider::{OnionListener, OnionStream, TorEvent, TorProvi
 // internal crates
 use crate::ffi::*;
 use crate::user_id::UserId;
-use crate::promise::{Future, Promise};
+use crate::promise::Promise;
 
 #[derive(Default)]
 pub(crate) struct Context {
@@ -160,7 +160,7 @@ impl Context {
 
         // save off the tor daemon version
         {
-            let mut tor_version = tor_version.upgrade().context("tor_version dropped")?;
+            let tor_version = tor_version.upgrade().context("tor_version dropped")?;
             let mut tor_version = tor_version.lock().expect("tor_version mutex poisoned");
             *tor_version = Some(tor_client.version());
         }
@@ -184,7 +184,7 @@ impl Context {
             // handle tor events
             for e in tor_client.update()? {
                 match e {
-                    TorEvent::BootstrapStatus{progress, tag, summary} => {
+                    TorEvent::BootstrapStatus{progress, tag, summary: _} => {
                         callback_queue.push(
                             CallbackData::TorBootstrapStatusChanged{progress, tag});
                     },
@@ -264,7 +264,7 @@ impl Context {
                                     connection.write_packets.append(&mut replies);
                                 }
                             },
-                            Err(err) => todo!(),
+                            Err(_err) => todo!(),
                         }
                     },
                     Command::SendMessage{service_id, message_text, message_id} => {
@@ -303,7 +303,7 @@ impl Context {
                     },
                     Ok(size) => {
                         let read_buffer = &read_buffer[..size];
-                        connection.read_bytes.write(read_buffer);
+                        connection.read_bytes.write(read_buffer).expect("read_bytes write failed");
                     },
                 }
 
@@ -405,7 +405,7 @@ impl Context {
                     let mut write_bytes: Vec<u8> = Default::default();
                     for packet in write_packets.drain(..) {
                         println!(">> write packet: {packet:?}");
-                        packet.write_to_vec(&mut write_bytes);
+                        packet.write_to_vec(&mut write_bytes).expect("packet write failed");
                     }
 
                     // send bytes
@@ -497,7 +497,7 @@ impl Context {
         listener: OnionListener,
         command_queue: &Weak<Mutex<Vec<Command>>>,
     ) -> Result<()> {
-        listener.set_nonblocking(false);
+        listener.set_nonblocking(false)?;
         while let Ok(stream) = listener.accept() {
             if let Some(stream) = stream {
                 stream.set_nonblocking(true)?;

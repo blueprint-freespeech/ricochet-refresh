@@ -111,7 +111,7 @@ pub enum ChannelData {
     OutgoingFileTransfer,
 }
 #[derive(Debug, Eq, Ord, PartialEq, PartialOrd)]
-pub(crate) enum ChannelDataType {
+pub enum ChannelDataType {
     Control,
     IncomingChat,
     OutgoingChat,
@@ -577,7 +577,7 @@ impl PacketHandler {
             Ok(Event::FatalProtocolFailure)
         } else {
             let version = if packet.versions().contains(&Version::RicochetRefresh3) {
-                let mut connection = self.connection_mut(connection_handle)?;
+                let connection = self.connection_mut(connection_handle)?;
                 let _ = connection.channel_map.insert(0u16, ChannelData::Control);
                 Some(Version::RicochetRefresh3)
             } else {
@@ -596,7 +596,7 @@ impl PacketHandler {
         &mut self,
         connection_handle: ConnectionHandle,
         packet: introduction::IntroductionResponsePacket,
-        replies: &mut Vec<Packet>) -> Result<Event, Error> {
+        _replies: &mut Vec<Packet>) -> Result<Event, Error> {
 
         use introduction::*;
 
@@ -614,7 +614,7 @@ impl PacketHandler {
             Ok(Event::FatalProtocolFailure)
         } else {
             if let Some(Version::RicochetRefresh3) = packet.version {
-                let mut connection = self.connection_mut(connection_handle)?;
+                let connection = self.connection_mut(connection_handle)?;
                 let _ = connection.channel_map.insert(0u16, ChannelData::Control);
                 Ok(Event::IntroductionResponseReceived)
             } else {
@@ -664,7 +664,7 @@ impl PacketHandler {
 
                         // save off channel state
                         let client_cookie = extension.client_cookie;
-                        let mut connection = self.connection_mut(connection_handle)?;
+                        let connection = self.connection_mut(connection_handle)?;
                         connection.channel_map.insert(channel_identifier, ChannelData::IncomingAuthHiddenService{client_cookie, server_cookie})?;
 
                         // buld reply packet
@@ -777,7 +777,7 @@ impl PacketHandler {
         &mut self,
         connection_handle: ConnectionHandle,
         channel_id: u16,
-        replies: &mut Vec<Packet>) -> Result<Event, Error> {
+        _replies: &mut Vec<Packet>) -> Result<Event, Error> {
         let connection = self.connection_mut(connection_handle)?;
         if let Some(data) = connection.channel_map.remove_by_id(&channel_id) {
             Ok(Event::ChannelClosed{id: channel_id, data})
@@ -868,7 +868,7 @@ impl PacketHandler {
                 }
 
                 let server_service_id = self.service_id.clone();
-                let mut connection = self.connection_mut(connection_handle)?;
+                let connection = self.connection_mut(connection_handle)?;
                 match connection.channel_map.get_by_id(&channel) {
                     Some(ChannelData::IncomingAuthHiddenService{client_cookie, server_cookie}) => {
                         let client_service_id = proof.service_id();
@@ -911,14 +911,16 @@ impl PacketHandler {
 
     fn handle_file_channel_packet(
         &mut self,
-        connection_handle: ConnectionHandle,
-        channel: u16,
-        packet: file_channel::Packet,
-        replies: &mut Vec<Packet>) -> Result<Event, Error> {
+        _connection_handle: ConnectionHandle,
+        _channel: u16,
+        _packet: file_channel::Packet,
+        _replies: &mut Vec<Packet>) -> Result<Event, Error> {
         Err(Error::NotImplemented)
     }
 
-    pub fn new_outgoing_connection(&self, service_id: V3OnionServiceId) -> ConnectionHandle {
+    pub fn new_outgoing_connection(
+        &self,
+        _service_id: V3OnionServiceId) -> ConnectionHandle {
         INVALID_CONNECTION_HANDLE
     }
 
