@@ -1035,41 +1035,74 @@ impl PacketHandler {
                 }
 
                 let server_service_id = self.service_id.clone();
-                let connection = self.connection_mut(connection_handle)?;
-                match connection.channel_map.get_by_id(&channel) {
-                    Some(ChannelData::IncomingAuthHiddenService{client_cookie, server_cookie}) => {
-                        let client_service_id = proof.service_id();
 
-                        let message = auth_hidden_service::Proof::message(
-                            client_cookie,
-                            server_cookie,
-                            client_service_id,
-                            &server_service_id);
+                let (client_cookie, server_cookie) = if let Some(ChannelData::IncomingAuthHiddenService{client_cookie, server_cookie}) = self.connection_mut(connection_handle)?.channel_map.remove_by_id(&channel) {
+                    (client_cookie, server_cookie)
+                } else {
+                    return Ok(Event::FatalProtocolFailure)
+                };
 
-                        let signature = Ed25519Signature::from_raw(proof.signature()).expect("ed25519 signature creation should never fail");
+                let client_service_id = proof.service_id();
 
-                        let client_public_key = Ed25519PublicKey::from_service_id(client_service_id).expect("v3 onion service id to ed25519 public key conversion should never fail");
+                let message = auth_hidden_service::Proof::message(
+                    &client_cookie,
+                    &server_cookie,
+                    client_service_id,
+                    &server_service_id);
 
-                        if signature.verify(&message, &client_public_key) {
-                            connection.peer_service_id = Some(client_service_id.clone());
+                let signature = Ed25519Signature::from_raw(proof.signature()).expect("ed25519 signature creation should never fail");
 
-                            // build reply packet
-                            // TODO: handle known contacts
-                            let result = auth_hidden_service::Result::new(true, Some(false))?;
-                            let packet = auth_hidden_service::Packet::Result(result);
-                            let reply = Packet::AuthHiddenServicePacket{channel, packet};
-                            replies.push(reply);
+                let client_public_key = Ed25519PublicKey::from_service_id(client_service_id).expect("v3 onion service id to ed25519 public key conversion should never fail");
 
-                            self.service_id_to_connection_handle.insert(client_service_id.clone(), connection_handle);
-                            let service_id = client_service_id.clone();
-                            Ok(Event::ClientAuthenticated{service_id})
-                        } else {
-                            println!("bad signature, impersonator!");
-                            let _ = self.connections.remove(&connection_handle);
-                            Ok(Event::FatalProtocolFailure)
-                        }
-                    },
-                    _ => unreachable!("already verified this is an auth hiddnen service channel"),
+                if signature.verify(&message, &client_public_key) {
+                    let mut pending_replies: Vec<Packet> = Vec::with_capacity(3);
+
+                    let connection = self.connection_mut(connection_handle)?;
+                    connection.peer_service_id = Some(client_service_id.clone());
+
+                    // build reply packet
+
+                    let connection = self.connection(connection_handle)?;
+                    let is_known_contact = self.contacts.contains(&client_service_id);
+                    let result = auth_hidden_service::Result::new(true, Some(is_known_contact))?;
+                    let packet = auth_hidden_service::Packet::Result(result);
+                    let reply = Packet::AuthHiddenServicePacket{channel, packet};
+                    pending_replies.push(reply);
+
+                    if is_known_contact {
+                        let connection = self.connection_mut(connection_handle)?;
+
+                        // build chat channel open packet
+                        let channel_id = connection.next_channel_id();
+                        let open_channel = control_channel::OpenChannel::new(
+                            channel_id as i32,
+                            control_channel::ChannelType::Chat,
+                            None).expect("OpenChannel creation failed");
+                        let packet = control_channel::Packet::OpenChannel(open_channel);
+                        let reply = Packet::ControlChannelPacket(packet);
+                        pending_replies.push(reply);
+                        connection.channel_map.insert(channel_id, ChannelData::OutgoingChat)?;
+
+                        // build file transfer channel open packet
+                        let channel_id = connection.next_channel_id();
+                        let open_channel = control_channel::OpenChannel::new(
+                            channel_id as i32,
+                            control_channel::ChannelType::FileTransfer,
+                            None).expect("OpenChannel creation failed");
+                        let packet = control_channel::Packet::OpenChannel(open_channel);
+                        let reply = Packet::ControlChannelPacket(packet);
+                        pending_replies.push(reply);
+                        connection.channel_map.insert(channel_id, ChannelData::OutgoingFileTransfer)?;
+                    }
+
+                    self.service_id_to_connection_handle.insert(client_service_id.clone(), connection_handle);
+                    let service_id = client_service_id.clone();
+                    replies.append(&mut pending_replies);
+                    Ok(Event::ClientAuthenticated{service_id})
+                } else {
+                    println!("bad signature, impersonator!");
+                    let _ = self.connections.remove(&connection_handle);
+                    Ok(Event::FatalProtocolFailure)
                 }
             },
             auth_hidden_service::Packet::Result(result) => {
