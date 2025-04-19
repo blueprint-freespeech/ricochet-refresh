@@ -249,6 +249,22 @@ impl PacketHandler {
         }
     }
 
+    fn connection(
+        &self,
+        connection_handle: ConnectionHandle) -> Result<&Connection, Error> {
+        self.connections
+            .get(&connection_handle)
+            .ok_or(Error::TargetConnectionDoesNotExist(connection_handle))
+    }
+
+    fn connection_mut(
+        &mut self,
+        connection_handle: ConnectionHandle) -> Result<&mut Connection, Error> {
+        self.connections
+            .get_mut(&connection_handle)
+            .ok_or(Error::TargetConnectionDoesNotExist(connection_handle))
+    }
+
     // On successful packet read returns a (packet, bytes read) tuple
     // If needs more bytes, returns Ok(None)
     // Consumers must drop the returned number of bytes from the start of their
@@ -351,111 +367,6 @@ impl PacketHandler {
             Packet::AuthHiddenServicePacket{channel, packet} => self.handle_auth_hidden_service_packet(connection_handle, channel, packet, replies),
             Packet::FileChannelPacket{channel, packet} => self.handle_file_channel_packet(connection_handle, channel, packet, replies),
         }
-    }
-
-    pub fn accept_contact_request(
-        &mut self,
-        service_id: V3OnionServiceId,
-        replies: &mut Vec<Packet>) -> Result<ConnectionHandle, Error> {
-        if self.contacts.contains(&service_id) {
-            return Err(Error::PeerAlreadyAcceptedContact(service_id));
-        } else if self.blocked.contains(&service_id) {
-            return Err(Error::PeerIsBlocked(service_id));
-        }
-
-        if let Some(connection_handle) = self.service_id_to_connection_handle.get(&service_id) {
-            if let Some(connection) = self.connections.get_mut(&connection_handle) {
-                let channel_identifier = if let Some(channel_identifier) = connection.channel_map.channel_type_to_id(&ChannelDataType::IncomingContactRequest) {
-                    channel_identifier
-                } else {
-                    return Err(Error::NotImplemented);
-                };
-
-                let mut pending_replies: Vec<Packet> = Vec::with_capacity(3);
-
-                use contact_request_channel::{Response, Status};
-                let channel = channel_identifier;
-                let response = Response{status: Status::Accepted};
-                let packet = contact_request_channel::Packet::Response(response);
-                let reply = Packet::ContactRequestChannelPacket{channel, packet};
-                pending_replies.push(reply);
-
-                let reply = Packet::CloseChannelPacket{channel};
-                pending_replies.push(reply);
-
-                // build chat channel open packet
-                let channel_id = connection.next_channel_id();
-                let open_channel = control_channel::OpenChannel::new(
-                    channel_id as i32,
-                    control_channel::ChannelType::Chat,
-                    None).expect("OpenChannel creation failed");
-                let packet = control_channel::Packet::OpenChannel(open_channel);
-                let reply = Packet::ControlChannelPacket(packet);
-                pending_replies.push(reply);
-                connection.channel_map.insert(channel_id, ChannelData::OutgoingChat)?;
-
-                // build file transfer channel open packet
-                let channel_id = connection.next_channel_id();
-                let open_channel = control_channel::OpenChannel::new(
-                    channel_id as i32,
-                    control_channel::ChannelType::FileTransfer,
-                    None).expect("OpenChannel creation failed");
-                let packet = control_channel::Packet::OpenChannel(open_channel);
-                let reply = Packet::ControlChannelPacket(packet);
-                pending_replies.push(reply);
-                connection.channel_map.insert(channel_id, ChannelData::OutgoingFileTransfer)?;
-
-                connection.channel_map.remove_by_id(&channel_identifier);
-                self.contacts.insert(service_id);
-                replies.append(&mut pending_replies);
-                return Ok(*connection_handle)
-            }
-        }
-
-         Err(Error::NotImplemented)
-    }
-
-    pub fn send_message(
-        &mut self,
-        service_id: V3OnionServiceId,
-        message_text: chat_channel::MessageText,
-        replies: &mut Vec<Packet>) -> Result<(ConnectionHandle, MessageId), crate::Error> {
-
-        if let Some(connection_handle) = self.service_id_to_connection_handle.get(&service_id) {
-            let connection_handle = *connection_handle;
-            if let Some(connection) = self.connections.get_mut(&connection_handle) {
-                if let Some(channel) = connection.channel_map.channel_type_to_id(&ChannelDataType::OutgoingChat) {
-                    // get this message's id
-                    let message_id = (connection.sent_message_counter & (MessageId::MAX as u64)) as MessageId;
-                    // and increment counter
-                    connection.sent_message_counter = connection.sent_message_counter + 1;
-
-                    let chat_message = chat_channel::ChatMessage::new(message_text, message_id as u32, None)?;
-                    let packet = chat_channel::Packet::ChatMessage(chat_message);
-                    let reply = Packet::ChatChannelPacket{channel, packet};
-                    replies.push(reply);
-
-                    return Ok((connection_handle, message_id));
-                }
-            }
-        }
-        Err(Error::NotImplemented)
-    }
-
-    fn connection(
-        &self,
-        connection_handle: ConnectionHandle) -> Result<&Connection, Error> {
-        self.connections
-            .get(&connection_handle)
-            .ok_or(Error::TargetConnectionDoesNotExist(connection_handle))
-    }
-
-    fn connection_mut(
-        &mut self,
-        connection_handle: ConnectionHandle) -> Result<&mut Connection, Error> {
-        self.connections
-            .get_mut(&connection_handle)
-            .ok_or(Error::TargetConnectionDoesNotExist(connection_handle))
     }
 
     fn handle_introduction_packet(
@@ -1084,5 +995,94 @@ impl PacketHandler {
         self.connections.insert(handle, connection);
 
         handle
+    }
+
+    pub fn accept_contact_request(
+        &mut self,
+        service_id: V3OnionServiceId,
+        replies: &mut Vec<Packet>) -> Result<ConnectionHandle, Error> {
+        if self.contacts.contains(&service_id) {
+            return Err(Error::PeerAlreadyAcceptedContact(service_id));
+        } else if self.blocked.contains(&service_id) {
+            return Err(Error::PeerIsBlocked(service_id));
+        }
+
+        if let Some(connection_handle) = self.service_id_to_connection_handle.get(&service_id) {
+            if let Some(connection) = self.connections.get_mut(&connection_handle) {
+                let channel_identifier = if let Some(channel_identifier) = connection.channel_map.channel_type_to_id(&ChannelDataType::IncomingContactRequest) {
+                    channel_identifier
+                } else {
+                    return Err(Error::NotImplemented);
+                };
+
+                let mut pending_replies: Vec<Packet> = Vec::with_capacity(3);
+
+                use contact_request_channel::{Response, Status};
+                let channel = channel_identifier;
+                let response = Response{status: Status::Accepted};
+                let packet = contact_request_channel::Packet::Response(response);
+                let reply = Packet::ContactRequestChannelPacket{channel, packet};
+                pending_replies.push(reply);
+
+                let reply = Packet::CloseChannelPacket{channel};
+                pending_replies.push(reply);
+
+                // build chat channel open packet
+                let channel_id = connection.next_channel_id();
+                let open_channel = control_channel::OpenChannel::new(
+                    channel_id as i32,
+                    control_channel::ChannelType::Chat,
+                    None).expect("OpenChannel creation failed");
+                let packet = control_channel::Packet::OpenChannel(open_channel);
+                let reply = Packet::ControlChannelPacket(packet);
+                pending_replies.push(reply);
+                connection.channel_map.insert(channel_id, ChannelData::OutgoingChat)?;
+
+                // build file transfer channel open packet
+                let channel_id = connection.next_channel_id();
+                let open_channel = control_channel::OpenChannel::new(
+                    channel_id as i32,
+                    control_channel::ChannelType::FileTransfer,
+                    None).expect("OpenChannel creation failed");
+                let packet = control_channel::Packet::OpenChannel(open_channel);
+                let reply = Packet::ControlChannelPacket(packet);
+                pending_replies.push(reply);
+                connection.channel_map.insert(channel_id, ChannelData::OutgoingFileTransfer)?;
+
+                connection.channel_map.remove_by_id(&channel_identifier);
+                self.contacts.insert(service_id);
+                replies.append(&mut pending_replies);
+                return Ok(*connection_handle)
+            }
+        }
+
+         Err(Error::NotImplemented)
+    }
+
+    pub fn send_message(
+        &mut self,
+        service_id: V3OnionServiceId,
+        message_text: chat_channel::MessageText,
+        replies: &mut Vec<Packet>) -> Result<(ConnectionHandle, MessageId), crate::Error> {
+
+        if let Some(connection_handle) = self.service_id_to_connection_handle.get(&service_id) {
+            let connection_handle = *connection_handle;
+            if let Some(connection) = self.connections.get_mut(&connection_handle) {
+                if let Some(channel) = connection.channel_map.channel_type_to_id(&ChannelDataType::OutgoingChat) {
+                    // get this message's id
+                    let message_id = (connection.sent_message_counter & (MessageId::MAX as u64)) as MessageId;
+                    // and increment counter
+                    connection.sent_message_counter = connection.sent_message_counter + 1;
+
+                    let chat_message = chat_channel::ChatMessage::new(message_text, message_id as u32, None)?;
+                    let packet = chat_channel::Packet::ChatMessage(chat_message);
+                    let reply = Packet::ChatChannelPacket{channel, packet};
+                    replies.push(reply);
+
+                    return Ok((connection_handle, message_id));
+                }
+            }
+        }
+        Err(Error::NotImplemented)
     }
 }
