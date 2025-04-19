@@ -1,3 +1,5 @@
+use crate::v3::Error;
+
 pub(crate) const CHANNEL_TYPE: &'static str = "im.ricochet.file-transfer";
 pub const FILE_HASH_SIZE: usize = 64;
 pub const MAX_FILE_CHUNK_SIZE: usize = 63*1024;
@@ -13,7 +15,7 @@ pub enum Packet {
 }
 
 impl Packet {
-    pub fn write_to_vec(&self, v:& mut Vec<u8>) -> Result<(), crate::Error> {
+    pub fn write_to_vec(&self, v:& mut Vec<u8>) -> Result<(), Error> {
         use protobuf::Message;
         use crate::v3::protos;
 
@@ -93,13 +95,13 @@ impl Packet {
         }
 
         // serialise
-        pb.write_to_vec(v).map_err(crate::Error::ProtobufError)?;
+        pb.write_to_vec(v).map_err(Error::ProtobufError)?;
         Ok(())
     }
 }
 
 impl TryFrom<&[u8]> for Packet {
-    type Error = crate::Error;
+    type Error = Error;
 
     fn try_from(value: &[u8]) -> std::result::Result<Self, Self::Error> {
         use protobuf::Message;
@@ -216,9 +218,9 @@ impl FileHeader {
         file_id: u32,
         file_size: u64,
         name: String,
-        file_hash: [u8; FILE_HASH_SIZE]) -> Result<Self, crate::Error> {
+        file_hash: [u8; FILE_HASH_SIZE]) -> Result<Self, Error> {
         if name.contains("..") || name.contains("/") {
-            Err(crate::Error::PacketConstructionFailed("name contains forbidden substring".to_string()))
+            Err(Error::PacketConstructionFailed("name contains forbidden substring".to_string()))
         } else {
             Ok(Self{file_id, file_size, name, file_hash})
         }
@@ -248,7 +250,7 @@ pub struct FileHeaderAck {
 }
 
 impl FileHeaderAck {
-    pub fn new(file_id: u32, accepted: bool) -> Result<Self, crate::Error> {
+    pub fn new(file_id: u32, accepted: bool) -> Result<Self, Error> {
         Ok(Self{file_id, accepted})
     }
 
@@ -268,7 +270,7 @@ pub struct FileHeaderResponse {
 }
 
 impl FileHeaderResponse {
-    pub fn new(file_id: u32, response: Response) -> Result<Self, crate::Error> {
+    pub fn new(file_id: u32, response: Response) -> Result<Self, Error> {
         Ok(Self{file_id, response})
     }
 
@@ -297,7 +299,7 @@ impl From<&Response> for i32 {
 }
 
 impl TryFrom<i32> for Response {
-    type Error = crate::Error;
+    type Error = Error;
     fn try_from(value: i32) -> Result<Response, Self::Error> {
         match value {
             0i32 => Ok(Response::Accept),
@@ -314,7 +316,7 @@ pub struct FileChunk {
 }
 
 impl FileChunk {
-    pub fn new(file_id: u32, chunk_data: ChunkData) -> Result<Self, crate::Error> {
+    pub fn new(file_id: u32, chunk_data: ChunkData) -> Result<Self, Error> {
         Ok(Self{file_id, chunk_data})
     }
 
@@ -333,10 +335,10 @@ pub struct ChunkData {
 }
 
 impl ChunkData {
-    pub fn new(data: Vec<u8>) -> Result<ChunkData, crate::Error> {
+    pub fn new(data: Vec<u8>) -> Result<ChunkData, Error> {
         let data_len = data.len();
         if data_len > MAX_FILE_CHUNK_SIZE {
-            Err(crate::Error::PacketConstructionFailed(format!("chunk data must be less than {MAX_FILE_CHUNK_SIZE} bytes")))
+            Err(Error::PacketConstructionFailed(format!("chunk data must be less than {MAX_FILE_CHUNK_SIZE} bytes")))
         } else {
             Ok(Self{data})
         }
@@ -354,7 +356,7 @@ impl From<&ChunkData> for Vec<u8> {
 }
 
 impl TryFrom<Vec<u8>> for ChunkData {
-    type Error = crate::Error;
+    type Error = Error;
     fn try_from(value: Vec<u8>) -> Result<Self, Self::Error> {
         ChunkData::new(value)
     }
@@ -368,7 +370,7 @@ pub struct FileChunkAck {
 }
 
 impl FileChunkAck {
-    pub fn new(file_id: u32, bytes_received: u64) -> Result<Self, crate::Error> {
+    pub fn new(file_id: u32, bytes_received: u64) -> Result<Self, Error> {
         Ok(Self{file_id, bytes_received})
     }
 
@@ -388,7 +390,7 @@ pub struct FileTransferCompleteNotification {
 }
 
 impl FileTransferCompleteNotification {
-    pub fn new(file_id: u32, result: FileTransferResult) -> Result<Self, crate::Error> {
+    pub fn new(file_id: u32, result: FileTransferResult) -> Result<Self, Error> {
         Ok(Self{file_id, result})
     }
 

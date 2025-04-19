@@ -1,14 +1,16 @@
+use crate::v3::Error;
+
 #[derive(Debug, PartialEq)]
 pub struct IntroductionPacket {
     versions: Vec<Version>,
 }
 
 impl IntroductionPacket {
-    pub fn new(versions: Vec<Version>) -> Result<Self, crate::Error> {
+    pub fn new(versions: Vec<Version>) -> Result<Self, Error> {
         if versions.is_empty() {
-            Err(crate::Error::PacketConstructionFailed("introduction packet must have specify at least one supported version".to_string()))
+            Err(Error::PacketConstructionFailed("introduction packet must have specify at least one supported version".to_string()))
         } else if versions.len() > u8::MAX as usize {
-            Err(crate::Error::PacketConstructionFailed("introduction packet may have no more than 255 supported version".to_string()))
+            Err(Error::PacketConstructionFailed("introduction packet may have no more than 255 supported version".to_string()))
         } else {
             Ok(Self{versions})
         }
@@ -18,7 +20,7 @@ impl IntroductionPacket {
         &self.versions
     }
 
-    pub fn write_to_vec(&self, v: &mut Vec<u8>) -> Result<(), crate::Error> {
+    pub fn write_to_vec(&self, v: &mut Vec<u8>) -> Result<(), Error> {
 
         v.push(0x49u8);
         v.push(0x4du8);
@@ -32,7 +34,7 @@ impl IntroductionPacket {
 }
 
 impl TryFrom<&[u8]> for IntroductionPacket {
-    type Error = crate::Error;
+    type Error = crate::v3::Error;
 
     fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
         match bytes.len() {
@@ -77,7 +79,7 @@ pub struct IntroductionResponsePacket {
 }
 
 impl IntroductionResponsePacket {
-    pub fn write_to_vec(&self, v: &mut Vec<u8>) -> Result<(), crate::Error> {
+    pub fn write_to_vec(&self, v: &mut Vec<u8>) -> Result<(), Error> {
         if let Some(version) = &self.version {
             v.push(version.into());
         } else {
@@ -88,7 +90,7 @@ impl IntroductionResponsePacket {
 }
 
 impl TryFrom<&[u8]> for IntroductionResponsePacket {
-    type Error = crate::Error;
+    type Error = Error;
 
     fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
         match bytes.len() {
@@ -121,7 +123,7 @@ impl From<&Version> for u8 {
 }
 
 impl TryFrom<u8> for Version {
-    type Error = crate::Error;
+    type Error = Error;
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {

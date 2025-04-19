@@ -7,6 +7,7 @@ use std::sync::{atomic::{AtomicBool, Ordering}, Arc, Mutex, Weak};
 
 // extern
 use anyhow::{Context as AnyhowContext, Result};
+use rico_protocol::v3::Error;
 use rico_protocol::v3::packet_handler::*;
 use tor_interface::proxy::{ProxyConfig};
 use tor_interface::legacy_tor_client::*;
@@ -376,7 +377,7 @@ impl Context {
                             // save off read bytes for handling
                             read_packets.push(packet);
                         },
-                        Err(rico_protocol::v3::message::Error::NeedMoreBytes) => {
+                        Err(Error::NeedMoreBytes) => {
                             break;
                         },
                         Err(err) => {

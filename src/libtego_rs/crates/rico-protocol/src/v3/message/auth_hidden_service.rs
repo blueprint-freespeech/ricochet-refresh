@@ -6,6 +6,9 @@ use sha2::Sha256;
 use hmac::{Hmac, Mac};
 use tor_interface::tor_crypto::{V3OnionServiceId, V3_ONION_SERVICE_ID_STRING_LENGTH};
 
+// internal
+use crate::v3::Error;
+
 pub(crate) const CHANNEL_TYPE: &'static str = "im.ricochet.auth.hidden-service";
 pub(crate) const CLIENT_COOKIE_SIZE: usize = 16;
 pub(crate) const SERVER_COOKIE_SIZE: usize = 16;
@@ -19,7 +22,7 @@ pub enum Packet {
 }
 
 impl Packet {
-    pub fn write_to_vec(&self, v:& mut Vec<u8>) -> std::result::Result<(), crate::Error> {
+    pub fn write_to_vec(&self, v:& mut Vec<u8>) -> std::result::Result<(), Error> {
         use protobuf::Message;
         use crate::v3::protos;
 
@@ -49,13 +52,13 @@ impl Packet {
         }
 
         // serialise
-        pb.write_to_vec(v).map_err(crate::Error::ProtobufError)?;
+        pb.write_to_vec(v).map_err(Error::ProtobufError)?;
         Ok(())
     }
 }
 
 impl TryFrom<&[u8]> for Packet {
-    type Error = crate::Error;
+    type Error = Error;
 
     fn try_from(value: &[u8]) -> std::result::Result<Self, Self::Error> {
         use protobuf::Message;
@@ -125,7 +128,7 @@ pub struct Proof {
 }
 
 impl Proof {
-    pub fn new(signature: [u8; PROOF_SIGNATURE_SIZE], service_id: V3OnionServiceId) -> std::result::Result<Self, crate::Error> {
+    pub fn new(signature: [u8; PROOF_SIGNATURE_SIZE], service_id: V3OnionServiceId) -> std::result::Result<Self, Error> {
         Ok(Self{signature, service_id})
     }
 
@@ -175,9 +178,9 @@ pub struct Result {
 }
 
 impl Result {
-    pub fn new(accepted: bool, is_known_contact: Option<bool>) -> std::result::Result<Self, crate::Error> {
+    pub fn new(accepted: bool, is_known_contact: Option<bool>) -> std::result::Result<Self, Error> {
         if accepted && is_known_contact.is_none() {
-            return Err(crate::Error::PacketConstructionFailed("is_known_contact must be present if accepted is true".to_string()));
+            return Err(Error::PacketConstructionFailed("is_known_contact must be present if accepted is true".to_string()));
         }
         Ok(Self{accepted, is_known_contact})
     }

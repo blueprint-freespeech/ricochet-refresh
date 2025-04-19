@@ -1,3 +1,5 @@
+use crate::v3::Error;
+
 pub(crate) const CHANNEL_TYPE: &'static str = "im.ricochet.chat";
 
 #[derive(Debug, PartialEq)]
@@ -7,7 +9,7 @@ pub enum Packet {
 }
 
 impl Packet {
-    pub fn write_to_vec(&self, v: &mut Vec<u8>) -> Result<(), crate::Error> {
+    pub fn write_to_vec(&self, v: &mut Vec<u8>) -> Result<(), Error> {
         use protobuf::Message;
         use crate::v3::protos;
 
@@ -41,13 +43,13 @@ impl Packet {
                 pb.chat_acknowledge = Some(chat_acknowledge).into();
             }
         }
-        pb.write_to_vec(v).map_err(crate::Error::ProtobufError)?;
+        pb.write_to_vec(v).map_err(Error::ProtobufError)?;
         Ok(())
     }
 }
 
 impl TryFrom<&[u8]> for Packet {
-    type Error = crate::Error;
+    type Error = Error;
 
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
         use protobuf::Message;
@@ -105,11 +107,11 @@ impl ChatMessage {
     pub fn new(
         message_text: MessageText,
         message_id: u32,
-        time_delta: Option<std::time::Duration>) -> Result<Self, crate::Error> {
+        time_delta: Option<std::time::Duration>) -> Result<Self, Error> {
 
         if let Some(time_delta) = time_delta {
             if time_delta.as_secs() > i64::MAX as u64 {
-                return Err(crate::Error::PacketConstructionFailed("time_delta in seconds must be less than or equal to i64::MAX".to_string()));
+                return Err(Error::PacketConstructionFailed("time_delta in seconds must be less than or equal to i64::MAX".to_string()));
             }
         }
 
@@ -141,7 +143,7 @@ impl From<&MessageText> for String {
 }
 
 impl TryFrom<String> for MessageText {
-    type Error = crate::Error;
+    type Error = Error;
     fn try_from(value: String) -> Result<Self, Self::Error> {
         // TODO: message_text requirements are NOT defined in the spec:
         // - must contain at least 1 utf16 code unit
@@ -175,7 +177,7 @@ pub struct ChatAcknowledge {
 impl ChatAcknowledge {
     pub fn new(
         message_id: u32,
-        accepted: bool) -> Result<Self, crate::Error> {
+        accepted: bool) -> Result<Self, Error> {
         Ok(Self{message_id, accepted})
     }
 

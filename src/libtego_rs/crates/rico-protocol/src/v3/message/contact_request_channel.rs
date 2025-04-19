@@ -1,3 +1,5 @@
+use crate::v3::Error;
+
 pub(crate) const CHANNEL_TYPE: &'static str = "im.ricochet.contact.request";
 
 #[derive(Debug, PartialEq)]
@@ -6,7 +8,7 @@ pub enum Packet {
 }
 
 impl Packet {
-    pub fn write_to_vec(&self, v: &mut Vec<u8>) -> Result<(), crate::Error> {
+    pub fn write_to_vec(&self, v: &mut Vec<u8>) -> Result<(), Error> {
         use protobuf::Message;
         use crate::v3::protos;
 
@@ -24,13 +26,13 @@ impl Packet {
             }
         }
 
-        pb.write_to_vec(v).map_err(crate::Error::ProtobufError)?;
+        pb.write_to_vec(v).map_err(Error::ProtobufError)?;
         Ok(())
     }
 }
 
 impl TryFrom<&[u8]> for Packet {
-    type Error = crate::Error;
+    type Error = Error;
 
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
         use protobuf::Message;
@@ -77,7 +79,7 @@ impl From<&MessageText> for String {
 }
 
 impl TryFrom<String> for MessageText {
-    type Error = crate::Error;
+    type Error = Error;
     fn try_from(value: String) -> Result<Self, Self::Error> {
         // TODO: message_text requirements are NOT defined in the spec:
         // - must contain no more than 2000 utf16 code units
@@ -107,7 +109,7 @@ impl From<&Nickname> for String {
 }
 
 impl TryFrom<String> for Nickname {
-    type Error = crate::Error;
+    type Error = Error;
     fn try_from(value: String) -> Result<Self, Self::Error> {
         // TODO: nickname requirements are NOT defined in the spec
         // from Ricochet-Refresh's isAcceptableNickname() function:

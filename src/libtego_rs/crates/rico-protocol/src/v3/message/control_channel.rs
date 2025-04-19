@@ -1,3 +1,5 @@
+use crate::v3::Error;
+
 #[derive(Debug, PartialEq)]
 pub enum Packet {
     OpenChannel(OpenChannel),
@@ -5,7 +7,7 @@ pub enum Packet {
 }
 
 impl Packet {
-    pub fn write_to_vec(&self, v: &mut Vec<u8>) -> Result<(), crate::Error> {
+    pub fn write_to_vec(&self, v: &mut Vec<u8>) -> Result<(), Error> {
         use protobuf::Message;
         use crate::v3::protos;
 
@@ -110,13 +112,13 @@ impl Packet {
         }
 
         // serialise
-        pb.write_to_vec(v).map_err(crate::Error::ProtobufError)?;
+        pb.write_to_vec(v).map_err(Error::ProtobufError)?;
         Ok(())
     }
 }
 
 impl TryFrom<&[u8]> for Packet {
-    type Error = crate::Error;
+    type Error = Error;
 
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
         use protobuf::Message;
@@ -254,10 +256,10 @@ impl OpenChannel {
     pub fn new(
         channel_identifier: i32,
         channel_type: ChannelType,
-        extension: Option<OpenChannelExtension>) -> Result<Self, crate::Error> {
+        extension: Option<OpenChannelExtension>) -> Result<Self, Error> {
         if channel_identifier < 1 ||
            channel_identifier > u16::MAX as i32 {
-            Err(crate::Error::PacketConstructionFailed("channel_identifier must be postive, non-zero, and less than u16::MAX".to_string()))
+            Err(Error::PacketConstructionFailed("channel_identifier must be postive, non-zero, and less than u16::MAX".to_string()))
         } else {
             let channel_identifier = channel_identifier as u16;
             Ok(Self{channel_identifier, channel_type, extension})
@@ -287,7 +289,7 @@ pub enum ChannelType {
 }
 
 impl TryFrom<&str> for ChannelType {
-    type Error = crate::Error;
+    type Error = Error;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         let channel_type = match value {
@@ -333,10 +335,10 @@ impl ChannelResult {
         channel_identifier: i32,
         opened: bool,
         common_error: Option<CommonError>,
-        extension: Option<ChannelResultExtension>) -> Result<Self, crate::Error> {
+        extension: Option<ChannelResultExtension>) -> Result<Self, Error> {
         if channel_identifier < 1 ||
            channel_identifier > u16::MAX as i32 {
-            Err(crate::Error::PacketConstructionFailed("channel_identifier must be postive, non-zero, and less than or equal to u16::MAX".to_string()))
+            Err(Error::PacketConstructionFailed("channel_identifier must be postive, non-zero, and less than or equal to u16::MAX".to_string()))
         } else {
             let channel_identifier = channel_identifier as u16;
             Ok(Self{channel_identifier, opened, common_error, extension})

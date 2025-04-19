@@ -7,6 +7,7 @@ use rand::{TryRngCore, rngs::OsRng};
 use tor_interface::tor_crypto::{Ed25519PrivateKey, Ed25519PublicKey, Ed25519Signature, V3OnionServiceId};
 
 // internal
+use crate::v3::Error;
 use crate::v3::message::*;
 use crate::v3::channel_map::*;
 
@@ -46,7 +47,7 @@ pub enum Packet {
 }
 
 impl Packet {
-    pub fn write_to_vec(&self, v:& mut Vec<u8>) -> Result<(), crate::Error> {
+    pub fn write_to_vec(&self, v:& mut Vec<u8>) -> Result<(), Error> {
         match self {
             Packet::IntroductionPacket(packet) => packet.write_to_vec(v)?,
             Packet::IntroductionResponsePacket(packet) => packet.write_to_vec(v)?,
@@ -1063,7 +1064,7 @@ impl PacketHandler {
         &mut self,
         service_id: V3OnionServiceId,
         message_text: chat_channel::MessageText,
-        replies: &mut Vec<Packet>) -> Result<(ConnectionHandle, MessageId), crate::Error> {
+        replies: &mut Vec<Packet>) -> Result<(ConnectionHandle, MessageId), Error> {
 
         if let Some(connection_handle) = self.service_id_to_connection_handle.get(&service_id) {
             let connection_handle = *connection_handle;

@@ -2,7 +2,8 @@
 use std::collections::BTreeMap;
 
 // internal
-use crate::v3::message::{Error, auth_hidden_service};
+use crate::v3::Error;
+use crate::v3::message::auth_hidden_service;
 
 #[derive(Debug, PartialEq)]
 pub(crate) enum ChannelData {
