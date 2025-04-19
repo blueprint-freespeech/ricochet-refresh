@@ -449,8 +449,8 @@ impl Context {
                             println!(" --- chat ack received, peer: {service_id:?}, message_id: {message_id}, accepted: {accepted}");
                             callback_queue.push(CallbackData::MessageAcknowledged{service_id, message_id, accepted});
                         },
-                        Ok(Event::ChannelClosed{id, data}) => {
-                            println!("--- channel closed: {id}, {data:?} ---");
+                        Ok(Event::ChannelClosed{id}) => {
+                            println!("--- channel closed: {id} ---");
                         },
                         // errors
                         Ok(Event::ProtocolFailure{message}) => {

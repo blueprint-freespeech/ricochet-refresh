@@ -61,7 +61,7 @@ pub enum Error {
     #[error("channel already open: {0}")]
     ChannelAlreadyOpen(u16),
     #[error("channel type already open: {0:?}")]
-    ChannelTypeAlreadyOpen(crate::v3::packet_handler::ChannelDataType),
+    ChannelTypeAlreadyOpen(crate::v3::channel_map::ChannelDataType),
     #[error("peer is already an accepted contact: {0}")]
     PeerAlreadyAcceptedContact(tor_interface::tor_crypto::V3OnionServiceId),
     #[error("peer may not be accepted as it is blocked: {0}")]

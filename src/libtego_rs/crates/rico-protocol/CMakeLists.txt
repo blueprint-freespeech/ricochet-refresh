@@ -2,6 +2,7 @@ set(rico_protocol_depends
     Cargo.toml
     build.rs
     src/lib.rs
+    src/v3/channel_map.rs
     src/v3/message.rs
     src/v3/mod.rs
     src/v3/packet_handler.rs
