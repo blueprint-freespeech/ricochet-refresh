@@ -258,6 +258,7 @@ impl Context {
                     },
                     TorEvent::ConnectFailed{handle, error} => {
                         let pending_connection = pending_connections.remove(&handle);
+                        // todo: queue up to try again in the future
                     },
                     _ => (),
                 }
@@ -425,29 +426,29 @@ impl Context {
                             println!("--- contact request result accepted, peer: {service_id:?}");
                         },
                         Ok(Event::IncomingChatChannelOpened{service_id}) => {
-                            println!(" --- incoming chat channel opened, peer: {service_id:?} ---");
+                            println!("--- incoming chat channel opened, peer: {service_id:?} ---");
                         },
                         Ok(Event::IncomingFileTransferChannelOpened{service_id}) => {
-                            println!(" --- incoming file transfer channel opened, peer: {service_id:?} ---");
+                            println!("--- incoming file transfer channel opened, peer: {service_id:?} ---");
                         },
                         Ok(Event::OutgoingAuthHiddenServiceChannelOpened{service_id}) => {
-                            println!(" --- outgoing auth hidden service channel opened, peer: {service_id:?} ---");
+                            println!("--- outgoing auth hidden service channel opened, peer: {service_id:?} ---");
                         },
                         Ok(Event::OutgoingChatChannelOpened{service_id}) => {
-                            println!(" --- outgoing chat channel opened, peer: {service_id:?} ---");
+                            println!("--- outgoing chat channel opened, peer: {service_id:?} ---");
                             callback_queue.push(CallbackData::UserStatusChanged{service_id, status: tego_user_status::tego_user_status_online});
                         },
                         Ok(Event::OutgoingFileTransferChannelOpened{service_id}) => {
-                            println!(" --- outgoing file transfer channel opened, peer: {service_id:?} ---");
+                            println!("--- outgoing file transfer channel opened, peer: {service_id:?} ---");
                         },
                         Ok(Event::ChatMessageReceived{service_id, message_text, message_id, time_delta}) => {
-                            println!(" --- chat message receved, peer: {service_id:?}, message: \"{message_text}");
+                            println!("--- chat message receved, peer: {service_id:?}, message: \"{message_text}");
                             let now = std::time::SystemTime::now();
                             let timestamp = now.checked_sub(time_delta).unwrap();
                             callback_queue.push(CallbackData::MessageReceived{service_id, timestamp, message_id, message: message_text});
                         },
                         Ok(Event::ChatAcknowledgeReceived{service_id, message_id, accepted}) => {
-                            println!(" --- chat ack received, peer: {service_id:?}, message_id: {message_id}, accepted: {accepted}");
+                            println!("--- chat ack received, peer: {service_id:?}, message_id: {message_id}, accepted: {accepted}");
                             callback_queue.push(CallbackData::MessageAcknowledged{service_id, message_id, accepted});
                         },
                         Ok(Event::ChannelClosed{id}) => {
@@ -481,6 +482,18 @@ impl Context {
                         retain = false;
                     }
                 }
+
+                // signal user disconnect
+                match (retain, &connection.service_id) {
+                    (false, Some(service_id)) => {
+                        let service_id = service_id.clone();
+                        let status = tego_user_status_offline;
+                        use crate::ffi::tego_user_status::tego_user_status_offline;
+                        callback_queue.push(CallbackData::UserStatusChanged{service_id, status});
+                    },
+                    _ => (),
+                }
+
                 retain
             });
 
