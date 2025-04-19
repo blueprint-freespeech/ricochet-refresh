@@ -1122,17 +1122,17 @@ impl PacketHandler {
                     return Ok(Event::FatalProtocolFailure)
                 }
 
-                let connection = self.connection_mut(connection_handle)?;
-                match (result.accepted(), &connection.peer_service_id) {
+                match (result.accepted(), self.connection_mut(connection_handle)?.peer_service_id.clone()) {
                     (true, Some(service_id)) => {
-                        let reply = Packet::CloseChannelPacket{channel};
-                        replies.push(reply);
+                        let mut pending_replies: Vec<Packet> = Vec::with_capacity(3);
 
-                        let service_id = service_id.clone();
+                        let reply = Packet::CloseChannelPacket{channel};
+                        pending_replies.push(reply);
+
                         match result.is_known_contact() {
                             None | Some(false) => {
                                 // contact request
-
+                                let connection = self.connection_mut(connection_handle)?;
                                 let message_text = if let Some(message_text) = connection.contact_request_message.take() {
                                     message_text
                                 } else {
@@ -1152,16 +1152,40 @@ impl PacketHandler {
 
                                 let packet = control_channel::Packet::OpenChannel(open_channel);
                                 let reply = Packet::ControlChannelPacket(packet);
-                                replies.push(reply);
+                                pending_replies.push(reply);
 
                                 connection.channel_map.insert(channel_id, ChannelData::OutgoingContactRequest)?;
                             },
                             Some(true) => {
-                                todo!();
-                                // open chat+file transfer channels
+                                let connection = self.connection_mut(connection_handle)?;
+
+                                // build chat channel open packet
+                                let channel_id = connection.next_channel_id();
+                                let open_channel = control_channel::OpenChannel::new(
+                                    channel_id as i32,
+                                    control_channel::ChannelType::Chat,
+                                    None).expect("OpenChannel creation failed");
+                                let packet = control_channel::Packet::OpenChannel(open_channel);
+                                let reply = Packet::ControlChannelPacket(packet);
+                                pending_replies.push(reply);
+                                connection.channel_map.insert(channel_id, ChannelData::OutgoingChat)?;
+
+                                // build file transfer channel open packet
+                                let channel_id = connection.next_channel_id();
+                                let open_channel = control_channel::OpenChannel::new(
+                                    channel_id as i32,
+                                    control_channel::ChannelType::FileTransfer,
+                                    None).expect("OpenChannel creation failed");
+                                let packet = control_channel::Packet::OpenChannel(open_channel);
+                                let reply = Packet::ControlChannelPacket(packet);
+                                pending_replies.push(reply);
+
+                                connection.channel_map.insert(channel_id, ChannelData::OutgoingFileTransfer)?;
+                                self.contacts.insert(service_id.clone());
                             },
                         }
 
+                        replies.append(&mut pending_replies);
                         Ok(Event::HostAuthenticated{service_id})
                     },
                     _ => Ok(Event::FatalProtocolFailure),
