@@ -1587,14 +1587,36 @@ pub extern "C" fn tego_context_cancel_file_transfer(
 /// @param error : filled on error
 #[no_mangle]
 pub extern "C" fn tego_context_send_chat_request(
-    _context: *mut tego_context,
-    _user: *const tego_user_id,
-    _message: *const c_char,
-    _message_length: usize,
+    context: *mut tego_context,
+    user: *const tego_user_id,
+    message: *const c_char,
+    message_length: usize,
     error: *mut *mut tego_error) -> () {
     translate_failures((), error, || -> Result<()> {
-        println!("tego_context_send_chat_request() not implemented");
-        bail_not_implemented!()
+        let key = user as TegoKey;
+        let service_id = match get_object_map().get(&key) {
+            Some(TegoObject::UserId(user_id)) => {
+                user_id.service_id.clone()
+            },
+            Some(_) => bail!("not a tego_user_id pointer: {:?}", key as *const c_void),
+            None => bail!("not a valid pointer: {:?}", key as *const c_void),
+        };
+
+        let message = unsafe { std::slice::from_raw_parts(message as *const u8, message_length) };
+        let message = std::str::from_utf8(message)?.to_string();
+        use rico_protocol::v3::message::contact_request_channel::MessageText;
+        let message: MessageText = message.try_into()?;
+
+        let key = context as TegoKey;
+        match get_object_map().get(&key) {
+            Some(TegoObject::Context(context)) => {
+                context.send_contact_request(service_id, message);
+            },
+            Some(_) => bail!("not a tego_context pointer: {:?}", key as *const c_void),
+            None => bail!("not a valid pointer: {:?}", key as *const c_void),
+        }
+
+        Ok(())
     })
 }
 
@@ -1635,13 +1657,13 @@ pub extern "C" fn tego_context_acknowledge_chat_request(
         let key = context as TegoKey;
         match get_object_map().get(&key) {
             Some(TegoObject::Context(context)) => {
-                context.acknowledge_chat_request(service_id, response)
+                context.acknowledge_contact_request(service_id, response)
             },
             Some(_) => bail!("not a tego_context pointer: {:?}", key as *const c_void),
             None => bail!("not a valid pointer: {:?}", key as *const c_void),
         }
 
-      Ok(())
+        Ok(())
     })
 }
 

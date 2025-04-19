@@ -1,6 +1,56 @@
 pub(crate) const CHANNEL_TYPE: &'static str = "im.ricochet.contact.request";
 
 #[derive(Debug, PartialEq)]
+pub enum Packet {
+    Response(Response)
+}
+
+impl Packet {
+    pub fn write_to_vec(&self, v: &mut Vec<u8>) -> Result<(), crate::Error> {
+        use protobuf::Message;
+        use crate::v3::protos;
+
+        let mut pb: protos::ContactRequestChannel::Response = Default::default();
+        match self {
+            Packet::Response(response) => {
+                let status = match response.status {
+                    Status::Undefined => protos::ContactRequestChannel::response::Status::Undefined,
+                    Status::Pending => protos::ContactRequestChannel::response::Status::Pending,
+                    Status::Accepted => protos::ContactRequestChannel::response::Status::Accepted,
+                    Status::Rejected => protos::ContactRequestChannel::response::Status::Rejected,
+                    Status::Error => protos::ContactRequestChannel::response::Status::Error,
+                };
+                pb.set_status(status);
+            }
+        }
+
+        pb.write_to_vec(v).map_err(crate::Error::ProtobufError)?;
+        Ok(())
+    }
+}
+
+impl TryFrom<&[u8]> for Packet {
+    type Error = crate::Error;
+
+    fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
+        use protobuf::Message;
+        use crate::v3::protos;
+
+        let pb = protos::ContactRequestChannel::Response::parse_from_bytes(value).map_err(Self::Error::ProtobufError)?;
+
+        let status = match pb.status() {
+            protos::ContactRequestChannel::response::Status::Undefined => Status::Undefined,
+            protos::ContactRequestChannel::response::Status::Pending => Status::Pending,
+            protos::ContactRequestChannel::response::Status::Accepted => Status::Accepted,
+            protos::ContactRequestChannel::response::Status::Rejected => Status::Rejected,
+            protos::ContactRequestChannel::response::Status::Error => Status::Error,
+        };
+        let response = Response{status};
+        Ok(Packet::Response(response))
+    }
+}
+
+#[derive(Debug, PartialEq)]
 pub struct OpenChannel {
     pub contact_request: ContactRequest,
 }

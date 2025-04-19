@@ -19,6 +19,8 @@ use crate::ffi::*;
 use crate::user_id::UserId;
 use crate::promise::Promise;
 
+const RICOCHET_PORT: u16 = 9878u16;
+
 #[derive(Default)]
 pub(crate) struct Context {
     pub tego_key: TegoKey,
@@ -107,11 +109,18 @@ impl Context {
         command_queue.push(cmd);
     }
 
-    pub fn acknowledge_chat_request(
+    pub fn send_contact_request(
+        &self,
+        service_id: V3OnionServiceId,
+        message: rico_protocol::v3::message::contact_request_channel::MessageText) -> () {
+        self.push_command(Command::SendContactRequest{service_id, message});
+    }
+
+    pub fn acknowledge_contact_request(
         &self,
         service_id: V3OnionServiceId,
         response: tego_chat_acknowledge) -> () {
-        self.push_command(Command::AcknowledgeChatRequest{service_id, response});
+        self.push_command(Command::AcknowledgeContactRequest{service_id, response});
     }
 
     pub fn send_message(
@@ -169,7 +178,11 @@ impl Context {
         tor_client.bootstrap()?;
 
         // our ricochet-refresh packet handler
-        let mut packet_handler = PacketHandler::new(V3OnionServiceId::from_private_key(&private_key));
+        let mut packet_handler = PacketHandler::new(private_key.clone());
+
+        // our pending connections (outgoing)
+        let mut pending_connections: BTreeMap<tor_interface::tor_provider::ConnectHandle, PendingConnection> = Default::default();
+
         // our current connections
         let mut connections: BTreeMap<ConnectionHandle, Connection> = Default::default();
 
@@ -200,7 +213,7 @@ impl Context {
                             CallbackData::HostOnionServiceStateChanged{state: tego_host_onion_service_state::tego_host_onion_service_state_service_added});
 
                         // start onion service
-                        let listener = tor_client.listener(&private_key, 9878u16, None)?;
+                        let listener = tor_client.listener(&private_key, RICOCHET_PORT, None)?;
                         std::thread::Builder::new()
                             .name("listener-loop".to_string())
                             .spawn({
@@ -221,6 +234,30 @@ impl Context {
                         callback_queue.push(
                             CallbackData::HostOnionServiceStateChanged{state: tego_host_onion_service_state::tego_host_onion_service_state_service_published});
                     },
+                    TorEvent::ConnectComplete{handle, stream} => {
+                        if let Some(pending_connection) = pending_connections.remove(&handle) {
+
+                            stream.set_nonblocking(true).expect("");
+
+                            let service_id = pending_connection.service_id;
+                            let message_text = pending_connection.message_text;
+
+                            let mut replies: Vec<Packet> = Default::default();
+                            let handle = packet_handler.new_outgoing_connection(service_id.clone(), message_text, &mut replies);
+
+                            let connection = Connection{
+                                service_id: Some(service_id.clone()),
+                                stream: Some(stream),
+                                read_bytes: Default::default(),
+                                write_packets: replies,
+                            };
+
+                            connections.insert(handle, connection);
+                        }
+                    },
+                    TorEvent::ConnectFailed{handle, error} => {
+                        let pending_connection = pending_connections.remove(&handle);
+                    },
                     _ => (),
                 }
             }
@@ -240,7 +277,7 @@ impl Context {
 
                         let connection = Connection{
                             service_id: None,
-                            stream,
+                            stream: Some(stream),
                             read_bytes: Default::default(),
                             write_packets: Default::default(),
                         };
@@ -249,7 +286,7 @@ impl Context {
 
                         connections.insert(handle, connection);
                     },
-                    Command::AcknowledgeChatRequest{service_id, response} => {
+                    Command::AcknowledgeContactRequest{service_id, response} => {
                         let mut replies: Vec<Packet> = Default::default();
                         use tego_chat_acknowledge::*;
                         let result = match response {
@@ -266,6 +303,14 @@ impl Context {
                             },
                             Err(_err) => todo!(),
                         }
+                    },
+                    Command::SendContactRequest{service_id, message} => {
+                        let target_addr: tor_interface::tor_provider::TargetAddr = (service_id.clone(), RICOCHET_PORT).into();
+
+                        let connect_handle = tor_client.connect_async(target_addr, None).unwrap();
+
+                        let pending_connection = PendingConnection {service_id, message_text: Some(message) };
+                        pending_connections.insert(connect_handle, pending_connection);
                     },
                     Command::SendMessage{service_id, message_text, message_id} => {
                         let mut replies: Vec<Packet> = Default::default();
@@ -288,8 +333,15 @@ impl Context {
 
                 let mut retain = true;
 
+                // early exit if we don't have a stream yet
+                let stream = if let Some(stream) = connection.stream.as_mut() {
+                    stream
+                } else {
+                    return retain;
+                };
+
                 // handle reading
-                match connection.stream.read(&mut read_buffer) {
+                match stream.read(&mut read_buffer) {
                     Err(err) => match err.kind() {
                         ErrorKind::WouldBlock | ErrorKind::TimedOut => (),
                         _ => {
@@ -345,26 +397,40 @@ impl Context {
                 let write_packets = &mut connection.write_packets;
                 for packet in read_packets.drain(..) {
                     match packet_handler.handle_packet(handle, packet, write_packets) {
-                        Ok(Event::IntroductionReceived)=> {
+                        Ok(Event::IntroductionReceived) => {
                             println!("--- introduction received ---");
                         },
-                        Ok(Event::IntroductionResponseReceived) => todo!(),
+                        Ok(Event::IntroductionResponseReceived) => {
+                            println!("--- introduction response received ---");
+                        },
                         Ok(Event::OpenChannelAuthHiddenServiceReceived) => {
                             println!("--- open auth hidden service received ---");
                         },
                         Ok(Event::ClientAuthenticated{service_id}) => {
-                            println!("--- client authorised: {service_id:?} ---");
+                            println!("--- client authenticated: peer: {service_id:?} ---");
                             connection.service_id = Some(service_id);
+                        },
+                        Ok(Event::HostAuthenticated{service_id}) => {
+                            println!("--- host authenticated: peer: {service_id:?} ---");
                         },
                         Ok(Event::ContactRequestReceived{service_id, nickname: _, message_text}) => {
                             println!("--- contact request received, peer: {service_id:?}, message_text: \"{message_text}\"");
                             callback_queue.push(CallbackData::ChatRequestReceived{service_id, message: message_text});
+                        },
+                        Ok(Event::ContactRequestResultPending{service_id}) => {
+                            println!("--- contact request result pending, peer: {service_id:?}");
+                        },
+                        Ok(Event::ContactRequestResultAccepted{service_id}) => {
+                            println!("--- contact request result accepted, peer: {service_id:?}");
                         },
                         Ok(Event::IncomingChatChannelOpened{service_id}) => {
                             println!(" --- incoming chat channel opened, peer: {service_id:?} ---");
                         },
                         Ok(Event::IncomingFileTransferChannelOpened{service_id}) => {
                             println!(" --- incoming file transfer channel opened, peer: {service_id:?} ---");
+                        },
+                        Ok(Event::OutgoingAuthHiddenServiceChannelOpened{service_id}) => {
+                            println!(" --- outgoing auth hidden service channel opened, peer: {service_id:?} ---");
                         },
                         Ok(Event::OutgoingChatChannelOpened{service_id}) => {
                             println!(" --- outgoing chat channel opened, peer: {service_id:?} ---");
@@ -409,7 +475,7 @@ impl Context {
                     }
 
                     // send bytes
-                    if !connection.stream.write(write_bytes.as_slice()).is_ok() {
+                    if !stream.write(write_bytes.as_slice()).is_ok() {
                         println!("retain = false; write failed");
                         retain = false;
                     }
@@ -521,9 +587,15 @@ impl Drop for Context {
 }
 
 #[derive(Debug)]
+struct PendingConnection {
+    pub service_id: V3OnionServiceId,
+    pub message_text: Option<rico_protocol::v3::message::contact_request_channel::MessageText>,
+}
+
+#[derive(Debug)]
 struct Connection {
     pub service_id: Option<V3OnionServiceId>,
-    pub stream: OnionStream,
+    pub stream: Option<OnionStream>,
     // buffer of unhandled read bytes
     pub read_bytes: Vec<u8>,
     // buffer of packets to write
@@ -537,9 +609,13 @@ enum Command {
     BeginServerHandshake{
         stream: OnionStream
     },
-    AcknowledgeChatRequest{
+    AcknowledgeContactRequest{
         service_id: V3OnionServiceId,
         response: tego_chat_acknowledge,
+    },
+    SendContactRequest{
+        service_id: V3OnionServiceId,
+        message: rico_protocol::v3::message::contact_request_channel::MessageText,
     },
     SendMessage{
         service_id: V3OnionServiceId,
