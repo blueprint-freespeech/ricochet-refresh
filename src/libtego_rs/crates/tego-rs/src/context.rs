@@ -24,27 +24,50 @@ const RICOCHET_PORT: u16 = 9878u16;
 
 #[derive(Default)]
 pub(crate) struct Context {
-    pub tego_key: TegoKey,
+    tego_key: TegoKey,
     pub callbacks: Arc<Mutex<Callbacks>>,
     // tor config data
-    pub tor_data_directory: PathBuf,
-    pub proxy_settings: Option<ProxyConfig>,
-    pub allowed_ports: Option<Vec<u16>>,
+    tor_data_directory: PathBuf,
+    proxy_settings: Option<ProxyConfig>,
+    allowed_ports: Option<Vec<u16>>,
     // tor runtime data
     tor_version_cstring: Option<CString>,
     tor_version: Arc<Mutex<Option<LegacyTorVersion>>>,
-    pub tor_logs: Arc<Mutex<Vec<String>>>,
+    tor_logs: Arc<Mutex<String>>,
     // flags
     connect_complete: Arc<AtomicBool>,
     event_loop_complete: Promise<()>,
     // command queue
     command_queue: Arc<Mutex<Vec<Command>>>,
     // ricochet-refresh data
-    pub private_key: Option<Ed25519PrivateKey>,
+    private_key: Option<Ed25519PrivateKey>,
     pub users: Arc<Mutex<BTreeMap<V3OnionServiceId, UserData>>>,
 }
 
 impl Context {
+    pub fn set_tego_key(
+        &mut self,
+        tego_key: TegoKey,
+    ) -> () {
+        self.tego_key = tego_key;
+    }
+
+    pub fn set_tor_data_directory(
+        &mut self,
+        tor_data_directory: PathBuf,
+    ) -> () {
+        self.tor_data_directory = tor_data_directory;
+    }
+
+    pub fn set_tor_config(
+        &mut self,
+        proxy_settings: Option<ProxyConfig>,
+        allowed_ports: Option<Vec<u16>>,
+    ) -> () {
+        self.proxy_settings = proxy_settings;
+        self.allowed_ports = allowed_ports;
+    }
+
     pub fn tor_version_string(&mut self) -> Option<&CString> {
         if self.tor_version_cstring.is_none() {
             let tor_version = self.tor_version.lock().expect("tor_version mutex poisoned");
@@ -54,6 +77,35 @@ impl Context {
             }
         }
         self.tor_version_cstring.as_ref()
+    }
+
+    pub fn tor_logs_size(&self) -> usize {
+        let tor_logs = self.tor_logs.lock().expect("tor_logs mutex poisoned");
+        tor_logs.len() + 1usize
+    }
+
+    pub fn tor_logs(&self) -> String {
+        let tor_logs = self.tor_logs.lock().expect("tor_logs mutex poisoned");
+        tor_logs.clone()
+    }
+
+    pub fn set_private_key(
+        &mut self,
+        private_key: Ed25519PrivateKey,
+    ) -> () {
+        self.private_key = Some(private_key);
+    }
+
+    pub fn private_key(&self) -> Option<&Ed25519PrivateKey> {
+        self.private_key.as_ref()
+    }
+
+    pub fn host_service_id(&self) -> Option<V3OnionServiceId> {
+        if let Some(private_key) = &self.private_key {
+            Some(V3OnionServiceId::from_private_key(private_key))
+        } else {
+            None
+        }
     }
 
     pub fn connect(&mut self) -> Result<()> {
@@ -90,6 +142,7 @@ impl Context {
             connect_complete,
             private_key,
             command_queue,
+            event_loop_complete,
         );
 
         std::thread::Builder::new()
@@ -97,9 +150,6 @@ impl Context {
             .spawn(move || {
                 // start event loop
                 let _ = task.run();
-
-                // signal task completion
-                event_loop_complete.resolve(());
             })?;
 
         Ok(())
@@ -174,7 +224,7 @@ struct EventLoopTask {
     callbacks: Weak<Mutex<Callbacks>>,
     tor_client: LegacyTorClient,
     tor_version: Weak<Mutex<Option<LegacyTorVersion>>>,
-    tor_logs: Weak<Mutex<Vec<String>>>,
+    tor_logs: Weak<Mutex<String>>,
     connect_complete: Weak<AtomicBool>,
     private_key: Ed25519PrivateKey,
     command_queue: Weak<Mutex<Vec<Command>>>,
@@ -184,6 +234,7 @@ struct EventLoopTask {
     connections: BTreeMap<ConnectionHandle, Connection>,
     callback_queue: Vec<CallbackData>,
     task_complete: bool,
+    event_loop_complete: Promise<()>,
 }
 
 impl EventLoopTask {
@@ -194,10 +245,11 @@ impl EventLoopTask {
     callbacks: Weak<Mutex<Callbacks>>,
     tor_client: LegacyTorClient,
     tor_version: Weak<Mutex<Option<LegacyTorVersion>>>,
-    tor_logs: Weak<Mutex<Vec<String>>>,
+    tor_logs: Weak<Mutex<String>>,
     connect_complete: Weak<AtomicBool>,
     private_key: Ed25519PrivateKey,
     command_queue: Weak<Mutex<Vec<Command>>>,
+    event_loop_complete: Promise<()>,
     ) -> Self {
         Self {
             context,
@@ -214,6 +266,7 @@ impl EventLoopTask {
             connections: Default::default(),
             callback_queue: Default::default(),
             task_complete: false,
+            event_loop_complete,
         }
     }
 
@@ -241,6 +294,9 @@ impl EventLoopTask {
             // trigger callbacks for frontend
             self.handle_callbacks()?;
         }
+
+        // signal task completion
+        self.event_loop_complete.resolve(());
 
         Ok(())
     }
@@ -281,7 +337,10 @@ impl EventLoopTask {
                 TorEvent::LogReceived{line} => {
                     if let Some(tor_logs) = self.tor_logs.upgrade() {
                         let mut tor_logs = tor_logs.lock().expect("tor_logs mutex poisoned");
-                        tor_logs.push(line.clone());
+                        if !tor_logs.is_empty() {
+                            tor_logs.push('\n');
+                        }
+                        tor_logs.push_str(line.as_str());
                     }
                     self.callback_queue.push(
                         CallbackData::TorLogReceived{line});

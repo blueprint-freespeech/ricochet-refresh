@@ -96,7 +96,7 @@ pub extern "C" fn tego_initialize(
             *out_context = key as *mut tego_context;
         }
         if let Some(TegoObject::Context(context)) = get_object_map().get_mut(&key) {
-            context.tego_key = key;
+            context.set_tego_key(key);
         } else {
             bail!("");
         }
@@ -405,8 +405,8 @@ pub extern "C" fn tego_context_get_host_user_id(
         let key = context as TegoKey;
         let service_id = match get_object_map().get(&key) {
             Some(TegoObject::Context(context)) => {
-                if let Some(private_key) = &context.private_key {
-                    V3OnionServiceId::from_private_key(private_key)
+                if let Some(service_id) = context.host_service_id() {
+                    service_id
                 } else {
                     bail!("no host key defined");
                 }
@@ -552,7 +552,7 @@ pub extern "C" fn tego_context_start_tor(
             None => bail!("not a valid pointer: {:?}", context_key as *const c_void),
         };
 
-        context.tor_data_directory = tor_data_directory;
+        context.set_tor_data_directory(tor_data_directory);
 
         let callbacks = context.callbacks.lock().expect("another thread panicked while holding callback's mutex");
 
@@ -941,8 +941,7 @@ pub extern "C" fn tego_context_update_tor_daemon_config(
         let key = context_ptr as TegoKey;
         match object_map.get_mut(&key) {
             Some(TegoObject::Context(context)) => {
-                context.proxy_settings = proxy_settings;
-                context.allowed_ports = allowed_ports;
+                context.set_tor_config(proxy_settings, allowed_ports);
 
                 let callbacks = context.callbacks.lock().expect("another thread panicked while holding callback's mutex");
 
@@ -1025,7 +1024,7 @@ pub extern "C" fn tego_context_start_service(
 
         let key = context_ptr as TegoKey;
         match get_object_map().get(&key) {
-            Some(TegoObject::Context(context)) => bail_if!(context.private_key.is_some()),
+            Some(TegoObject::Context(context)) => bail_if!(context.private_key().is_some()),
             Some(_) => bail!("not a tego_context pointer: {:?}", key as *const c_void),
             None => bail!("not a valid pointer: {:?}", key as *const c_void),
         }
@@ -1085,7 +1084,7 @@ pub extern "C" fn tego_context_start_service(
         let key = context_ptr as TegoKey;
         match get_object_map().get_mut(&key) {
             Some(TegoObject::Context(context)) => {
-                context.private_key = Some(private_key);
+                context.set_private_key(private_key);
                 context.users.lock().expect("another thread panked while holding users mutex").append(&mut users);
             },
             Some(_) => bail!("not a tego_context pointer: {:?}", key as *const c_void),
@@ -1112,10 +1111,7 @@ pub extern "C" fn tego_context_get_tor_logs_size(
         let key = context_ptr as TegoKey;
         match get_object_map().get(&key) {
             Some(TegoObject::Context(context)) => {
-                let tor_logs = context.tor_logs.lock().unwrap();
-                let tor_logs = tor_logs.join("\n");
-                // 1 extra for null terminator
-                Ok(tor_logs.len() + 1usize)
+                Ok(context.tor_logs_size())
             },
             Some(_) => bail!("not a tego_context pointer: {:?}", key as *const c_void),
             None => bail!("not a valid pointer: {:?}", key as *const c_void),
@@ -1150,8 +1146,7 @@ pub extern "C" fn tego_context_get_tor_logs(
         let key = context_ptr as TegoKey;
         match get_object_map().get(&key) {
             Some(TegoObject::Context(context)) => {
-                let tor_logs = context.tor_logs.lock().unwrap();
-                let tor_logs = tor_logs.join("\n");
+                let tor_logs = context.tor_logs();
                 let tor_logs = tor_logs.as_str();
 
                 // number of bytes to write
