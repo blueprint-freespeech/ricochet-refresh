@@ -187,6 +187,9 @@ pub enum Event {
     ContactRequestResultAccepted{
         service_id: V3OnionServiceId,
     },
+    ContactRequestResultRejected{
+        service_id: V3OnionServiceId,
+    },
     IncomingChatChannelOpened{
         service_id: V3OnionServiceId,
     },
@@ -645,7 +648,7 @@ impl PacketHandler {
                             Status::Undefined => Err(Error::NotImplemented),
                             Status::Pending => Ok(Event::ContactRequestResultPending{service_id: service_id.clone()}),
                             Status::Accepted => Err(Error::NotImplemented),
-                            Status::Rejected => Err(Error::NotImplemented),
+                            Status::Rejected => Ok(Event::ContactRequestResultRejected{service_id: service_id.clone()}),
                             Status::Error => Err(Error::NotImplemented),
                         }
                     },
@@ -713,6 +716,11 @@ impl PacketHandler {
                         self.contacts.insert(service_id.clone());
                         replies.append(&mut pending_replies);
                         Ok(Event::ContactRequestResultAccepted{service_id})
+                    },
+                    (Status::Rejected, Some(service_id)) => {
+                        let reply = Packet::CloseChannelPacket{channel: channel_id};
+                        replies.push(reply);
+                        Ok(Event::ContactRequestResultRejected{service_id})
                     }
                     _ => todo!(),
                 }

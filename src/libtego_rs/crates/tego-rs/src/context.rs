@@ -544,6 +544,11 @@ impl EventLoopTask {
                     },
                     Ok(Event::ContactRequestResultAccepted{service_id}) => {
                         println!("--- contact request result accepted, peer: {service_id:?}");
+                        self.callback_queue.push(CallbackData::ChatRequestResponseReceived{service_id, accepted_request: true});
+                    },
+                    Ok(Event::ContactRequestResultRejected{service_id}) => {
+                        println!("--- contact request result rejected, peer: {service_id:?}");
+                        self.callback_queue.push(CallbackData::ChatRequestResponseReceived{service_id, accepted_request: false});
                     },
                     Ok(Event::IncomingChatChannelOpened{service_id}) => {
                         println!("--- incoming chat channel opened, peer: {service_id:?} ---");
@@ -657,6 +662,18 @@ impl EventLoopTask {
                         let message = CString::new(message.as_str()).unwrap();
                         let message_len = message.as_bytes().len();
                         on_chat_request_received(context, sender as *const tego_user_id, message.as_c_str().as_ptr(), message_len);
+                        get_object_map().remove(&sender);
+                    }
+                },
+                CallbackData::ChatRequestResponseReceived{service_id, accepted_request} => {
+                    if let Some(on_chat_request_response_received) = callbacks.on_chat_request_response_received {
+                        let sender = get_object_map().insert(TegoObject::UserId(UserId{service_id}));
+                        let accepted_request = if accepted_request {
+                            TEGO_TRUE
+                        } else {
+                            TEGO_FALSE
+                        };
+                        on_chat_request_response_received(context, sender as *const tego_user_id, accepted_request);
                         get_object_map().remove(&sender);
                     }
                 },
@@ -775,7 +792,7 @@ enum CallbackData {
     TorLogReceived{line: String},
     HostOnionServiceStateChanged{state: tego_host_onion_service_state},
     ChatRequestReceived{service_id: V3OnionServiceId, message: String},
-    ChatRequestResponseReceived,
+    ChatRequestResponseReceived{service_id: V3OnionServiceId, accepted_request: bool},
     MessageReceived{service_id: V3OnionServiceId, timestamp: std::time::SystemTime, message_id: tego_message_id, message: String},
     MessageAcknowledged{service_id: V3OnionServiceId, message_id: tego_message_id, accepted: bool},
     FileTransferRequestReceived,
