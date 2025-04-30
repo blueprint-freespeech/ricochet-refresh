@@ -1,5 +1,5 @@
 // standard
-use std::collections::{BTreeMap};
+use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::CString;
 use std::io::{ErrorKind, Read, Write};
 use std::path::PathBuf;
@@ -41,7 +41,8 @@ pub(crate) struct Context {
     command_queue: Arc<Mutex<Vec<Command>>>,
     // ricochet-refresh data
     private_key: Option<Ed25519PrivateKey>,
-    pub users: Arc<Mutex<BTreeMap<V3OnionServiceId, UserData>>>,
+    allowed: BTreeSet<V3OnionServiceId>,
+    blocked: BTreeSet<V3OnionServiceId>,
 }
 
 impl Context {
@@ -100,6 +101,15 @@ impl Context {
         self.private_key.as_ref()
     }
 
+    pub fn set_users(
+        &mut self,
+        allowed: BTreeSet<V3OnionServiceId>,
+        blocked: BTreeSet<V3OnionServiceId>,
+    ) -> () {
+        self.allowed = allowed;
+        self.blocked = blocked;
+    }
+
     pub fn host_service_id(&self) -> Option<V3OnionServiceId> {
         if let Some(private_key) = &self.private_key {
             Some(V3OnionServiceId::from_private_key(private_key))
@@ -141,6 +151,8 @@ impl Context {
             tor_logs,
             connect_complete,
             private_key,
+            std::mem::take(&mut self.allowed),
+            std::mem::take(&mut self.blocked),
             command_queue,
             event_loop_complete,
         );
@@ -248,6 +260,8 @@ impl EventLoopTask {
     tor_logs: Weak<Mutex<String>>,
     connect_complete: Weak<AtomicBool>,
     private_key: Ed25519PrivateKey,
+    allowed: BTreeSet<V3OnionServiceId>,
+    blocked: BTreeSet<V3OnionServiceId>,
     command_queue: Weak<Mutex<Vec<Command>>>,
     event_loop_complete: Promise<()>,
     ) -> Self {
@@ -261,7 +275,7 @@ impl EventLoopTask {
             private_key: private_key.clone(),
             command_queue,
             read_buffer: [0u8; Self::READ_BUFFER_SIZE],
-            packet_handler: PacketHandler::new(private_key),
+            packet_handler: PacketHandler::new(private_key, allowed, blocked),
             pending_connections: Default::default(),
             connections: Default::default(),
             callback_queue: Default::default(),
@@ -829,8 +843,5 @@ pub(crate) struct Callbacks {
 
 pub(crate) enum UserData {
     Allowed,
-    Requesting,
     Blocked,
-    Pending,
-    Rejected,
 }

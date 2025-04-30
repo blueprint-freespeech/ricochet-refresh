@@ -1,5 +1,5 @@
 // standard
-use std::collections::BTreeMap;
+use std::collections::BTreeSet;
 use std::ffi::{c_char, c_int, c_void};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use std::path::PathBuf;
@@ -1054,7 +1054,8 @@ pub extern "C" fn tego_context_start_service(
             }
         };
 
-        let mut users: BTreeMap<V3OnionServiceId, UserData> = Default::default();
+        let mut allowed: BTreeSet<V3OnionServiceId> = Default::default();
+        let mut blocked: BTreeSet<V3OnionServiceId> = Default::default();
 
         if !user_buffer.is_null() && !user_type_buffer.is_null() {
             let user_buffer = unsafe { std::slice::from_raw_parts(user_buffer, user_count) };
@@ -1069,15 +1070,18 @@ pub extern "C" fn tego_context_start_service(
                 };
 
                 use tego_user_type::*;
-                let user_data = match user_type {
+                match user_type {
+                    tego_user_type_allowed => {
+                        bail_if!(blocked.contains(&service_id));
+                        bail_if!(!allowed.insert(service_id));
+                    },
+                    tego_user_type_blocked => {
+                        bail_if!(allowed.contains(&service_id));
+                        bail_if!(!blocked.insert(service_id));
+                    },
                     tego_user_type_host => bail!("user type may not be tego_user_type_host"),
-                    tego_user_type_allowed => UserData::Allowed,
-                    tego_user_type_requesting => UserData::Requesting,
-                    tego_user_type_blocked => UserData::Blocked,
-                    tego_user_type_pending => UserData::Pending,
-                    tego_user_type_rejected => UserData::Rejected,
-                };
-                users.insert(service_id, user_data);
+                    _ => (),
+                }
             }
         }
 
@@ -1085,7 +1089,7 @@ pub extern "C" fn tego_context_start_service(
         match get_object_map().get_mut(&key) {
             Some(TegoObject::Context(context)) => {
                 context.set_private_key(private_key);
-                context.users.lock().expect("another thread panked while holding users mutex").append(&mut users);
+                context.set_users(allowed, blocked);
             },
             Some(_) => bail!("not a tego_context pointer: {:?}", key as *const c_void),
             None => bail!("not a valid pointer: {:?}", key as *const c_void),

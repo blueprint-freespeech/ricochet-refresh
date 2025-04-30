@@ -249,14 +249,18 @@ pub struct PacketHandler {
     private_key: Ed25519PrivateKey,
     service_id: V3OnionServiceId,
     // set of approved contacts
-    contacts: BTreeSet<V3OnionServiceId>,
+    allowed: BTreeSet<V3OnionServiceId>,
     // set of blocked contacts
+    // todo: handle blocked
     blocked: BTreeSet<V3OnionServiceId>
 }
 
 impl PacketHandler {
-    pub fn new(private_key: Ed25519PrivateKey) -> Self {
-
+    pub fn new(
+        private_key: Ed25519PrivateKey,
+        allowed: BTreeSet<V3OnionServiceId>,
+        blocked: BTreeSet<V3OnionServiceId>,
+    ) -> Self {
         let service_id = V3OnionServiceId::from_private_key(&private_key);
         Self {
             next_connection_handle: Default::default(),
@@ -264,8 +268,8 @@ impl PacketHandler {
             service_id_to_connection_handle: Default::default(),
             private_key,
             service_id,
-            contacts: Default::default(),
-            blocked: Default::default(),
+            allowed,
+            blocked,
         }
     }
 
@@ -566,7 +570,7 @@ impl PacketHandler {
                         // verify peer is authorised and a contact
                         let connection = self.connection(connection_handle)?;
                         let service_id = if let Some(service_id) = &connection.peer_service_id {
-                            if !self.contacts.contains(service_id) {
+                            if !self.allowed.contains(service_id) {
                                 return Ok(Event::FatalProtocolFailure)
                             } else {
                                 service_id.clone()
@@ -594,7 +598,7 @@ impl PacketHandler {
                         // verify peer is authorised and a contact
                         let connection = self.connection(connection_handle)?;
                         let service_id = if let Some(service_id) = &connection.peer_service_id {
-                            if !self.contacts.contains(service_id) {
+                            if !self.allowed.contains(service_id) {
                                 return Ok(Event::FatalProtocolFailure)
                             } else {
                                 service_id.clone()
@@ -728,7 +732,7 @@ impl PacketHandler {
                         pending_replies.push(reply);
                         connection.channel_map.insert(channel_id, ChannelData::OutgoingFileTransfer)?;
 
-                        self.contacts.insert(service_id.clone());
+                        self.allowed.insert(service_id.clone());
                         replies.append(&mut pending_replies);
                         Ok(Event::ContactRequestResultAccepted{service_id})
                     },
@@ -753,7 +757,7 @@ impl PacketHandler {
             chat_channel::Packet::ChatMessage(message) => {
                 let connection = self.connection(connection_handle)?;
                 let service_id = if let Some(service_id) = &connection.peer_service_id {
-                    if !self.contacts.contains(service_id) {
+                    if !self.allowed.contains(service_id) {
                         return Ok(Event::FatalProtocolFailure)
                     } else {
                         service_id.clone()
@@ -782,7 +786,7 @@ impl PacketHandler {
             chat_channel::Packet::ChatAcknowledge(acknowledge) => {
                 let connection = self.connection(connection_handle)?;
                 let service_id = if let Some(service_id) = &connection.peer_service_id {
-                    if !self.contacts.contains(service_id) {
+                    if !self.allowed.contains(service_id) {
                         return Ok(Event::FatalProtocolFailure)
                     } else {
                         service_id.clone()
@@ -851,7 +855,7 @@ impl PacketHandler {
                     // build reply packet
 
                     let connection = self.connection(connection_handle)?;
-                    let is_known_contact = self.contacts.contains(&client_service_id);
+                    let is_known_contact = self.allowed.contains(&client_service_id);
                     let result = auth_hidden_service::Result::new(true, Some(is_known_contact))?;
                     let packet = auth_hidden_service::Packet::Result(result);
                     let reply = Packet::AuthHiddenServicePacket{channel, packet};
@@ -969,7 +973,7 @@ impl PacketHandler {
                                 pending_replies.push(reply);
 
                                 connection.channel_map.insert(channel_id, ChannelData::OutgoingFileTransfer)?;
-                                self.contacts.insert(service_id.clone());
+                                self.allowed.insert(service_id.clone());
                             },
                         }
 
@@ -1024,7 +1028,7 @@ impl PacketHandler {
         &mut self,
         service_id: V3OnionServiceId,
         replies: &mut Vec<Packet>) -> Result<ConnectionHandle, Error> {
-        if self.contacts.contains(&service_id) {
+        if self.allowed.contains(&service_id) {
             return Err(Error::PeerAlreadyAcceptedContact(service_id));
         } else if self.blocked.contains(&service_id) {
             return Err(Error::PeerIsBlocked(service_id));
@@ -1071,7 +1075,7 @@ impl PacketHandler {
                 pending_replies.push(reply);
                 connection.channel_map.insert(channel_id, ChannelData::OutgoingFileTransfer)?;
 
-                self.contacts.insert(service_id);
+                self.allowed.insert(service_id);
                 replies.append(&mut pending_replies);
                 return Ok(*connection_handle)
             }
