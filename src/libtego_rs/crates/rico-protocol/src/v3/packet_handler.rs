@@ -124,7 +124,7 @@ struct Connection {
 }
 
 impl Connection {
-    pub fn new_incoming() -> Self {
+    fn new_incoming() -> Self {
         Self {
             channel_map: Default::default(),
             direction: Direction::Incoming,
@@ -135,7 +135,7 @@ impl Connection {
         }
     }
 
-    pub fn new_outgoing(
+    fn new_outgoing(
         service_id: V3OnionServiceId,
         message: Option<contact_request_channel::MessageText>) -> Self {
         Self {
@@ -148,7 +148,7 @@ impl Connection {
         }
     }
 
-    pub fn next_channel_id(&mut self) -> u16 {
+    fn next_channel_id(&mut self) -> u16 {
         loop {
             let result = self.next_outgoing_channel_id;
             let next = ((self.next_outgoing_channel_id as u32 + 2u32) % (u16::MAX as u32)) as u16;
@@ -157,6 +157,22 @@ impl Connection {
                 continue;
             }
             return result;
+        }
+    }
+
+    fn close_channel(
+        &mut self,
+        channel: u16,
+        replies: Option<&mut Vec<Packet>>,
+    ) -> bool {
+        if let Some(_channel_data) = self.channel_map.remove_by_id(&channel) {
+            if let Some(replies) = replies {
+                let reply = Packet::CloseChannelPacket{channel};
+                replies.push(reply);
+            }
+            true
+        } else {
+            false
         }
     }
 }
@@ -666,9 +682,8 @@ impl PacketHandler {
         channel_id: u16,
         _replies: &mut Vec<Packet>) -> Result<Event, Error> {
         let connection = self.connection_mut(connection_handle)?;
-        if let Some(data) = connection.channel_map.remove_by_id(&channel_id) {
-            let id = channel_id;
-            Ok(Event::ChannelClosed{id})
+        if connection.close_channel(channel_id, None) {
+            Ok(Event::ChannelClosed{id: channel_id})
         } else {
             Ok(Event::ProtocolFailure{message:
                 format!("requested closing channel which does not exist: {channel_id}")})
@@ -718,8 +733,7 @@ impl PacketHandler {
                         Ok(Event::ContactRequestResultAccepted{service_id})
                     },
                     (Status::Rejected, Some(service_id)) => {
-                        let reply = Packet::CloseChannelPacket{channel: channel_id};
-                        replies.push(reply);
+                        connection.close_channel(channel_id, Some(replies));
                         Ok(Event::ContactRequestResultRejected{service_id})
                     }
                     _ => todo!(),
@@ -810,8 +824,8 @@ impl PacketHandler {
 
                 let server_service_id = self.service_id.clone();
 
-                let (client_cookie, server_cookie) = if let Some(ChannelData::IncomingAuthHiddenService{client_cookie, server_cookie}) = self.connection_mut(connection_handle)?.channel_map.remove_by_id(&channel) {
-                    (client_cookie, server_cookie)
+                let (client_cookie, server_cookie) = if let Some(ChannelData::IncomingAuthHiddenService{client_cookie, server_cookie}) = self.connection_mut(connection_handle)?.channel_map.get_by_id(&channel) {
+                    (client_cookie.clone(), server_cookie.clone())
                 } else {
                     return Ok(Event::FatalProtocolFailure)
                 };
@@ -843,6 +857,10 @@ impl PacketHandler {
                     let reply = Packet::AuthHiddenServicePacket{channel, packet};
                     pending_replies.push(reply);
 
+                    let connection = self.connection_mut(connection_handle)?;
+                    connection.close_channel(channel, Some(&mut pending_replies));
+
+                    // known contacts can begin to chat immediately
                     if is_known_contact {
                         let connection = self.connection_mut(connection_handle)?;
 
@@ -896,17 +914,15 @@ impl PacketHandler {
                     return Ok(Event::FatalProtocolFailure)
                 }
 
-                match (result.accepted(), self.connection_mut(connection_handle)?.peer_service_id.clone()) {
+                let connection = self.connection_mut(connection_handle)?;
+                match (result.accepted(), connection.peer_service_id.clone()) {
                     (true, Some(service_id)) => {
                         let mut pending_replies: Vec<Packet> = Vec::with_capacity(3);
 
-                        let reply = Packet::CloseChannelPacket{channel};
-                        pending_replies.push(reply);
-
+                        connection.close_channel(channel, Some(&mut pending_replies));
                         match result.is_known_contact() {
                             None | Some(false) => {
                                 // contact request
-                                let connection = self.connection_mut(connection_handle)?;
                                 let message_text = if let Some(message_text) = connection.contact_request_message.take() {
                                     message_text
                                 } else {
@@ -931,8 +947,6 @@ impl PacketHandler {
                                 connection.channel_map.insert(channel_id, ChannelData::OutgoingContactRequest)?;
                             },
                             Some(true) => {
-                                let connection = self.connection_mut(connection_handle)?;
-
                                 // build chat channel open packet
                                 let channel_id = connection.next_channel_id();
                                 let open_channel = control_channel::OpenChannel::new(
@@ -1033,8 +1047,7 @@ impl PacketHandler {
                 let reply = Packet::ContactRequestChannelPacket{channel, packet};
                 pending_replies.push(reply);
 
-                let reply = Packet::CloseChannelPacket{channel};
-                pending_replies.push(reply);
+                connection.close_channel(channel, Some(&mut pending_replies));
 
                 // build chat channel open packet
                 let channel_id = connection.next_channel_id();
@@ -1058,7 +1071,6 @@ impl PacketHandler {
                 pending_replies.push(reply);
                 connection.channel_map.insert(channel_id, ChannelData::OutgoingFileTransfer)?;
 
-                connection.channel_map.remove_by_id(&channel_identifier);
                 self.contacts.insert(service_id);
                 replies.append(&mut pending_replies);
                 return Ok(*connection_handle)
