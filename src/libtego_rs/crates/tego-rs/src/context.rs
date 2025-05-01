@@ -2,8 +2,10 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::CString;
 use std::io::{ErrorKind, Read, Write};
+use std::ops::Add;
 use std::path::PathBuf;
 use std::sync::{atomic::{AtomicBool, Ordering}, Arc, Mutex, Weak};
+use std::time::{Duration, Instant};
 
 // extern
 use anyhow::{Context as AnyhowContext, Result};
@@ -171,23 +173,23 @@ impl Context {
         self.connect_complete.load(Ordering::Relaxed)
     }
 
-    fn push_command(&self, cmd: Command) -> () {
+    fn push_command(&self, data: CommandData) -> () {
         let mut command_queue = self.command_queue.lock().expect("command_queue mutex poisoned");
-        command_queue.push(cmd);
+        command_queue.push(Command::new(data, Duration::ZERO));
     }
 
     pub fn send_contact_request(
         &self,
         service_id: V3OnionServiceId,
         message: rico_protocol::v3::message::contact_request_channel::MessageText) -> () {
-        self.push_command(Command::SendContactRequest{service_id, message});
+        self.push_command(CommandData::SendContactRequest{service_id, message});
     }
 
     pub fn acknowledge_contact_request(
         &self,
         service_id: V3OnionServiceId,
         response: tego_chat_acknowledge) -> () {
-        self.push_command(Command::AcknowledgeContactRequest{service_id, response});
+        self.push_command(CommandData::AcknowledgeContactRequest{service_id, response});
     }
 
     pub fn send_message(
@@ -197,7 +199,7 @@ impl Context {
 
         let message_id: Promise<Result<tego_message_id>> = Default::default();
         let message_id_future = message_id.get_future();
-        let cmd = Command::SendMessage{service_id, message_text, message_id};
+        let cmd = CommandData::SendMessage{service_id, message_text, message_id};
         self.push_command(cmd);
 
         message_id_future.wait()
@@ -224,7 +226,7 @@ impl Context {
 
 impl Drop for Context {
     fn drop(&mut self) {
-        self.push_command(Command::EndEventLoop);
+        self.push_command(CommandData::EndEventLoop);
         let complete = self.event_loop_complete.get_future();
         complete.wait();
     }
@@ -403,9 +405,10 @@ impl EventLoopTask {
         };
 
         for cmd in command_queue {
-            match cmd {
-                Command::EndEventLoop => self.task_complete = true,
-                Command::BeginServerHandshake{stream} => {
+            let data = cmd.data;
+            match data {
+                CommandData::EndEventLoop => self.task_complete = true,
+                CommandData::BeginServerHandshake{stream} => {
                     let handle = self.packet_handler.new_incoming_connection();
 
                     let connection = Connection{
@@ -419,7 +422,7 @@ impl EventLoopTask {
 
                     self.connections.insert(handle, connection);
                 },
-                Command::AcknowledgeContactRequest{service_id, response} => {
+                CommandData::AcknowledgeContactRequest{service_id, response} => {
                     let mut replies: Vec<Packet> = Default::default();
                     use tego_chat_acknowledge::*;
                     let result = match response {
@@ -437,7 +440,7 @@ impl EventLoopTask {
                         Err(_err) => todo!(),
                     }
                 },
-                Command::SendContactRequest{service_id, message} => {
+                CommandData::SendContactRequest{service_id, message} => {
                     let target_addr: tor_interface::tor_provider::TargetAddr = (service_id.clone(), RICOCHET_PORT).into();
 
                     let connect_handle = self.tor_client.connect_async(target_addr, None).unwrap();
@@ -445,7 +448,7 @@ impl EventLoopTask {
                     let pending_connection = PendingConnection {service_id, message_text: Some(message) };
                     self.pending_connections.insert(connect_handle, pending_connection);
                 },
-                Command::SendMessage{service_id, message_text, message_id} => {
+                CommandData::SendMessage{service_id, message_text, message_id} => {
                     let mut replies: Vec<Packet> = Default::default();
                     let result = match self.packet_handler.send_message(service_id, message_text, &mut replies) {
                         Ok((connection_handle, message_id)) => {
@@ -749,7 +752,7 @@ impl ListenerTask {
                 println!("stream: {stream:?}");
                 let command_queue = command_queue.upgrade().context("command_queue dropped")?;
                 let mut command_queue = command_queue.lock().expect("command_queue mutex poisoned");
-                command_queue.push(Command::BeginServerHandshake{stream});
+                command_queue.push(Command::new(CommandData::BeginServerHandshake{stream}, Duration::ZERO));
             }
         }
 
@@ -774,7 +777,25 @@ struct Connection {
 }
 
 
-enum Command {
+struct Command {
+    start_time:Instant,
+    data: CommandData,
+}
+
+impl Command {
+    fn new(
+        data: CommandData,
+        delay: Duration,
+    ) -> Self {
+        let start_time = Instant::now().add(delay);
+        Self{
+            start_time,
+            data,
+        }
+    }
+}
+
+enum CommandData {
     // library is going away we need to cleanup
     EndEventLoop,
     // client connects to our listener triggering an incoming handshake
