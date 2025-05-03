@@ -1,3 +1,4 @@
+pub(crate) mod command_queue;
 pub(crate) mod object_map;
 pub(crate) mod context;
 pub(crate) mod error;

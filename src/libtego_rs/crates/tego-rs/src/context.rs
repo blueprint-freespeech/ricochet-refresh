@@ -1,9 +1,7 @@
 // standard
-use std::cmp::Ord;
-use std::collections::{BinaryHeap, BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::CString;
 use std::io::{ErrorKind, Read, Write};
-use std::ops::{Add, DerefMut};
 use std::path::PathBuf;
 use std::sync::{atomic::{AtomicBool, Ordering}, Arc, Mutex, Weak};
 use std::time::{Duration, Instant};
@@ -22,6 +20,7 @@ use tor_interface::tor_provider::{OnionListener, OnionStream, TorEvent, TorProvi
 use crate::ffi::*;
 use crate::user_id::UserId;
 use crate::promise::Promise;
+use crate::command_queue::*;
 
 const RICOCHET_PORT: u16 = 9878u16;
 
@@ -41,7 +40,7 @@ pub(crate) struct Context {
     connect_complete: Arc<AtomicBool>,
     event_loop_complete: Promise<()>,
     // command queue
-    command_queue: Arc<Mutex<BinaryHeap<Command>>>,
+    command_queue: CommandQueue,
     // ricochet-refresh data
     private_key: Option<Ed25519PrivateKey>,
     allowed: BTreeSet<V3OnionServiceId>,
@@ -144,7 +143,7 @@ impl Context {
 
         let private_key = self.private_key.as_ref().unwrap().clone();
 
-        let command_queue = Arc::downgrade(&self.command_queue);
+        let command_queue = self.command_queue.downgrade();
 
         let task = EventLoopTask::new(
             tego_key,
@@ -182,8 +181,7 @@ impl Context {
         &self,
         data: CommandData,
         delay: Duration) -> () {
-        let mut command_queue = self.command_queue.lock().expect("command_queue mutex poisoned");
-        command_queue.push(Command::new(data, delay));
+        self.command_queue.push(data, delay);
     }
 
     pub fn send_contact_request(
@@ -249,7 +247,7 @@ struct EventLoopTask {
     tor_logs: Weak<Mutex<String>>,
     connect_complete: Weak<AtomicBool>,
     private_key: Ed25519PrivateKey,
-    command_queue: Weak<Mutex<BinaryHeap<Command>>>,
+    command_queue: CommandQueue,
     read_buffer: [u8; Self::READ_BUFFER_SIZE],
     packet_handler: PacketHandler,
     pending_connections: BTreeMap<tor_interface::tor_provider::ConnectHandle, PendingConnection>,
@@ -272,7 +270,7 @@ impl EventLoopTask {
     private_key: Ed25519PrivateKey,
     allowed: BTreeSet<V3OnionServiceId>,
     blocked: BTreeSet<V3OnionServiceId>,
-    command_queue: Weak<Mutex<BinaryHeap<Command>>>,
+    command_queue: CommandQueue,
     event_loop_complete: Promise<()>,
     ) -> Self {
         Self {
@@ -349,7 +347,7 @@ impl EventLoopTask {
                     std::thread::Builder::new()
                         .name("listener-loop".to_string())
                         .spawn({
-                            let command_queue = self.command_queue.clone();
+                            let command_queue = self.command_queue.downgrade();
                             move || {
                                 let task = ListenerTask{
                                     listener,
@@ -406,22 +404,18 @@ impl EventLoopTask {
     }
 
     fn handle_commands(&mut self) -> Result<()> {
-        let mut command_queue = {
-            let command_queue = self.command_queue.upgrade().context("command_queue dropped")?;
-            let mut command_queue = command_queue.lock().expect("command_queue mutex poisoned");
-            std::mem::take(command_queue.deref_mut())
-        };
+        let mut command_queue = self.command_queue.take();
 
         loop {
             if let Some(cmd) = command_queue.peek() {
-                if cmd.start_time > Instant::now() {
+                if *cmd.start_time() > Instant::now() {
                     break;
                 }
             } else {
                 break;
             }
             let cmd = command_queue.pop().unwrap();
-            match cmd.data {
+            match cmd.data() {
                 CommandData::EndEventLoop => self.task_complete = true,
                 CommandData::BeginServerHandshake{stream} => {
                     let handle = self.packet_handler.new_incoming_connection();
@@ -481,10 +475,7 @@ impl EventLoopTask {
 
         // merge remainng commands
         if !command_queue.is_empty() {
-            self.command_queue
-                .upgrade().context("command_queue dropped")?
-                .lock().expect("command_queue mutex poisoned")
-                .append(&mut command_queue);
+            self.command_queue.append(command_queue);
         }
 
         Ok(())
@@ -759,7 +750,7 @@ impl EventLoopTask {
 
 struct ListenerTask {
     listener: OnionListener,
-    command_queue: Weak<Mutex<BinaryHeap<Command>>>,
+    command_queue: CommandQueue,
 }
 
 impl ListenerTask {
@@ -773,9 +764,7 @@ impl ListenerTask {
             if let Some(stream) = stream {
                 stream.set_nonblocking(true)?;
                 println!("stream: {stream:?}");
-                let command_queue = command_queue.upgrade().context("command_queue dropped")?;
-                let mut command_queue = command_queue.lock().expect("command_queue mutex poisoned");
-                command_queue.push(Command::new(CommandData::BeginServerHandshake{stream}, Duration::ZERO));
+                command_queue.push(CommandData::BeginServerHandshake{stream}, Duration::ZERO);
             }
         }
 
@@ -799,65 +788,6 @@ struct Connection {
     pub write_packets: Vec<Packet>,
 }
 
-struct Command {
-    start_time:Instant,
-    data: CommandData,
-}
-
-impl Command {
-    fn new(
-        data: CommandData,
-        delay: Duration,
-    ) -> Self {
-        let start_time = Instant::now().add(delay);
-        Self{
-            start_time,
-            data,
-        }
-    }
-}
-
-impl Ord for Command {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        other.start_time.cmp(&self.start_time)
-    }
-}
-
-impl PartialOrd for Command {
-    fn partial_cmp(&self, other:&Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl PartialEq for Command {
-    fn eq(&self, other: &Self)-> bool {
-        std::ptr::eq(self, other)
-    }
-}
-
-impl Eq for Command {}
-
-enum CommandData {
-    // library is going away we need to cleanup
-    EndEventLoop,
-    // client connects to our listener triggering an incoming handshake
-    BeginServerHandshake{
-        stream: OnionStream
-    },
-    AcknowledgeContactRequest{
-        service_id: V3OnionServiceId,
-        response: tego_chat_acknowledge,
-    },
-    SendContactRequest{
-        service_id: V3OnionServiceId,
-        message: rico_protocol::v3::message::contact_request_channel::MessageText,
-    },
-    SendMessage{
-        service_id: V3OnionServiceId,
-        message_text: rico_protocol::v3::message::chat_channel::MessageText,
-        message_id: Promise<Result<tego_message_id>>,
-    },
-}
 
 enum CallbackData {
     TorErrorOccurred,
