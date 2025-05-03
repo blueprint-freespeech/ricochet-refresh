@@ -1,8 +1,9 @@
 // standard
-use std::collections::{BTreeMap, BTreeSet};
+use std::cmp::Ord;
+use std::collections::{BinaryHeap, BTreeMap, BTreeSet};
 use std::ffi::CString;
 use std::io::{ErrorKind, Read, Write};
-use std::ops::Add;
+use std::ops::{Add, DerefMut};
 use std::path::PathBuf;
 use std::sync::{atomic::{AtomicBool, Ordering}, Arc, Mutex, Weak};
 use std::time::{Duration, Instant};
@@ -40,7 +41,7 @@ pub(crate) struct Context {
     connect_complete: Arc<AtomicBool>,
     event_loop_complete: Promise<()>,
     // command queue
-    command_queue: Arc<Mutex<Vec<Command>>>,
+    command_queue: Arc<Mutex<BinaryHeap<Command>>>,
     // ricochet-refresh data
     private_key: Option<Ed25519PrivateKey>,
     allowed: BTreeSet<V3OnionServiceId>,
@@ -174,8 +175,15 @@ impl Context {
     }
 
     fn push_command(&self, data: CommandData) -> () {
+        self.push_command_ex(data, Duration::ZERO);
+    }
+
+    fn push_command_ex(
+        &self,
+        data: CommandData,
+        delay: Duration) -> () {
         let mut command_queue = self.command_queue.lock().expect("command_queue mutex poisoned");
-        command_queue.push(Command::new(data, Duration::ZERO));
+        command_queue.push(Command::new(data, delay));
     }
 
     pub fn send_contact_request(
@@ -241,7 +249,7 @@ struct EventLoopTask {
     tor_logs: Weak<Mutex<String>>,
     connect_complete: Weak<AtomicBool>,
     private_key: Ed25519PrivateKey,
-    command_queue: Weak<Mutex<Vec<Command>>>,
+    command_queue: Weak<Mutex<BinaryHeap<Command>>>,
     read_buffer: [u8; Self::READ_BUFFER_SIZE],
     packet_handler: PacketHandler,
     pending_connections: BTreeMap<tor_interface::tor_provider::ConnectHandle, PendingConnection>,
@@ -264,7 +272,7 @@ impl EventLoopTask {
     private_key: Ed25519PrivateKey,
     allowed: BTreeSet<V3OnionServiceId>,
     blocked: BTreeSet<V3OnionServiceId>,
-    command_queue: Weak<Mutex<Vec<Command>>>,
+    command_queue: Weak<Mutex<BinaryHeap<Command>>>,
     event_loop_complete: Promise<()>,
     ) -> Self {
         Self {
@@ -398,15 +406,22 @@ impl EventLoopTask {
     }
 
     fn handle_commands(&mut self) -> Result<()> {
-        let command_queue: Vec<Command> = {
+        let mut command_queue = {
             let command_queue = self.command_queue.upgrade().context("command_queue dropped")?;
             let mut command_queue = command_queue.lock().expect("command_queue mutex poisoned");
-            std::mem::take(&mut command_queue)
+            std::mem::take(command_queue.deref_mut())
         };
 
-        for cmd in command_queue {
-            let data = cmd.data;
-            match data {
+        loop {
+            if let Some(cmd) = command_queue.peek() {
+                if cmd.start_time > Instant::now() {
+                    break;
+                }
+            } else {
+                break;
+            }
+            let cmd = command_queue.pop().unwrap();
+            match cmd.data {
                 CommandData::EndEventLoop => self.task_complete = true,
                 CommandData::BeginServerHandshake{stream} => {
                     let handle = self.packet_handler.new_incoming_connection();
@@ -462,6 +477,14 @@ impl EventLoopTask {
                     message_id.resolve(result);
                 },
             }
+        }
+
+        // merge remainng commands
+        if !command_queue.is_empty() {
+            self.command_queue
+                .upgrade().context("command_queue dropped")?
+                .lock().expect("command_queue mutex poisoned")
+                .append(&mut command_queue);
         }
 
         Ok(())
@@ -736,7 +759,7 @@ impl EventLoopTask {
 
 struct ListenerTask {
     listener: OnionListener,
-    command_queue: Weak<Mutex<Vec<Command>>>,
+    command_queue: Weak<Mutex<BinaryHeap<Command>>>,
 }
 
 impl ListenerTask {
@@ -776,7 +799,6 @@ struct Connection {
     pub write_packets: Vec<Packet>,
 }
 
-
 struct Command {
     start_time:Instant,
     data: CommandData,
@@ -794,6 +816,26 @@ impl Command {
         }
     }
 }
+
+impl Ord for Command {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        other.start_time.cmp(&self.start_time)
+    }
+}
+
+impl PartialOrd for Command {
+    fn partial_cmp(&self, other:&Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for Command {
+    fn eq(&self, other: &Self)-> bool {
+        std::ptr::eq(self, other)
+    }
+}
+
+impl Eq for Command {}
 
 enum CommandData {
     // library is going away we need to cleanup
