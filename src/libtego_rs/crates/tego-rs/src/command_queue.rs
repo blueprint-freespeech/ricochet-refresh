@@ -80,6 +80,9 @@ pub(crate) enum CommandData {
         message_text: rico_protocol::v3::message::chat_channel::MessageText,
         message_id: Promise<Result<tego_message_id>>,
     },
+    ConnectContact{
+        service_id: V3OnionServiceId,
+    }
 }
 
 pub(crate) struct CommandQueue {

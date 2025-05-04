@@ -273,6 +273,10 @@ impl PacketHandler {
         }
     }
 
+    pub fn allowed(&self) -> &BTreeSet<V3OnionServiceId> {
+        &self.allowed
+    }
+
     fn connection(
         &self,
         connection_handle: ConnectionHandle) -> Result<&Connection, Error> {

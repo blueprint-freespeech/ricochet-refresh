@@ -355,6 +355,12 @@ impl EventLoopTask {
                                 };
                                 let _ = task.run();
                         }})?;
+
+                    // try to connect to contacts
+                    for contact in self.packet_handler.allowed() {
+                        self.command_queue.push(
+                            CommandData::ConnectContact{service_id: contact.clone()}, Duration::ZERO);
+                    }
                 },
                 TorEvent::LogReceived{line} => {
                     if let Some(tor_logs) = self.tor_logs.upgrade() {
@@ -372,9 +378,10 @@ impl EventLoopTask {
                         CallbackData::HostOnionServiceStateChanged{state: tego_host_onion_service_state::tego_host_onion_service_state_service_published});
                 },
                 TorEvent::ConnectComplete{handle, stream} => {
+                    println!("connected {handle}");
                     if let Some(pending_connection) = self.pending_connections.remove(&handle) {
 
-                        stream.set_nonblocking(true).expect("");
+                        stream.set_nonblocking(true).unwrap();
 
                         let service_id = pending_connection.service_id;
                         let message_text = pending_connection.message_text;
@@ -393,6 +400,7 @@ impl EventLoopTask {
                     }
                 },
                 TorEvent::ConnectFailed{handle, error} => {
+                    println!("connected failed: {handle}");
                     let pending_connection = self.pending_connections.remove(&handle);
                     // todo: queue up to try again in the future
                 },
@@ -470,6 +478,15 @@ impl EventLoopTask {
                     };
                     message_id.resolve(result);
                 },
+                CommandData::ConnectContact{service_id} => {
+                    println!("connecting to {service_id:?}");
+                    let target_addr: tor_interface::tor_provider::TargetAddr = (service_id.clone(), RICOCHET_PORT).into();
+
+                    let connect_handle = self.tor_client.connect_async(target_addr, None).unwrap();
+
+                    let pending_connection = PendingConnection {service_id, message_text: None };
+                    self.pending_connections.insert(connect_handle, pending_connection);
+                }
             }
         }
 
