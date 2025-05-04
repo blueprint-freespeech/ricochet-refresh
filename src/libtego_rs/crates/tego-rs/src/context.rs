@@ -188,7 +188,7 @@ impl Context {
         &self,
         service_id: V3OnionServiceId,
         message: rico_protocol::v3::message::contact_request_channel::MessageText) -> () {
-        self.push_command(CommandData::SendContactRequest{service_id, message});
+        self.push_command(CommandData::SendContactRequest{service_id, failure_count: 0usize, message});
     }
 
     pub fn acknowledge_contact_request(
@@ -359,7 +359,7 @@ impl EventLoopTask {
                     // try to connect to contacts
                     for contact in self.packet_handler.allowed() {
                         self.command_queue.push(
-                            CommandData::ConnectContact{service_id: contact.clone()}, Duration::ZERO);
+                            CommandData::ConnectContact{service_id: contact.clone(), failure_count: 0usize}, Duration::ZERO);
                     }
                 },
                 TorEvent::LogReceived{line} => {
@@ -378,13 +378,13 @@ impl EventLoopTask {
                         CallbackData::HostOnionServiceStateChanged{state: tego_host_onion_service_state::tego_host_onion_service_state_service_published});
                 },
                 TorEvent::ConnectComplete{handle, stream} => {
-                    println!("connected {handle}");
                     if let Some(pending_connection) = self.pending_connections.remove(&handle) {
-
                         stream.set_nonblocking(true).unwrap();
 
                         let service_id = pending_connection.service_id;
                         let message_text = pending_connection.message_text;
+
+                        println!("connected to {service_id:?}");
 
                         let mut replies: Vec<Packet> = Default::default();
                         let handle = self.packet_handler.new_outgoing_connection(service_id.clone(), message_text, &mut replies);
@@ -400,9 +400,27 @@ impl EventLoopTask {
                     }
                 },
                 TorEvent::ConnectFailed{handle, error} => {
-                    println!("connected failed: {handle}");
-                    let pending_connection = self.pending_connections.remove(&handle);
-                    // todo: queue up to try again in the future
+                    if let Some(pending_connection) = self.pending_connections.remove(&handle) {
+                        let service_id = pending_connection.service_id;
+                        let failure_count = pending_connection.failure_count + 1;
+
+                        // delay before trying to connect in seconds
+                        let delay = match failure_count {
+                            0..=10 => 30u64,
+                            11..=15 => 60u64,
+                            16..=20 => 120u64,
+                            21.. => 600u64,
+                        };
+
+                        println!("connect attempt {failure_count} to {service_id:?} failed; try again in {delay} seconds");
+
+                        let command_data = match pending_connection.message_text {
+                            Some(message) => CommandData::SendContactRequest{service_id, failure_count, message},
+                            None => CommandData::ConnectContact{service_id, failure_count},
+                        };
+
+                        self.command_queue.push(command_data, Duration::from_secs(delay));
+                    }
                 },
                 _ => (),
             }
@@ -457,12 +475,12 @@ impl EventLoopTask {
                         Err(_err) => todo!(),
                     }
                 },
-                CommandData::SendContactRequest{service_id, message} => {
+                CommandData::SendContactRequest{service_id, failure_count, message} => {
                     let target_addr: tor_interface::tor_provider::TargetAddr = (service_id.clone(), RICOCHET_PORT).into();
 
                     let connect_handle = self.tor_client.connect_async(target_addr, None).unwrap();
 
-                    let pending_connection = PendingConnection {service_id, message_text: Some(message) };
+                    let pending_connection = PendingConnection {service_id, message_text: Some(message), failure_count};
                     self.pending_connections.insert(connect_handle, pending_connection);
                 },
                 CommandData::SendMessage{service_id, message_text, message_id} => {
@@ -478,13 +496,12 @@ impl EventLoopTask {
                     };
                     message_id.resolve(result);
                 },
-                CommandData::ConnectContact{service_id} => {
-                    println!("connecting to {service_id:?}");
+                CommandData::ConnectContact{service_id, failure_count} => {
                     let target_addr: tor_interface::tor_provider::TargetAddr = (service_id.clone(), RICOCHET_PORT).into();
 
                     let connect_handle = self.tor_client.connect_async(target_addr, None).unwrap();
 
-                    let pending_connection = PendingConnection {service_id, message_text: None };
+                    let pending_connection = PendingConnection {service_id, failure_count,message_text: None };
                     self.pending_connections.insert(connect_handle, pending_connection);
                 }
             }
@@ -792,6 +809,7 @@ impl ListenerTask {
 #[derive(Debug)]
 struct PendingConnection {
     pub service_id: V3OnionServiceId,
+    pub failure_count: usize,
     pub message_text: Option<rico_protocol::v3::message::contact_request_channel::MessageText>,
 }
 
