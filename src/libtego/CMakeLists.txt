@@ -88,17 +88,7 @@ if (APPLE)
         REQUIRED)
 endif ()
 
-# protobuf configuration
-set(Protobuf_USE_STATIC_LIBS OFF CACHE BOOL "Use statically-linked protobuf")
-set(Protobuf_ROOT_DIR "" CACHE STRING "Path to custom Protobuf installation")
-if (NOT ${Protobuf_ROOT_DIR} STREQUAL "")
-    # CMake doesn't allow us to specify a protobuf installation like with
-    # openssl. Instead, use CMAKE_PREFIX_PATH to tell CMake to check that dir
-    # first for a protobuf install
-    list(APPEND CMAKE_PREFIX_PATH ${Protobuf_ROOT_DIR})
-endif ()
-
-include(FindProtobuf)
+find_package(Protobuf CONFIG REQUIRED)
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
@@ -213,17 +203,15 @@ target_include_directories(tego PUBLIC include/)
 set(EXTERN_DIR "../extern/")
 
 # protobuf
-target_include_directories(tego PRIVATE ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR}/protocol)
-target_link_libraries(tego PRIVATE ${Protobuf_LIBRARIES})
-protobuf_generate_cpp(
-    PROTO_SRC
-    PROTO_HDR
+protobuf_generate(
+    TARGET tego
+    IMPORT_DIRS source/protocol
+    PROTOS
     source/protocol/FileChannel.proto
     source/protocol/ContactRequestChannel.proto
     source/protocol/ControlChannel.proto
     source/protocol/ChatChannel.proto
     source/protocol/AuthHiddenService.proto)
-target_sources(tego PRIVATE ${PROTO_SRC} ${PROTO_HDR})
 
 # tor
 target_include_directories(tego PRIVATE ${EXTERN_DIR}/tor ${EXTERN_DIR}/tor/src ${EXTERN_DIR}/tor/src/ext)
