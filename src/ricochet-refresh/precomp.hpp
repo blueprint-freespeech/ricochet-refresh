@@ -1,13 +1,18 @@
-// C headers
+// pull in Q_OS_ defines
+#include <QtGlobal>
+
+// Windows
+#if defined(Q_OS_WIN)
+#   include <windows.h>
+#endif
 
 // openssl
 #include <openssl/crypto.h>
 
-// C++ headers
-#ifdef __cplusplus
-
 // Qt
-
+#if defined(Q_OS_WIN)
+#   include <QAbstractNativeEventFilter>
+#endif
 #include <QApplication>
 #include <QByteArray>
 #include <QDir>
@@ -35,7 +40,3 @@
 #else
 #   define TEGO_VERSION_STR "devbuild"
 #endif
-
-#endif // __cplusplus
-
-

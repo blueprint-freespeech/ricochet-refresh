@@ -44,6 +44,24 @@
 static bool initSettings(SettingsFile *settings, QLockFile **lockFile, QString &errorMessage);
 static void initTranslation();
 
+#if defined(Q_OS_WIN)
+class WindowsEventFilter : public QAbstractNativeEventFilter {
+public:
+    virtual ~WindowsEventFilter() = default;
+    virtual auto nativeEventFilter(const QByteArray &eventType, void* message, long* result) -> bool {
+
+        if (eventType == "windows_generic_MSG") {
+            auto msg = static_cast<const MSG*>(message);
+            if (msg->message == WM_CREATE) {
+                // exclude created windows from display capture on Windows
+                ::SetWindowDisplayAffinity(msg->hwnd, WDA_EXCLUDEFROMCAPTURE);
+            }
+        }
+        return false;
+    }
+};
+#endif // Q_OS_WIN
+
 int main(int argc, char *argv[]) try
 {
    /* Disable rwx memory.
@@ -64,6 +82,10 @@ int main(int argc, char *argv[]) try
     }
 
     QApplication a(argc, argv);
+#if defined(Q_OS_WIN)
+    WindowsEventFilter wef;
+    a.installNativeEventFilter(&wef);
+#endif // Q_OS_WIN
 
     tego_context_t* tegoContext = nullptr;
     tego_initialize(&tegoContext, tego::throw_on_error());
