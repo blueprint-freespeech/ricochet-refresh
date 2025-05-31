@@ -71,21 +71,16 @@ pub(crate) enum CommandData {
         service_id: V3OnionServiceId,
         response: tego_chat_acknowledge,
     },
-    // connect to peer and request to be an allowed contact
-    SendContactRequest{
-        service_id: V3OnionServiceId,
-        failure_count: usize,
-        message: rico_protocol::v3::message::contact_request_channel::MessageText,
-    },
     SendMessage{
         service_id: V3OnionServiceId,
         message_text: rico_protocol::v3::message::chat_channel::MessageText,
         message_id: Promise<Result<tego_message_id>>,
     },
-    //connect to an allowed contact
+    //connect to a peer and optionally request to be an allowed contact
     ConnectContact{
         service_id: V3OnionServiceId,
         failure_count: usize,
+        contact_request_message: Option<rico_protocol::v3::message::contact_request_channel::MessageText>,
     }
 }
 
