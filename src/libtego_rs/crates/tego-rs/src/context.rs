@@ -392,7 +392,7 @@ impl EventLoopTask {
 
                         let connection = Connection{
                             service_id: Some(service_id.clone()),
-                            stream: Some(stream),
+                            stream,
                             read_bytes: Default::default(),
                             write_packets: replies,
                         };
@@ -447,7 +447,7 @@ impl EventLoopTask {
 
                     let connection = Connection{
                         service_id: None,
-                        stream: Some(stream),
+                        stream,
                         read_bytes: Default::default(),
                         write_packets: Default::default(),
                     };
@@ -522,11 +522,7 @@ impl EventLoopTask {
             let mut retain = true;
 
             // early exit if we don't have a stream yet
-            let stream = if let Some(stream) = connection.stream.as_mut() {
-                stream
-            } else {
-                return retain;
-            };
+            let stream = &mut connection.stream;
 
             // handle reading
             match stream.read(&mut self.read_buffer) {
@@ -822,7 +818,7 @@ struct PendingConnection {
 #[derive(Debug)]
 struct Connection {
     pub service_id: Option<V3OnionServiceId>,
-    pub stream: Option<OnionStream>,
+    pub stream: OnionStream,
     // buffer of unhandled read bytes
     pub read_bytes: Vec<u8>,
     // buffer of packets to write
