@@ -262,6 +262,8 @@ pub enum Event {
 pub struct PacketHandler {
     next_connection_handle: ConnectionHandle,
     connections: BTreeMap<ConnectionHandle, Connection>,
+    // map service id to connection handle, only contains connections which have succeeded
+    // the auth hidden service handshake (i.e. has received confifrmation of a valid proof)
     service_id_to_connection_handle: BTreeMap<V3OnionServiceId, ConnectionHandle>,
     // our service id
     private_key: Ed25519PrivateKey,
@@ -1140,6 +1142,13 @@ impl PacketHandler {
                 }
             }
         }
+    }
+
+    pub fn has_verified_connection(
+        &self,
+        service_id: &V3OnionServiceId,
+    ) -> bool {
+        self.service_id_to_connection_handle.contains_key(service_id)
     }
 
     pub fn accept_contact_request(
