@@ -413,7 +413,7 @@ impl EventLoopTask {
                             21.. => 600u64,
                         };
 
-                        println!("connect attempt {failure_count} to {service_id:?} failed; try again in {delay} seconds");
+                        println!("--- connect attempt {failure_count} to {service_id:?} failed; try again in {delay} seconds");
 
                         let contact_request_message = pending_connection.message_text;
                         let command_data = CommandData::ConnectContact{service_id, failure_count, contact_request_message};
@@ -488,12 +488,18 @@ impl EventLoopTask {
                     message_id.resolve(result);
                 },
                 CommandData::ConnectContact{service_id, failure_count, contact_request_message: message_text} => {
-                    let target_addr: tor_interface::tor_provider::TargetAddr = (service_id.clone(), RICOCHET_PORT).into();
+                    // only open new connection if there is no existing verified
+                    // connection already
+                    if !self.packet_handler.has_verified_connection(&service_id) {
+                        let target_addr: tor_interface::tor_provider::TargetAddr = (service_id.clone(), RICOCHET_PORT).into();
 
-                    let connect_handle = self.tor_client.connect_async(target_addr, None).unwrap();
+                        let connect_handle = self.tor_client.connect_async(target_addr, None).unwrap();
 
-                    let pending_connection = PendingConnection {service_id, failure_count,message_text};
-                    self.pending_connections.insert(connect_handle, pending_connection);
+                        let pending_connection = PendingConnection {service_id, failure_count,message_text};
+                        self.pending_connections.insert(connect_handle, pending_connection);
+                    } else {
+                        println!("--- skipping connection attempt, verified connection already exists to {service_id}");
+                    }
                 }
             }
         }
