@@ -115,6 +115,7 @@ enum Direction {
 }
 
 struct Connection {
+    creation_time: std::time::Instant,
     channel_map: ChannelMap,
     direction: Direction,
     peer_service_id: Option<V3OnionServiceId>,
@@ -124,8 +125,14 @@ struct Connection {
 }
 
 impl Connection {
+    fn age(&self) -> std::time::Duration {
+        let now = std::time::Instant::now();
+        now.duration_since(self.creation_time)
+    }
+
     fn new_incoming() -> Self {
         Self {
+            creation_time: std::time::Instant::now(),
             channel_map: Default::default(),
             direction: Direction::Incoming,
             peer_service_id: None,
@@ -139,6 +146,7 @@ impl Connection {
         service_id: V3OnionServiceId,
         message: Option<contact_request_channel::MessageText>) -> Self {
         Self {
+            creation_time: std::time::Instant::now(),
             channel_map: Default::default(),
             direction: Direction::Outgoing,
             peer_service_id: Some(service_id),
@@ -186,11 +194,21 @@ pub enum Event {
     IntroductionReceived,
     IntroductionResponseReceived,
     OpenChannelAuthHiddenServiceReceived,
+    // Fired when a host authorises a connecting client
+    // Optionally includes handle of existing connection to drop
     ClientAuthenticated{
         service_id: V3OnionServiceId,
+        duplicate_connection: Option<ConnectionHandle>,
     },
+    // Fired when client receives proof confirmation from host
+    // Optionally inludes handle of existing connection to drop
     HostAuthenticated{
         service_id: V3OnionServiceId,
+        duplicate_connection: Option<ConnectionHandle>,
+    },
+    // Fired when a duplicate authenticated connection must be dropped
+    DuplicateConnectionDropped {
+        duplicate_connection: ConnectionHandle,
     },
     ContactRequestReceived{
         service_id: V3OnionServiceId,
@@ -856,7 +874,7 @@ impl PacketHandler {
                     let connection = self.connection_mut(connection_handle)?;
                     connection.peer_service_id = Some(client_service_id.clone());
 
-                    // build reply packet
+                    // build reply packets
 
                     let connection = self.connection(connection_handle)?;
                     let is_known_contact = self.allowed.contains(&client_service_id);
@@ -895,10 +913,45 @@ impl PacketHandler {
                         connection.channel_map.insert(channel_id, ChannelData::OutgoingFileTransfer)?;
                     }
 
-                    self.service_id_to_connection_handle.insert(client_service_id.clone(), connection_handle);
                     let service_id = client_service_id.clone();
-                    replies.append(&mut pending_replies);
-                    Ok(Event::ClientAuthenticated{service_id})
+
+                    // TODO: protocol specification does not describe this logic
+                    // equivalent lives in ContactUser.cpp
+                    // handle existence of duplicate existing connection
+                    let event = if let Some(duplicate_connection) = self.service_id_to_connection_handle.get(&service_id) {
+                        let connection = self.connection(*duplicate_connection).unwrap();
+
+                        // newest incoming takes precedence
+                        if connection.direction == Direction::Incoming ||
+                        // only replace if previous existing outgoing if it is more than 30 seconds old
+                           connection.age() > std::time::Duration::from_secs(30) ||
+                        // only drop old connection if the peer's service id is less
+                        // than our own
+                           service_id < self.service_id {
+                            replies.append(&mut pending_replies);
+                            let service_id = service_id.clone();
+                            let duplicate_connection = Some(*duplicate_connection);
+                            Event::ClientAuthenticated{service_id, duplicate_connection}
+                        } else {
+                            // otherwise we drop this new conneciton in favor of previous outgoing connection
+                            let duplicate_connection = connection_handle;
+                            Event::DuplicateConnectionDropped{duplicate_connection}
+                        }
+                    } else {
+                        // no previous connection to drop
+                        replies.append(&mut pending_replies);
+                        let service_id = service_id.clone();
+                        Event::ClientAuthenticated{service_id, duplicate_connection: None}
+                    };
+
+                    if let Event::ClientAuthenticated{..} = &event {
+                        if let Some(old_connection_handle) = self.service_id_to_connection_handle.insert(service_id, connection_handle) {
+                            // remove the old connection
+                            self.connections.remove(&old_connection_handle);
+                        }
+                    }
+
+                    Ok(event)
                 } else {
                     println!("bad signature, impersonator!");
                     let _ = self.connections.remove(&connection_handle);
@@ -909,7 +962,7 @@ impl PacketHandler {
                 let protocol_failure = {
                     let connection = self.connection(connection_handle)?;
 
-                    // onl outgoing connections should receive an auth hidden service result
+                    // only outgoing connections should receive an auth hidden service result
                     connection.direction != Direction::Outgoing ||
                     // channel has wrong data
                     match connection.channel_map.channel_id_to_type(&channel) {
@@ -922,9 +975,11 @@ impl PacketHandler {
                     return Ok(Event::FatalProtocolFailure)
                 }
 
+                let client_service_id = self.service_id.clone();
+
                 let connection = self.connection_mut(connection_handle)?;
                 match (result.accepted(), connection.peer_service_id.clone()) {
-                    (true, Some(service_id)) => {
+                    (true, Some(server_service_id)) => {
                         let mut pending_replies: Vec<Packet> = Vec::with_capacity(3);
 
                         connection.close_channel(channel, Some(&mut pending_replies));
@@ -975,14 +1030,52 @@ impl PacketHandler {
                                 let packet = control_channel::Packet::OpenChannel(open_channel);
                                 let reply = Packet::ControlChannelPacket(packet);
                                 pending_replies.push(reply);
-
                                 connection.channel_map.insert(channel_id, ChannelData::OutgoingFileTransfer)?;
-                                self.allowed.insert(service_id.clone());
+
+                                self.allowed.insert(server_service_id.clone());
                             },
                         }
 
-                        replies.append(&mut pending_replies);
-                        Ok(Event::HostAuthenticated{service_id})
+                        let service_id = server_service_id.clone();
+
+                        // TODO: protocol specification does not describe this logic
+                        // equivalent lives in ContactUser.cpp
+                        // handle existence of duplicate existing connection
+                        let event = if let Some(duplicate_connection) = self.service_id_to_connection_handle.get(&service_id) {
+                            let connection = self.connection(*duplicate_connection).unwrap();
+
+                            // newest outgoing takes precedence
+                            if connection.direction == Direction::Outgoing ||
+                            // only replacce if previous existing outgoing if it is
+                            // more than 30 seconds old
+                              connection.age() > std::time::Duration::from_secs(30) ||
+                            // only drop old connection if the peer's service id is less
+                            // than our own
+                              service_id < self.service_id {
+                                replies.append(&mut pending_replies);
+                                let service_id = service_id.clone();
+                                let duplicate_connection = Some(*duplicate_connection);
+                                Event::HostAuthenticated{service_id, duplicate_connection}
+                            } else {
+                                // otherwise we drop this new connection in favor of previous incoming connection
+                                let duplicate_connection = connection_handle;
+                                Event::DuplicateConnectionDropped{duplicate_connection}
+                            }
+                        } else {
+                            // no previous connection to drop
+                            replies.append(&mut pending_replies);
+                            let service_id = service_id.clone();
+                            Event::HostAuthenticated{service_id, duplicate_connection: None}
+                        };
+
+                        if let Event::HostAuthenticated{..} = &event {
+                            if let Some (old_connection_handle) = self.service_id_to_connection_handle.insert(service_id, connection_handle) {
+                                // remove the old connection
+                                self.connections.remove(&old_connection_handle);
+                            }
+                        }
+
+                        Ok(event)
                     },
                     _ => Ok(Event::FatalProtocolFailure),
                 }
@@ -1009,7 +1102,6 @@ impl PacketHandler {
 
         let connection = Connection::new_outgoing(service_id.clone(), message_text);
         self.connections.insert(handle, connection);
-        self.service_id_to_connection_handle.insert(service_id, handle);
 
         let introduction = introduction::IntroductionPacket::new(vec![introduction::Version::RicochetRefresh3]).expect("IntroductionPacket construction failed");
         let packet = Packet::IntroductionPacket(introduction);
@@ -1026,6 +1118,28 @@ impl PacketHandler {
         self.connections.insert(handle, connection);
 
         handle
+    }
+
+    pub fn remove_connection(
+        &mut self,
+        handle: &ConnectionHandle,
+    ) -> () {
+        // remove this connection
+        if let Some(connection) = self.connections.remove(handle) {
+            // remove service_id to handle entry only if it is associated with
+            // the passed in handle
+            if let Some(service_id) = connection.peer_service_id {
+                let remove = if let Some(stored_handle) = self.service_id_to_connection_handle.get(&service_id) {
+                    stored_handle == handle
+                } else {
+                    false
+                };
+
+                if remove {
+                    self.service_id_to_connection_handle.remove(&service_id);
+                }
+            }
+        }
     }
 
     pub fn accept_contact_request(

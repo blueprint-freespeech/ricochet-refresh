@@ -516,6 +516,10 @@ impl EventLoopTask {
     }
 
     fn handle_connections(&mut self) -> Result<()> {
+        // TODO: this needs to be two-pass
+        // first handle read data
+        // then remove any connnections which need to be pruned
+        // then send queued write data
         self.connections.retain(|&handle, connection| -> bool {
 
             let mut retain = true;
@@ -593,13 +597,18 @@ impl EventLoopTask {
                     Ok(Event::OpenChannelAuthHiddenServiceReceived) => {
                         println!("--- open auth hidden service received ---");
                     },
-                    Ok(Event::ClientAuthenticated{service_id}) => {
+                    Ok(Event::ClientAuthenticated{service_id, duplicate_connection}) => {
+                        // todo: handle closed connection
                         println!("--- client authenticated: peer: {service_id:?} ---");
                         connection.service_id = Some(service_id);
                     },
-                    Ok(Event::HostAuthenticated{service_id}) => {
+                    Ok(Event::HostAuthenticated{service_id, duplicate_connection}) => {
+                        // todo: handle closed connection
                         println!("--- host authenticated: peer: {service_id:?} ---");
                     },
+                    Ok(Event::DuplicateConnectionDropped{duplicate_connection}) => {
+                        // todo: handle closed connection
+                    }
                     Ok(Event::ContactRequestReceived{service_id, nickname: _, message_text}) => {
                         println!("--- contact request received, peer: {service_id:?}, message_text: \"{message_text}\"");
                         self.callback_queue.push(CallbackData::ChatRequestReceived{service_id, message: message_text});
