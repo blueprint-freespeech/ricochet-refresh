@@ -221,13 +221,8 @@ namespace shims
                 }
                 else
                 {
-                    // fill seed w/ random bytes
-                    tego_get_random_bytes(
-                        this->context,
-                        reinterpret_cast<uint8_t*>(&seed),
-                        sizeof(seed),
-                        tego::throw_on_error());
-
+                    // get a random quint32
+                    seed = QRandomGenerator::global()->generate();
                     // now ensure we can save this value as an json_int_t
                     seed = seed % static_cast<uint32_t>(std::numeric_limits<json_int_t>::max());
                 }
