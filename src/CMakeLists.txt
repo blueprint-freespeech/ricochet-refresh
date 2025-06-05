@@ -72,9 +72,21 @@ else ()
     message(WARNING "Could not determine compiler, this may not build on non debug builds!")
 endif ()
 
-# openssl configuration. this propogates to all subprojects
-set(OPENSSL_USE_STATIC_LIBS OFF CACHE BOOL "Use statically-linked OpenSSL")
-set(OPENSSL_ROOT_DIR "" CACHE STRING "Path to custom OpenSSL installation")
+# experimental Rust backend
+option(ENABLE_LIBTEGO_RS "Enable experimental Rust backend" OFF)
+
+if (ENABLE_LIBTEGO_RS)
+    add_compile_definitions(ENABLE_LIBTEGO_RS)
+endif()
+
+if (NOT ENABLE_LIBTEGO_RS)
+    # openssl configuration. this propogates to all subprojects
+    set(OPENSSL_USE_STATIC_LIBS OFF CACHE BOOL "Use statically-linked OpenSSL")
+    set(OPENSSL_ROOT_DIR "" CACHE STRING "Path to custom OpenSSL installation")
+
+    include(FindOpenSSL)
+    find_package(OpenSSL 3.0.0 REQUIRED)
+endif()
 
 # qt configuration
 set(STATIC_QT OFF CACHE BOOL "Enable if using a static build of QT" )
@@ -82,15 +94,10 @@ set(STATIC_QT_ROOT_DIR "" CACHE STRING "Path to static build of QT (ignored if S
 
 option(USE_SUBMODULE_FMT "Use the version of fmt included as a submodule instead of one potentially installed to the system" ON)
 
-include(FindOpenSSL)
-find_package(OpenSSL 3.0.0 REQUIRED)
-
 if (USE_SUBMODULE_FMT)
     add_subdirectory(extern/fmt)
 endif ()
 
-# experimental Rust backend
-option(ENABLE_LIBTEGO_RS "Enable experimental Rust backend" OFF)
 if (ENABLE_LIBTEGO_RS)
     add_subdirectory(libtego_rs)
 else()
