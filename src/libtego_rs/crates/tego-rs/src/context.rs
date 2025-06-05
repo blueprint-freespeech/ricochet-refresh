@@ -385,19 +385,23 @@ impl EventLoopTask {
                         let service_id = pending_connection.service_id;
                         let message_text = pending_connection.message_text;
 
-                        println!("connected to {service_id:?}");
+                        if !self.packet_handler.has_verified_connection(&service_id) {
+                            println!("--- connected to {service_id:?}");
+                            let mut replies: Vec<Packet> = Default::default();
+                            let handle = self.packet_handler.new_outgoing_connection(service_id.clone(), message_text, &mut replies);
 
-                        let mut replies: Vec<Packet> = Default::default();
-                        let handle = self.packet_handler.new_outgoing_connection(service_id.clone(), message_text, &mut replies);
+                            let connection = Connection{
+                                service_id: Some(service_id.clone()),
+                                stream,
+                                read_bytes: Default::default(),
+                                read_packets: Default::default(),
+                                write_packets: replies,
+                            };
 
-                        let connection = Connection{
-                            service_id: Some(service_id.clone()),
-                            stream,
-                            read_bytes: Default::default(),
-                            write_packets: replies,
-                        };
-
-                        self.connections.insert(handle, connection);
+                            self.connections.insert(handle, connection);
+                        } else {
+                            println!("--- connected to {service_id:?} but vefified connection already exists, dropping");
+                        }
                     }
                 },
                 TorEvent::ConnectFailed{handle, error} => {
@@ -449,6 +453,7 @@ impl EventLoopTask {
                         service_id: None,
                         stream,
                         read_bytes: Default::default(),
+                        read_packets: Default::default(),
                         write_packets: Default::default(),
                     };
 
@@ -491,6 +496,7 @@ impl EventLoopTask {
                     // only open new connection if there is no existing verified
                     // connection already
                     if !self.packet_handler.has_verified_connection(&service_id) {
+                        println!("--- connecting to {service_id}");
                         let target_addr: tor_interface::tor_provider::TargetAddr = (service_id.clone(), RICOCHET_PORT).into();
 
                         let connect_handle = self.tor_client.connect_async(target_addr, None).unwrap();
@@ -513,15 +519,13 @@ impl EventLoopTask {
     }
 
     fn handle_connections(&mut self) -> Result<()> {
-        // TODO: this needs to be two-pass
-        // first handle read data
-        // then remove any connnections which need to be pruned
-        // then send queued write data
-        self.connections.retain(|&handle, connection| -> bool {
 
-            let mut retain = true;
+        // connections to be removed
+        let mut to_remove: BTreeSet<ConnectionHandle> = Default::default();
+        let mut to_retry: BTreeSet<V3OnionServiceId> = Default::default();
 
-            // early exit if we don't have a stream yet
+        // read bytes from each connection
+        'outer: for (&handle, connection) in self.connections.iter_mut() {
             let stream = &mut connection.stream;
 
             // handle reading
@@ -529,13 +533,23 @@ impl EventLoopTask {
                 Err(err) => match err.kind() {
                     ErrorKind::WouldBlock | ErrorKind::TimedOut => (),
                     _ => {
-                        println!("retain = false; err: {err:?}");
-                        retain = false; // some error
+                        // some error
+                        println!("stream read err: {err:?}");
+                        to_remove.insert(handle);
+                        if let Some(service_id) = &connection.service_id {
+                            to_retry.insert(service_id.clone());
+                        }
+                        continue 'outer;
                     },
                 },
                 Ok(0) => {
-                    println!("retain = false; end of stream");
-                    retain = false; // end of stream
+                   // end of stream
+                    println!("stream read err: end of stream");
+                    to_remove.insert(handle);
+                    if let Some(service_id) = &connection.service_id {
+                        to_retry.insert(service_id.clone());
+                    }
+                    continue 'outer;
                 },
                 Ok(size) => {
                     let read_buffer = &self.read_buffer[..size];
@@ -547,10 +561,10 @@ impl EventLoopTask {
             // total handled bytes
             let mut trim_count = 0usize;
 
-            let mut read_packets: Vec<Packet> = Default::default();
+            let read_packets = &mut connection.read_packets;
 
             // parse read bytes into packets
-            loop {
+            'packet_parse: loop {
                 match self.packet_handler.try_parse_packet(handle, read_bytes) {
                     Ok((packet, size)) => {
                         println!("<< read packet: {packet:?}");
@@ -561,25 +575,25 @@ impl EventLoopTask {
                         read_packets.push(packet);
                     },
                     Err(Error::NeedMoreBytes) => {
-                        break;
+                        break 'packet_parse;
                     },
                     Err(err) => {
                         // TODO: report error somewhere?
-                        println!("- error: {err:?}");
-                        println!("read_bytes: {read_bytes:?}");
+                        println!("parse packet error: {err:?}");
+                        println!("- read_bytes: {read_bytes:?}");
                         // drop connection
-                        println!("retain = false; protobuf error");
-                        retain = false;
-                        break;
+                        to_remove.insert(handle);
+                        continue 'outer;
                     },
                 }
             }
             // drop handled bytes off the front
             connection.read_bytes.drain(0..trim_count);
 
-            // handle packets and queue responses
             let write_packets = &mut connection.write_packets;
-            for packet in read_packets.drain(..) {
+
+            // handle packets and queue responses
+            'packet_handle: for packet in read_packets.drain(..) {
                 match self.packet_handler.handle_packet(handle, packet, write_packets) {
                     Ok(Event::IntroductionReceived) => {
                         println!("--- introduction received ---");
@@ -592,15 +606,23 @@ impl EventLoopTask {
                     },
                     Ok(Event::ClientAuthenticated{service_id, duplicate_connection}) => {
                         // todo: handle closed connection
-                        println!("--- client authenticated: peer: {service_id:?} ---");
+                        println!("--- client authenticated: peer: {service_id:?}, duplicate_connection: {duplicate_connection:?} ---");
                         connection.service_id = Some(service_id);
+                        if let Some(duplicate_connection) = duplicate_connection {
+                            to_remove.insert(duplicate_connection);
+                        }
                     },
                     Ok(Event::HostAuthenticated{service_id, duplicate_connection}) => {
                         // todo: handle closed connection
-                        println!("--- host authenticated: peer: {service_id:?} ---");
+                        println!("--- host authenticated: peer: {service_id:?}, duplicate_connection: {duplicate_connection:?} ---");
+                        if let Some(duplicate_connection) = duplicate_connection {
+                            to_remove.insert(duplicate_connection);
+                        }
                     },
                     Ok(Event::DuplicateConnectionDropped{duplicate_connection}) => {
                         // todo: handle closed connection
+                        println!("--- duplicate connection dropped: {duplicate_connection}");
+                        to_remove.insert(duplicate_connection);
                     }
                     Ok(Event::ContactRequestReceived{service_id, nickname: _, message_text}) => {
                         println!("--- contact request received, peer: {service_id:?}, message_text: \"{message_text}\"");
@@ -653,13 +675,14 @@ impl EventLoopTask {
                     Ok(Event::FatalProtocolFailure) => {
                         println!("--- fatal protocol error, removing connection ---");
                         println!("retain = false; FatalProtocolError");
-                        retain = false;
+                        to_remove.insert(handle);
+                        break 'packet_handle;
                     }
                     Err(err) => panic!("error: {err:?}"),
                 }
             }
 
-            // write replies
+            // write packets to stream
             if !write_packets.is_empty() {
                 // serialise out packets to bytes
                 let mut write_bytes: Vec<u8> = Default::default();
@@ -669,25 +692,42 @@ impl EventLoopTask {
                 }
 
                 // send bytes
+                let stream = &mut connection.stream;
                 if !stream.write(write_bytes.as_slice()).is_ok() {
-                    println!("retain = false; write failed");
-                    retain = false;
+                    to_remove.insert(handle);
+                    if let Some(service_id) = &connection.service_id {
+                        to_retry.insert(service_id.clone());
+                    }
+                    continue 'outer;
                 }
             }
+        }
 
-            // signal user disconnect
-            match (retain, &connection.service_id) {
-                (false, Some(service_id)) => {
-                    let service_id = service_id.clone();
-                    let status = tego_user_status_offline;
+        // drop our dead connections
+        for &handle in to_remove.iter() {
+            self.packet_handler.remove_connection(&handle);
+            let connection = self.connections.remove(&handle).expect("removed non-existing connection");
+            // signal user ofline status to frontend
+            if  let Some(service_id) = connection.service_id {
+                println!("--- dropping connection; handle: {handle}, service_id: {service_id}");
+                // signal user offline status if there is not another connection
+                if !self.packet_handler.has_verified_connection(&service_id) {
                     use crate::ffi::tego_user_status::tego_user_status_offline;
+                    let status = tego_user_status_offline;
                     self.callback_queue.push(CallbackData::UserStatusChanged{service_id, status});
-                },
-                _ => (),
+                }
+            } else {
+                println!("--- dropping connection; handle: {handle}");
             }
+        }
 
-            retain
-        });
+        // initiate connection retries for connections which had IO failures
+        for service_id in to_retry.iter() {
+            let service_id = service_id.clone();
+            let command_data = CommandData::ConnectContact{service_id, failure_count: 0, contact_request_message: None};
+
+            self.command_queue.push(command_data, Duration::from_secs(0));
+        }
 
         Ok(())
     }
@@ -821,6 +861,8 @@ struct Connection {
     pub stream: OnionStream,
     // buffer of unhandled read bytes
     pub read_bytes: Vec<u8>,
+    // buffer of read Packets to handle
+    pub read_packets: Vec<Packet>,
     // buffer of packets to write
     pub write_packets: Vec<Packet>,
 }
