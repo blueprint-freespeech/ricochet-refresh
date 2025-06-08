@@ -1532,6 +1532,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "cbindgen",
+ "data-encoding",
  "rico-protocol",
  "tor-interface",
  "which 7.0.3",

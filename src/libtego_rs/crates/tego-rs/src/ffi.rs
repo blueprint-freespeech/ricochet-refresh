@@ -15,7 +15,7 @@ use tor_interface::tor_provider::{DomainAddr, TargetAddr};
 // internal crates
 use crate::context::{Context, UserData};
 use crate::error::{Error, translate_failures};
-use crate::file_hash::FileHash;
+use crate::file_hash::*;
 use crate::macros::*;
 use crate::object_map::ObjectMap;
 use crate::tor_daemon_config::TorDaemonConfig;
@@ -1420,11 +1420,18 @@ pub type tego_file_size = u64;
 ///  the null-terinator
 #[no_mangle]
 pub extern "C" fn tego_file_hash_string_size(
-    _file_hash: *const tego_file_hash,
+    file_hash: *const tego_file_hash,
     error: *mut *mut tego_error) -> usize {
     translate_failures(0usize, error, || -> Result<usize> {
-        println!("tego_file_hash_string_size() not implemented");
-        bail_not_implemented!()
+        bail_if_null!(file_hash);
+        let file_hash = file_hash as TegoKey;
+        match get_object_map().get(&file_hash) {
+            Some(TegoObject::FileHash(file_hash)) => {
+                Ok(FILE_HASH_STRING_SIZE)
+            },
+            Some(_) => bail!("not a tego_file_hash pointer: {:?}", file_hash as *const c_void),
+            None => bail!("not a valid pointer: {:?}", file_hash as *const c_void),
+        }
     })
 }
 
@@ -1439,13 +1446,32 @@ pub extern "C" fn tego_file_hash_string_size(
 ///  null-terminator
 #[no_mangle]
 pub extern "C" fn tego_file_hash_to_string(
-    _file_hash: *const tego_file_hash,
-    _out_hash_string: *mut c_char,
-    _hash_string_size: usize,
+    file_hash: *const tego_file_hash,
+    out_hash_string: *mut c_char,
+    hash_string_size: usize,
     error: *mut *mut tego_error) -> usize {
     translate_failures(0usize, error, || -> Result<usize> {
-        println!("tego_file_hash_to_string() not implemented");
-        bail_not_implemented!()
+        bail_if_null!(file_hash);
+        bail_if_null!(out_hash_string);
+        bail_if!(hash_string_size < FILE_HASH_STRING_SIZE);
+
+        let file_hash = file_hash as TegoKey;
+        match get_object_map().get(&file_hash) {
+            Some(TegoObject::FileHash(file_hash)) => {
+                let hash_string = file_hash.to_string();
+                unsafe {
+                    let out_hash_string = std::slice::from_raw_parts_mut(out_hash_string as *mut u8, hash_string_size);
+                    std::ptr::copy(
+                        hash_string.as_bytes().as_ptr(),
+                        out_hash_string.as_mut_ptr(),
+                        FILE_HASH_STRING_LENGTH);
+                    out_hash_string[FILE_HASH_STRING_LENGTH] = 0u8;
+                }
+                Ok(FILE_HASH_STRING_SIZE)
+            },
+            Some(_) => bail!("not a tego_file_hash pointer: {:?}", file_hash as *const c_void),
+            None => bail!("not a valid pointer: {:?}", file_hash as *const c_void),
+        }
     })
 }
 
