@@ -32,7 +32,6 @@ namespace shims
         void createIncomingContactRequest(const QString& hostname, const QString& message);
         void removeIncomingContactRequest(shims::IncomingContactRequest* incomingContactRequest);
         QList<QObject*> getRequests() const;
-        bool isServiceOnline() const;
         QString contactID() const;
         shims::ContactsManager* getContacts();
 

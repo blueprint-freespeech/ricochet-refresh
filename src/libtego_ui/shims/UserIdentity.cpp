@@ -43,14 +43,6 @@ namespace shims
         return retval;
     }
 
-    bool UserIdentity::isServiceOnline() const
-    {
-        auto state = tego_host_onion_service_state_none;
-        tego_context_get_host_onion_service_state(this->context, &state, tego::throw_on_error());
-
-        return state == tego_host_onion_service_state_service_published;
-    }
-
     QString UserIdentity::contactID() const try
     {
         // get host user id and convert to the ricochet:blahlah format
