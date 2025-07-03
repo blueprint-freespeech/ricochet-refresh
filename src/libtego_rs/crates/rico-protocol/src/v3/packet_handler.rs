@@ -302,7 +302,7 @@ impl PacketHandler {
         connection_handle: ConnectionHandle) -> Result<&Connection, Error> {
         self.connections
             .get(&connection_handle)
-            .ok_or(Error::TargetConnectionDoesNotExist(connection_handle))
+            .ok_or(Error::ConnectionHandleToConnectionMappingFailure(connection_handle))
     }
 
     fn connection_mut(
@@ -310,7 +310,16 @@ impl PacketHandler {
         connection_handle: ConnectionHandle) -> Result<&mut Connection, Error> {
         self.connections
             .get_mut(&connection_handle)
-            .ok_or(Error::TargetConnectionDoesNotExist(connection_handle))
+            .ok_or(Error::ConnectionHandleToConnectionMappingFailure(connection_handle))
+    }
+
+    fn service_id_to_connection_handle(
+        &self,
+        service_id: &V3OnionServiceId) -> Result<ConnectionHandle, Error> {
+        self.service_id_to_connection_handle
+            .get(service_id)
+            .ok_or(Error::ServiceIdToConnectionHandleMappingFailure(service_id.clone()))
+            .copied()
     }
 
     // On successful packet read returns a (packet, bytes read) tuple
@@ -322,7 +331,7 @@ impl PacketHandler {
         connection_handle: ConnectionHandle,
         bytes: &[u8]) -> Result<(Packet, usize), Error> {
 
-        let connection = self.connections.get(&connection_handle).ok_or(Error::TargetConnectionDoesNotExist(connection_handle))?;
+        let connection = self.connections.get(&connection_handle).ok_or(Error::ConnectionHandleToConnectionMappingFailure(connection_handle))?;
         let channel_map = &connection.channel_map;
 
         if channel_map.is_empty() {
@@ -920,30 +929,34 @@ impl PacketHandler {
                     // TODO: protocol specification does not describe this logic
                     // equivalent lives in ContactUser.cpp
                     // handle existence of duplicate existing connection
-                    let event = if let Some(duplicate_connection) = self.service_id_to_connection_handle.get(&service_id) {
-                        let connection = self.connection(*duplicate_connection).unwrap();
+                    let event = match self.service_id_to_connection_handle(&service_id) {
+                        Ok(duplicate_connection) =>  {
+                            let connection = self.connection(duplicate_connection).unwrap();
 
-                        // newest incoming takes precedence
-                        if connection.direction == Direction::Incoming ||
-                        // only replace if previous existing outgoing if it is more than 30 seconds old
-                           connection.age() > std::time::Duration::from_secs(30) ||
-                        // only drop old connection if the peer's service id is less
-                        // than our own
-                           service_id < self.service_id {
+                            // newest incoming takes precedence
+                            if connection.direction == Direction::Incoming ||
+                            // only replace if previous existing outgoing if it is more than 30 seconds old
+                               connection.age() > std::time::Duration::from_secs(30) ||
+                            // only drop old connection if the peer's service id is less
+                            // than our own
+                               service_id < self.service_id {
+                                replies.append(&mut pending_replies);
+                                let service_id = service_id.clone();
+                                let duplicate_connection = Some(duplicate_connection);
+                                Event::ClientAuthenticated{service_id, duplicate_connection}
+                            } else {
+                                // otherwise we drop this new conneciton in favor of previous outgoing connection
+                                let duplicate_connection = connection_handle;
+                                Event::DuplicateConnectionDropped{duplicate_connection}
+                            }
+                        },
+                        Err(Error::ServiceIdToConnectionHandleMappingFailure(..)) => {
+                            // no previous connection to drop
                             replies.append(&mut pending_replies);
                             let service_id = service_id.clone();
-                            let duplicate_connection = Some(*duplicate_connection);
-                            Event::ClientAuthenticated{service_id, duplicate_connection}
-                        } else {
-                            // otherwise we drop this new conneciton in favor of previous outgoing connection
-                            let duplicate_connection = connection_handle;
-                            Event::DuplicateConnectionDropped{duplicate_connection}
-                        }
-                    } else {
-                        // no previous connection to drop
-                        replies.append(&mut pending_replies);
-                        let service_id = service_id.clone();
-                        Event::ClientAuthenticated{service_id, duplicate_connection: None}
+                            Event::ClientAuthenticated{service_id, duplicate_connection: None}
+                        },
+                        Err(_) => unreachable!(),
                     };
 
                     if let Event::ClientAuthenticated{..} = &event {
@@ -1043,31 +1056,35 @@ impl PacketHandler {
                         // TODO: protocol specification does not describe this logic
                         // equivalent lives in ContactUser.cpp
                         // handle existence of duplicate existing connection
-                        let event = if let Some(duplicate_connection) = self.service_id_to_connection_handle.get(&service_id) {
-                            let connection = self.connection(*duplicate_connection).unwrap();
+                        let event = match self.service_id_to_connection_handle(&service_id) {
+                            Ok(duplicate_connection) => {
+                                let connection = self.connection(duplicate_connection).unwrap();
 
-                            // newest outgoing takes precedence
-                            if connection.direction == Direction::Outgoing ||
-                            // only replacce if previous existing outgoing if it is
-                            // more than 30 seconds old
-                              connection.age() > std::time::Duration::from_secs(30) ||
-                            // only drop old connection if the peer's service id is less
-                            // than our own
-                              service_id < self.service_id {
+                                // newest outgoing takes precedence
+                                if connection.direction == Direction::Outgoing ||
+                                // only replacce if previous existing outgoing if it is
+                                // more than 30 seconds old
+                                  connection.age() > std::time::Duration::from_secs(30) ||
+                                // only drop old connection if the peer's service id is less
+                                // than our own
+                                  service_id < self.service_id {
+                                    replies.append(&mut pending_replies);
+                                    let service_id = service_id.clone();
+                                    let duplicate_connection = Some(duplicate_connection);
+                                    Event::HostAuthenticated{service_id, duplicate_connection}
+                                } else {
+                                    // otherwise we drop this new connection in favor of previous incoming connection
+                                    let duplicate_connection = connection_handle;
+                                    Event::DuplicateConnectionDropped{duplicate_connection}
+                                }
+                            },
+                            Err(Error::ServiceIdToConnectionHandleMappingFailure(..)) => {
+                                // no previous connection to drop
                                 replies.append(&mut pending_replies);
                                 let service_id = service_id.clone();
-                                let duplicate_connection = Some(*duplicate_connection);
-                                Event::HostAuthenticated{service_id, duplicate_connection}
-                            } else {
-                                // otherwise we drop this new connection in favor of previous incoming connection
-                                let duplicate_connection = connection_handle;
-                                Event::DuplicateConnectionDropped{duplicate_connection}
-                            }
-                        } else {
-                            // no previous connection to drop
-                            replies.append(&mut pending_replies);
-                            let service_id = service_id.clone();
-                            Event::HostAuthenticated{service_id, duplicate_connection: None}
+                                Event::HostAuthenticated{service_id, duplicate_connection: None}
+                            },
+                            Err(_) => unreachable!()
                         };
 
                         if let Event::HostAuthenticated{..} = &event {
@@ -1161,54 +1178,52 @@ impl PacketHandler {
             return Err(Error::PeerIsBlocked(service_id));
         }
 
-        if let Some(connection_handle) = self.service_id_to_connection_handle.get(&service_id) {
-            if let Some(connection) = self.connections.get_mut(&connection_handle) {
-                let channel_identifier = if let Some(channel_identifier) = connection.channel_map.channel_type_to_id(&ChannelDataType::IncomingContactRequest) {
-                    channel_identifier
-                } else {
-                    return Err(Error::NotImplemented);
-                };
+        let connection_handle = self.service_id_to_connection_handle(&service_id)?;
+        let connection = self.connection_mut(connection_handle)?;
+        let channel_identifier = if let Some(channel_identifier) = connection.channel_map.channel_type_to_id(&ChannelDataType::IncomingContactRequest) {
+            channel_identifier
+        } else {
+            return Err(Error::NotImplemented);
+        };
 
-                let mut pending_replies: Vec<Packet> = Vec::with_capacity(3);
+        let mut pending_replies: Vec<Packet> = Vec::with_capacity(3);
 
-                use contact_request_channel::{Response, Status};
-                let channel = channel_identifier;
-                let response = Response{status: Status::Accepted};
-                let packet = contact_request_channel::Packet::Response(response);
-                let reply = Packet::ContactRequestChannelPacket{channel, packet};
-                pending_replies.push(reply);
+        // build contact request accepted packet
+        use contact_request_channel::{Response, Status};
+        let channel = channel_identifier;
+        let response = Response{status: Status::Accepted};
+        let packet = contact_request_channel::Packet::Response(response);
+        let reply = Packet::ContactRequestChannelPacket{channel, packet};
+        pending_replies.push(reply);
 
-                connection.close_channel(channel, Some(&mut pending_replies));
+        // close this contact request channel
+        connection.close_channel(channel, Some(&mut pending_replies));
 
-                // build chat channel open packet
-                let channel_id = connection.next_channel_id();
-                let open_channel = control_channel::OpenChannel::new(
-                    channel_id as i32,
-                    control_channel::ChannelType::Chat,
-                    None).expect("OpenChannel creation failed");
-                let packet = control_channel::Packet::OpenChannel(open_channel);
-                let reply = Packet::ControlChannelPacket(packet);
-                pending_replies.push(reply);
-                connection.channel_map.insert(channel_id, ChannelData::OutgoingChat)?;
+        // build chat channel open packet
+        let channel_id = connection.next_channel_id();
+        let open_channel = control_channel::OpenChannel::new(
+            channel_id as i32,
+            control_channel::ChannelType::Chat,
+            None).expect("OpenChannel creation failed");
+        let packet = control_channel::Packet::OpenChannel(open_channel);
+        let reply = Packet::ControlChannelPacket(packet);
+        pending_replies.push(reply);
+        connection.channel_map.insert(channel_id, ChannelData::OutgoingChat)?;
 
-                // build file transfer channel open packet
-                let channel_id = connection.next_channel_id();
-                let open_channel = control_channel::OpenChannel::new(
-                    channel_id as i32,
-                    control_channel::ChannelType::FileTransfer,
-                    None).expect("OpenChannel creation failed");
-                let packet = control_channel::Packet::OpenChannel(open_channel);
-                let reply = Packet::ControlChannelPacket(packet);
-                pending_replies.push(reply);
-                connection.channel_map.insert(channel_id, ChannelData::OutgoingFileTransfer)?;
+        // build file transfer channel open packet
+        let channel_id = connection.next_channel_id();
+        let open_channel = control_channel::OpenChannel::new(
+            channel_id as i32,
+            control_channel::ChannelType::FileTransfer,
+            None).expect("OpenChannel creation failed");
+        let packet = control_channel::Packet::OpenChannel(open_channel);
+        let reply = Packet::ControlChannelPacket(packet);
+        pending_replies.push(reply);
+        connection.channel_map.insert(channel_id, ChannelData::OutgoingFileTransfer)?;
 
-                self.allowed.insert(service_id);
-                replies.append(&mut pending_replies);
-                return Ok(*connection_handle)
-            }
-        }
-
-         Err(Error::NotImplemented)
+        self.allowed.insert(service_id);
+        replies.append(&mut pending_replies);
+        Ok(connection_handle)
     }
 
     pub fn send_message(
@@ -1217,24 +1232,22 @@ impl PacketHandler {
         message_text: chat_channel::MessageText,
         replies: &mut Vec<Packet>) -> Result<(ConnectionHandle, MessageId), Error> {
 
-        if let Some(connection_handle) = self.service_id_to_connection_handle.get(&service_id) {
-            let connection_handle = *connection_handle;
-            if let Some(connection) = self.connections.get_mut(&connection_handle) {
-                if let Some(channel) = connection.channel_map.channel_type_to_id(&ChannelDataType::OutgoingChat) {
-                    // get this message's id
-                    let message_id = (connection.sent_message_counter & (MessageId::MAX as u64)) as MessageId;
-                    // and increment counter
-                    connection.sent_message_counter = connection.sent_message_counter + 1;
+        let connection_handle = self.service_id_to_connection_handle(&service_id)?;
+        let connection = self.connection_mut(connection_handle)?;
+        if let Some(channel) = connection.channel_map.channel_type_to_id(&ChannelDataType::OutgoingChat) {
+            // get this message's id
+            let message_id = (connection.sent_message_counter & (MessageId::MAX as u64)) as MessageId;
+            // and increment counter
+            connection.sent_message_counter += 1;
 
-                    let chat_message = chat_channel::ChatMessage::new(message_text, message_id as u32, None)?;
-                    let packet = chat_channel::Packet::ChatMessage(chat_message);
-                    let reply = Packet::ChatChannelPacket{channel, packet};
-                    replies.push(reply);
+            let chat_message = chat_channel::ChatMessage::new(message_text, message_id as u32, None)?;
+            let packet = chat_channel::Packet::ChatMessage(chat_message);
+            let reply = Packet::ChatChannelPacket{channel, packet};
+            replies.push(reply);
 
-                    return Ok((connection_handle, message_id));
-                }
-            }
+            Ok((connection_handle, message_id))
+        } else {
+            Err(Error::NotImplemented)
         }
-        Err(Error::NotImplemented)
     }
 }

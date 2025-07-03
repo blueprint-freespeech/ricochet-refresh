@@ -54,8 +54,10 @@ pub enum Error {
     //
     // user errors
     //
-    #[error("target connection does not exist: {0}")]
-    TargetConnectionDoesNotExist(u32),
+    #[error("no ConnectionHandle associated with V3OnionServiceId: {0}")]
+    ServiceIdToConnectionHandleMappingFailure(tor_interface::tor_crypto::V3OnionServiceId),
+    #[error("no Connection associated with ConnectionHandle: {0}")]
+    ConnectionHandleToConnectionMappingFailure(u32),
     #[error("channel already open: {0}")]
     ChannelAlreadyOpen(u16),
     #[error("channel type already open: {0:?}")]
