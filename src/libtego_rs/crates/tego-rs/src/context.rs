@@ -679,6 +679,7 @@ impl EventLoopTask {
                         break 'packet_handle;
                     }
                     Err(err) => panic!("error: {err:?}"),
+                    _ => todo!(),
                 }
             }
 

@@ -1,4 +1,5 @@
 pub(crate) mod channel_map;
+pub mod file_hasher;
 pub mod message;
 pub mod packet_handler;
 pub(crate) mod protos;
@@ -35,8 +36,11 @@ pub enum Error {
     InvalidFileChunkDataTooLarge(usize),
     #[error("not enough data")]
     NeedMoreBytes,
+    // bad internal state errors
     #[error("target channel does not exist: {0}")]
     TargetChannelDoesNotExist(u16),
+    #[error("target channel type is not open: {0:?}")]
+    TargetChannelTypeNotOpen(channel_map::ChannelDataType),
     // received bytes cannot be parsed or understood
     #[error("bad data stream")]
     BadDataStream,
@@ -66,6 +70,14 @@ pub enum Error {
     PeerAlreadyAcceptedContact(tor_interface::tor_crypto::V3OnionServiceId),
     #[error("peer may not be accepted as it is blocked: {0}")]
     PeerIsBlocked(tor_interface::tor_crypto::V3OnionServiceId),
+    #[error("no FileTransfer associated with FileTransferHandle: {0:?}")]
+    FileTransferHandleToFileTransferMappingFailure(crate::v3::packet_handler::FileTransferHandle),
+    #[error("no FileDownload associated with FileTransferHandle: {0:?}")]
+    FileTransferHandleToFileDownloadMappingFailure(crate::v3::packet_handler::FileTransferHandle),
+    #[error("no FileUpload associated with FileTransferHandle: {0:?}")]
+    FileTransferHandleToFileUploadMappingFailure(crate::v3::packet_handler::FileTransferHandle),
+    #[error("FileUploads cannot be rejected: {0:?}")]
+    FileUploadCannotBeRejected(crate::v3::packet_handler::FileTransferHandle),
 
     // rand_core failure
     #[error("rand error: {0}")]
@@ -74,3 +86,5 @@ pub enum Error {
     #[error("not implemented")]
     NotImplemented,
 }
+
+pub const MAX_FILE_CHUNK_SIZE: usize = message::file_channel::MAX_FILE_CHUNK_SIZE;

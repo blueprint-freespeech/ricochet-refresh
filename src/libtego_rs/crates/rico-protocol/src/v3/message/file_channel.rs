@@ -1,8 +1,11 @@
 use crate::v3::Error;
 
 pub(crate) const CHANNEL_TYPE: &'static str = "im.ricochet.file-transfer";
+// TODO: protocol specificaiton does not define what hash is used to verify transferred file contents
+
+// TODO: make FILE_HASH_SIZE also pub(crate)
 pub const FILE_HASH_SIZE: usize = 64;
-pub const MAX_FILE_CHUNK_SIZE: usize = 63*1024;
+pub(crate) const MAX_FILE_CHUNK_SIZE: usize = 63*1024;
 
 #[derive(Debug, PartialEq)]
 pub enum Packet {
@@ -327,6 +330,10 @@ impl FileChunk {
     pub fn chunk_data(&self) -> &ChunkData {
         &self.chunk_data
     }
+
+    pub fn take_chunk_data(self) -> ChunkData {
+        self.chunk_data
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -352,6 +359,12 @@ impl ChunkData {
 impl From<&ChunkData> for Vec<u8> {
     fn from(chunk_data: &ChunkData) -> Vec<u8> {
         chunk_data.data.clone()
+    }
+}
+
+impl From<ChunkData> for Vec<u8> {
+    fn from(chunk_data: ChunkData) -> Vec<u8> {
+        chunk_data.data
     }
 }
 

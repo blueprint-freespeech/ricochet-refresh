@@ -3,6 +3,7 @@ set(rico_protocol_depends
     build.rs
     src/lib.rs
     src/v3/channel_map.rs
+    src/v3/file_hasher.rs
     src/v3/message.rs
     src/v3/mod.rs
     src/v3/packet_handler.rs

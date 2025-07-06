@@ -8,6 +8,7 @@ use tor_interface::tor_crypto::{Ed25519PrivateKey, Ed25519PublicKey, Ed25519Sign
 
 // internal
 use crate::v3::Error;
+use crate::v3::file_hasher::{FileHash, FileHasher};
 use crate::v3::message::*;
 use crate::v3::channel_map::*;
 
@@ -108,7 +109,7 @@ impl Packet {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 enum Direction {
     Incoming,
     Outgoing,
@@ -122,6 +123,7 @@ struct Connection {
     contact_request_message: Option<contact_request_channel::MessageText>,
     next_outgoing_channel_id: u16,
     sent_message_counter: u64,
+    file_transfers: BTreeMap<FileTransferHandle, FileTransfer>,
 }
 
 impl Connection {
@@ -139,6 +141,7 @@ impl Connection {
             contact_request_message: None,
             next_outgoing_channel_id: 2,
             sent_message_counter: 0u64,
+            file_transfers: Default::default(),
         }
     }
 
@@ -153,6 +156,7 @@ impl Connection {
             contact_request_message: message,
             next_outgoing_channel_id: 1,
             sent_message_counter: 0u64,
+            file_transfers: Default::default(),
         }
     }
 
@@ -185,10 +189,138 @@ impl Connection {
     }
 }
 
+enum FileTransfer {
+    FileDownload(FileDownload),
+    FileUpload(FileUpload),
+}
+
+struct FileDownload {
+    expected_bytes: u64,
+    downloaded_bytes: u64,
+    expected_hash: FileHash,
+    // hasher for received file contents
+    hasher: FileHasher,
+}
+
+struct FileUpload {
+    file_size: u64,
+    uploaded_bytes: u64,
+}
+
 pub type ConnectionHandle = u32;
+// todo: ensure ConnectionHandles are not reused
+pub const CONNECTION_HANDLE_MAX: u32 = 0x7fffffffu32;
 pub const INVALID_CONNECTION_HANDLE: ConnectionHandle = 0xffffffffu32;
 
-pub type MessageId = u64;
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
+pub struct MessageHandle {
+    message_id: u32,
+    connection_handle: ConnectionHandle,
+    direction: Direction,
+}
+
+impl MessageHandle {
+    const MESSAGE_ID_BITS: u64 = 0x00000000ffffffffu64;
+    const MESSAGE_ID_SHIFT: u64 = 0u64;
+    const CONNECTION_HANDLE_BITS: u64 = 0x7fffffff00000000u64;
+    const CONNECTION_HANDLE_SHIFT: u64 = 32u64;
+    const DIRECTION_BITS: u64 = 0x8000000000000000u64;
+    const DIRECTION_SHIFT: u64 = 63u64;
+}
+
+impl From<MessageHandle> for u64 {
+    // bits:
+    // 0..32: message id from protoocl
+    // 32..63: connection handle (except the most significant bit)
+    // 63: direction (0 for incoming, 1 for outgoing)
+    fn from(message_handle: MessageHandle) -> u64 {
+        let message_id = (message_handle.message_id as u64) << MessageHandle::MESSAGE_ID_SHIFT;
+        let connection_handle = (message_handle.connection_handle as u64) << MessageHandle::CONNECTION_HANDLE_SHIFT;
+        let direction = match message_handle.direction {
+            Direction::Incoming => 0u64,
+            Direction::Outgoing => 1u64,
+        } << MessageHandle::DIRECTION_SHIFT;
+
+        direction | connection_handle | message_id
+    }
+}
+
+impl From<u64> for MessageHandle {
+    fn from(message_handle_raw: u64) -> MessageHandle {
+        let message_id = message_handle_raw & MessageHandle::MESSAGE_ID_BITS;
+        let message_id = message_id >> MessageHandle::MESSAGE_ID_SHIFT;
+        let message_id = message_id as u32;
+
+        let connection_handle = message_handle_raw & MessageHandle::CONNECTION_HANDLE_BITS;
+        let connection_handle = connection_handle >> MessageHandle::CONNECTION_HANDLE_SHIFT;
+        let connection_handle = connection_handle as ConnectionHandle;
+
+        let direction = message_handle_raw & MessageHandle::DIRECTION_BITS;
+        let direction = direction >> MessageHandle::DIRECTION_SHIFT;
+        let direction = match direction {
+            0x0u64 => Direction::Incoming,
+            0x1u64 => Direction::Outgoing,
+            _ => unreachable!(),
+        };
+
+        MessageHandle{message_id, connection_handle, direction}
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
+pub struct FileTransferHandle {
+    file_id: u32,
+    connection_handle: ConnectionHandle,
+    direction: Direction,
+}
+
+impl FileTransferHandle {
+    const FILE_ID_BITS: u64 = 0x00000000ffffffffu64;
+    const FILE_ID_SHIFT: u64 = 0u64;
+    const CONNECTION_HANDLE_BITS: u64 = 0x7fffffff00000000u64;
+    const CONNECTION_HANDLE_SHIFT: u64 = 32u64;
+    const DIRECTION_BITS: u64 = 0x8000000000000000u64;
+    const DIRECTION_SHIFT: u64 = 63u64;
+}
+
+impl From<FileTransferHandle> for u64 {
+    // bits:
+    // 0..32: file id from protoocl
+    // 32..63: connection handle (except the most significant bit)
+    // 63: direction (0 for incoming, 1 for outgoing)
+    fn from(file_transfer_handle: FileTransferHandle) -> u64 {
+        let file_id = (file_transfer_handle.file_id as u64) << FileTransferHandle::FILE_ID_SHIFT;
+        let connection_handle = (file_transfer_handle.connection_handle as u64) << FileTransferHandle::CONNECTION_HANDLE_SHIFT;
+        let direction = match file_transfer_handle.direction {
+            Direction::Incoming => 0u64,
+            Direction::Outgoing => 1u64,
+        } << FileTransferHandle::DIRECTION_SHIFT;
+
+        direction | connection_handle | file_id
+    }
+}
+
+impl From<u64> for FileTransferHandle {
+    fn from(file_transfer_handle_raw: u64) -> FileTransferHandle {
+        let file_id = file_transfer_handle_raw & FileTransferHandle::FILE_ID_BITS;
+        let file_id = file_id >> FileTransferHandle::FILE_ID_SHIFT;
+        let file_id = file_id as u32;
+
+        let connection_handle = file_transfer_handle_raw & FileTransferHandle::CONNECTION_HANDLE_BITS;
+        let connection_handle = connection_handle >> FileTransferHandle::CONNECTION_HANDLE_SHIFT;
+        let connection_handle = connection_handle as ConnectionHandle;
+
+        let direction = file_transfer_handle_raw & FileTransferHandle::DIRECTION_BITS;
+        let direction = direction >> FileTransferHandle::DIRECTION_SHIFT;
+        let direction = match direction {
+            0x0u64 => Direction::Incoming,
+            0x1u64 => Direction::Outgoing,
+            _ => unreachable!(),
+        };
+
+        FileTransferHandle{file_id, connection_handle, direction}
+    }
+}
 
 pub enum Event {
     IntroductionReceived,
@@ -242,13 +374,57 @@ pub enum Event {
     ChatMessageReceived{
         service_id: V3OnionServiceId,
         message_text: String,
-        message_id: MessageId,
+        message_handle: MessageHandle,
         time_delta: std::time::Duration,
     },
     ChatAcknowledgeReceived{
         service_id: V3OnionServiceId,
-        message_id: MessageId,
+        message_handle: MessageHandle,
         accepted: bool,
+    },
+    FileTransferRequestReceived{
+        service_id: V3OnionServiceId,
+        file_transfer_handle: FileTransferHandle,
+        file_name: String,
+        file_size: u64,
+        file_hash: FileHash,
+    },
+    FileTransferRequestAcknowledgeReceived{
+        service_id: V3OnionServiceId,
+        file_transfer_handle: FileTransferHandle,
+        accepted: bool
+    },
+    FileTransferRequestAccepted{
+        service_id: V3OnionServiceId,
+        file_transfer_handle: FileTransferHandle,
+    },
+    FileTransferRequestRejected{
+        service_id: V3OnionServiceId,
+        file_transfer_handle: FileTransferHandle,
+    },
+    FileChunkReceived{
+        service_id: V3OnionServiceId,
+        file_transfer_handle: FileTransferHandle,
+        data: Vec<u8>,
+        last_chunk: bool,
+        hash_matches: Option<bool>,
+    },
+    FileChunkAckReceived{
+        service_id: V3OnionServiceId,
+        file_transfer_handle: FileTransferHandle,
+        offset: u64,
+    },
+    FileTransferSucceeded{
+        service_id: V3OnionServiceId,
+        file_transfer_handle: FileTransferHandle,
+    },
+    FileTransferFailed{
+        service_id: V3OnionServiceId,
+        file_transfer_handle: FileTransferHandle,
+    },
+    FileTransferCancelled{
+        service_id: V3OnionServiceId,
+        file_transfer_handle: FileTransferHandle,
     },
     ChannelClosed{
         id: u16,
@@ -256,6 +432,7 @@ pub enum Event {
     ProtocolFailure{
         message: String
     },
+    // TODO: add a message
     FatalProtocolFailure,
 }
 
@@ -408,6 +585,7 @@ impl PacketHandler {
 
     // Handle a received packet and returns an event which needs to be handled by
     // the caller
+    // TODO: this should potentially return Vec<Event>
     pub fn handle_packet(
         &mut self,
         connection_handle: ConnectionHandle,
@@ -800,7 +978,8 @@ impl PacketHandler {
                 };
 
                 let message_text: String = message.message_text().into();
-                let message_id = message.message_id() as MessageId;
+                let message_id = message.message_id();
+                let message_handle = MessageHandle{message_id, connection_handle, direction: Direction::Incoming};
                 let time_delta = if let Some(time_delta) = message.time_delta() {
                     *time_delta
                 } else {
@@ -809,12 +988,12 @@ impl PacketHandler {
 
                 // build ack reply
                 let accepted = true;
-                let acknowledge = chat_channel::ChatAcknowledge::new(message.message_id(), accepted)?;
+                let acknowledge = chat_channel::ChatAcknowledge::new(message_id, accepted)?;
                 let packet = chat_channel::Packet::ChatAcknowledge(acknowledge);
                 let reply = Packet::ChatChannelPacket{channel, packet};
                 replies.push(reply);
 
-                Ok(Event::ChatMessageReceived{service_id, message_text, message_id, time_delta})
+                Ok(Event::ChatMessageReceived{service_id, message_text, message_handle, time_delta})
             },
             chat_channel::Packet::ChatAcknowledge(acknowledge) => {
                 let connection = self.connection(connection_handle)?;
@@ -827,9 +1006,10 @@ impl PacketHandler {
                 } else {
                     return Ok(Event::FatalProtocolFailure)
                 };
-                let message_id = acknowledge.message_id() as MessageId;
+                let message_id = acknowledge.message_id();
+                let message_handle = MessageHandle{message_id, connection_handle, direction: Direction::Outgoing};
                 let accepted = acknowledge.accepted();
-                Ok(Event::ChatAcknowledgeReceived{service_id, message_id, accepted})
+                Ok(Event::ChatAcknowledgeReceived{service_id, message_handle, accepted})
             },
         }
     }
@@ -1104,11 +1284,200 @@ impl PacketHandler {
 
     fn handle_file_channel_packet(
         &mut self,
-        _connection_handle: ConnectionHandle,
-        _channel: u16,
-        _packet: file_channel::Packet,
-        _replies: &mut Vec<Packet>) -> Result<Event, Error> {
-        Err(Error::NotImplemented)
+        connection_handle: ConnectionHandle,
+        channel: u16,
+        packet: file_channel::Packet,
+        replies: &mut Vec<Packet>) -> Result<Event, Error> {
+
+        let connection = self.connection(connection_handle)?;
+        let service_id = if let Some(service_id) = &connection.peer_service_id {
+            if !self.allowed.contains(service_id) {
+                return Ok(Event::FatalProtocolFailure)
+            } else {
+                service_id.clone()
+            }
+        } else {
+            return Ok(Event::FatalProtocolFailure)
+        };
+        let channel_type = match connection.channel_map.channel_id_to_type(&channel) {
+            Some(ChannelDataType::IncomingFileTransfer) => ChannelDataType::IncomingFileTransfer,
+            Some(ChannelDataType::OutgoingFileTransfer) => ChannelDataType::OutgoingFileTransfer,
+            _ => return Ok(Event::FatalProtocolFailure),
+        };
+
+        match packet {
+            file_channel::Packet::FileHeader(file_header) => {
+                let file_id = file_header.file_id();
+                let file_transfer_handle = FileTransferHandle{file_id, connection_handle, direction: Direction::Incoming};
+                let file_name = file_header.name().to_string();
+                let file_size = file_header.file_size();
+                let file_hash = file_header.file_hash().clone();
+
+                // construct our internal state for this download
+                let connection = self.connection_mut(connection_handle)?;
+                if let Some(_) = connection.file_transfers.insert(file_transfer_handle.clone(), FileTransfer::FileDownload(FileDownload{
+                    expected_bytes: file_size,
+                    downloaded_bytes: 0u64,
+                    expected_hash: file_hash.clone(),
+                    hasher: Default::default(),
+                })) {
+                    // peer initiated file transfer with duplicate id
+                    return Ok(Event::FatalProtocolFailure);
+                }
+
+                // build ack reply
+                let accepted = true;
+                let file_header_ack = file_channel::FileHeaderAck::new(file_id, accepted)?;
+                let packet = file_channel::Packet::FileHeaderAck(file_header_ack);
+                let reply = Packet::FileChannelPacket{channel, packet};
+                replies.push(reply);
+
+                Ok(Event::FileTransferRequestReceived{service_id, file_transfer_handle, file_name, file_size, file_hash})
+            },
+            file_channel::Packet::FileChunk(file_chunk) => {
+                let file_id = file_chunk.file_id();
+                let file_transfer_handle = FileTransferHandle{file_id, connection_handle, direction: Direction::Incoming};
+                let data: Vec<u8> = file_chunk.take_chunk_data().into();
+
+                let connection = self.connection_mut(connection_handle)?;
+                let file_download = match connection.file_transfers.get_mut(&file_transfer_handle) {
+                    Some(FileTransfer::FileDownload(file_download)) => file_download,
+                    None => {
+                        return Ok(Event::ProtocolFailure{message: "Received orphaned FileChunk packet".to_string()});
+                    },
+                    _ => todo!(),
+                };
+
+                // update the partial download state
+                file_download.downloaded_bytes += data.len() as u64;
+                file_download.hasher.update(&data);
+
+                // build ack reply
+                let file_chunk_ack = file_channel::FileChunkAck::new(file_id, file_download.downloaded_bytes)?;
+                let packet = file_channel::Packet::FileChunkAck(file_chunk_ack);
+                let reply = Packet::FileChannelPacket{channel, packet};
+                replies.push(reply);
+
+                use std::cmp::Ordering;
+                match file_download.downloaded_bytes.cmp(&file_download.expected_bytes) {
+                    Ordering::Less => {
+                        Ok(Event::FileChunkReceived{service_id, file_transfer_handle, data, last_chunk: false, hash_matches: None})
+                    },
+                    ordering => {
+                        let file_download = match connection.file_transfers.remove(&file_transfer_handle) {
+                            Some(FileTransfer::FileDownload(file_download)) => file_download,
+                            _ => todo!(),
+                        };
+
+                        match ordering {
+                            Ordering::Equal => {
+                                // verify hash matches
+                                let calculated_hash: FileHash = file_download.hasher.finalize();
+                                let hash_matches = calculated_hash == file_download.expected_hash;
+
+                                // build complete notification reply
+                                use file_channel::FileTransferResult;
+                                let result = if hash_matches {
+                                    FileTransferResult::Success
+                                } else {
+                                    FileTransferResult::Failure
+                                };
+                                let file_transfer_complete_notification = file_channel::FileTransferCompleteNotification::new(file_id, result).unwrap();
+                                let packet = file_channel::Packet::FileTransferCompleteNotification(file_transfer_complete_notification);
+                                let reply = Packet::FileChannelPacket{channel, packet};
+                                replies.push(reply);
+
+                                let hash_matches = Some(hash_matches);
+                                Ok(Event::FileChunkReceived{service_id, file_transfer_handle, data, last_chunk: true, hash_matches})
+                            },
+                            // recevied too many bytes from peer something weird is happening
+                            Ordering::Greater => Ok(Event::FatalProtocolFailure),
+                            _ => unreachable!(),
+                        }
+                    },
+                }
+            },
+            file_channel::Packet::FileHeaderAck(file_header_ack) => {
+                let file_id = file_header_ack.file_id();
+                let file_transfer_handle = FileTransferHandle{file_id, connection_handle, direction: Direction::Outgoing};
+                let accepted = file_header_ack.accepted();
+                Ok(Event::FileTransferRequestAcknowledgeReceived{service_id, file_transfer_handle, accepted})
+            },
+            file_channel::Packet::FileHeaderResponse(file_header_response) => {
+                let file_id = file_header_response.file_id();
+                let file_transfer_handle = FileTransferHandle{file_id, connection_handle, direction: Direction::Outgoing};
+                let response = file_header_response.response();
+                use file_channel::Response;
+                match response {
+                    Response::Accept => Ok(Event::FileTransferRequestAccepted{service_id, file_transfer_handle}),
+                    Response::Reject => {
+                        // clean up upload record
+                        let connection = self.connection_mut(connection_handle)?;
+                        match connection.file_transfers.remove(&file_transfer_handle) {
+                            Some(FileTransfer::FileUpload(_)) => (),
+                            Some(FileTransfer::FileDownload(_)) => todo!(),
+                            None => todo!(),
+                        }
+                        Ok(Event::FileTransferRequestRejected{service_id, file_transfer_handle})
+                    }
+                }
+            },
+            file_channel::Packet::FileChunkAck(file_chunk_ack) => {
+                let file_id = file_chunk_ack.file_id();
+                let file_transfer_handle = FileTransferHandle{file_id, connection_handle, direction: Direction::Outgoing};
+                // the number of bytes our counterpart claims to have
+                // received from us during this file transfer
+                let bytes_received = file_chunk_ack.bytes_received();
+                // bytes_received is the number of bytes our counterpart
+                // has received from us, which is equivalent to the number
+                // of bytes *we've* sent for the purposes of state
+                // management
+                let bytes_sent = bytes_received;
+
+                let file_upload = match connection.file_transfers.get(&file_transfer_handle) {
+                    Some(FileTransfer::FileUpload(file_upload)) => file_upload,
+                    Some(FileTransfer::FileDownload(_)) => todo!(),
+                    None => return Ok(Event::ProtocolFailure{message: "Received orphaned FileChunkAck packet".to_string()}),
+                };
+
+                // ensure our state is synchronized before sending more bytes
+                if file_upload.uploaded_bytes != bytes_sent {
+                    Ok(Event::FatalProtocolFailure)
+                // ensure we've sent no more bytes than the size of the file
+                } else if file_upload.file_size >= bytes_sent {
+                    let offset = bytes_sent;
+                    Ok(Event::FileChunkAckReceived{service_id, file_transfer_handle, offset})
+                } else {
+                    Ok(Event::FatalProtocolFailure)
+                }
+            },
+            file_channel::Packet::FileTransferCompleteNotification(file_transfer_complete_notification) => {
+                let file_id = file_transfer_complete_notification.file_id();
+                let direction = match channel_type {
+                    ChannelDataType::IncomingFileTransfer => Direction::Incoming,
+                    ChannelDataType::OutgoingFileTransfer => Direction::Outgoing,
+                    _ => unreachable!(),
+                };
+                let file_transfer_handle = FileTransferHandle{file_id, connection_handle, direction};
+                use file_channel::FileTransferResult;
+
+                let connection = self.connection_mut(connection_handle)?;
+
+                // cleanup file transfer state
+                match (direction, connection.file_transfers.remove(&file_transfer_handle)) {
+                    (Direction::Incoming, Some(FileTransfer::FileDownload(file_download))) => (),
+                    (Direction::Outgoing, Some(FileTransfer::FileUpload(file_upload))) => (),
+                    (_, None) => return Ok(Event::ProtocolFailure{message: "".to_string()}),
+                    _ => return Ok(Event::FatalProtocolFailure),
+                }
+
+                match file_transfer_complete_notification.result() {
+                    FileTransferResult::Success => Ok(Event::FileTransferSucceeded{service_id, file_transfer_handle}),
+                    FileTransferResult::Failure => Ok(Event::FileTransferFailed{service_id, file_transfer_handle}),
+                    FileTransferResult::Cancelled => Ok(Event::FileTransferCancelled{service_id, file_transfer_handle}),
+                }
+            },
+        }
     }
 
     pub fn new_outgoing_connection(
@@ -1230,24 +1599,190 @@ impl PacketHandler {
         &mut self,
         service_id: V3OnionServiceId,
         message_text: chat_channel::MessageText,
-        replies: &mut Vec<Packet>) -> Result<(ConnectionHandle, MessageId), Error> {
+        replies: &mut Vec<Packet>) -> Result<(ConnectionHandle, MessageHandle), Error> {
 
         let connection_handle = self.service_id_to_connection_handle(&service_id)?;
         let connection = self.connection_mut(connection_handle)?;
         if let Some(channel) = connection.channel_map.channel_type_to_id(&ChannelDataType::OutgoingChat) {
             // get this message's id
-            let message_id = (connection.sent_message_counter & (MessageId::MAX as u64)) as MessageId;
-            // and increment counter
-            connection.sent_message_counter += 1;
+            let message_id = (connection.sent_message_counter & (u32::MAX as u64)) as u32;
+            let message_handle = MessageHandle{message_id, connection_handle, direction: Direction::Outgoing};
 
-            let chat_message = chat_channel::ChatMessage::new(message_text, message_id as u32, None)?;
+            // and increment counter
+            connection.sent_message_counter += 1u64;
+
+            let chat_message = chat_channel::ChatMessage::new(message_text, message_id, None)?;
             let packet = chat_channel::Packet::ChatMessage(chat_message);
             let reply = Packet::ChatChannelPacket{channel, packet};
             replies.push(reply);
 
-            Ok((connection_handle, message_id))
+
+            Ok((connection_handle, message_handle))
         } else {
             Err(Error::NotImplemented)
         }
+    }
+
+    pub fn send_file_transfer_request(
+        &mut self,
+        service_id: V3OnionServiceId,
+        file_name: String,
+        file_size: u64,
+        file_hash: FileHash,
+        replies: &mut Vec<Packet>) -> Result<(ConnectionHandle, FileTransferHandle), Error> {
+
+        let connection_handle = self.service_id_to_connection_handle(&service_id)?;
+        let connection = self.connection_mut(connection_handle)?;
+        if let Some(channel) = connection.channel_map.channel_type_to_id(&ChannelDataType::OutgoingFileTransfer) {
+            // get this file transfer's id
+            let file_id = (connection.sent_message_counter & (u32::MAX as u64)) as u32;
+            let file_transfer_handle = FileTransferHandle{file_id, connection_handle, direction: Direction::Outgoing};
+
+            // and increment counter
+            connection.sent_message_counter += 1;
+
+            // add a file upload record for this pending transfer
+            connection.file_transfers.insert(file_transfer_handle.clone(), FileTransfer::FileUpload(FileUpload{file_size, uploaded_bytes: 0u64}));
+
+            let file_header = file_channel::FileHeader::new(file_id, file_size, file_name, file_hash)?;
+            let packet = file_channel::Packet::FileHeader(file_header);
+            let reply = Packet::FileChannelPacket{channel, packet};
+            replies.push(reply);
+
+
+            Ok((connection_handle, file_transfer_handle))
+        } else {
+            Err(Error::NotImplemented)
+        }
+    }
+
+    pub fn accept_file_transfer_request(
+        &mut self,
+        service_id: &V3OnionServiceId,
+        file_transfer_handle: FileTransferHandle,
+        replies: &mut Vec<Packet>) -> Result<ConnectionHandle, Error> {
+
+        let connection_handle = self.service_id_to_connection_handle(service_id)?  ;
+        let connection = self.connection_mut(connection_handle)?;
+
+        if let Some(channel) = connection.channel_map.channel_type_to_id(&ChannelDataType::IncomingFileTransfer) {
+
+            let file_id = file_transfer_handle.file_id;
+            let file_header_response = file_channel::FileHeaderResponse::new(file_id, file_channel::Response::Accept)?;
+            let packet = file_channel::Packet::FileHeaderResponse(file_header_response);
+            let reply = Packet::FileChannelPacket{channel, packet};
+            replies.push(reply);
+
+            Ok(connection_handle)
+        } else {
+            Err(Error::NotImplemented)
+        }
+    }
+
+    pub fn reject_file_transfer_request(
+        &mut self,
+        service_id: &V3OnionServiceId,
+        file_transfer_handle: FileTransferHandle,
+        replies: &mut Vec<Packet>) -> Result<ConnectionHandle, Error> {
+
+        let connection_handle = self.service_id_to_connection_handle(service_id)?;
+        let connection = self.connection_mut(connection_handle)?;
+
+        // ensure we're deling with an inc=oming request
+        if file_transfer_handle.direction != Direction::Incoming {
+            todo!();
+        }
+
+        // remove the pending file transfer
+        let file_transfer = connection.file_transfers.remove(&file_transfer_handle).ok_or(Error::FileTransferHandleToFileTransferMappingFailure(file_transfer_handle))?;
+        match file_transfer {
+            FileTransfer::FileDownload(_) => (),
+            FileTransfer::FileUpload(_) => return Err(Error::FileUploadCannotBeRejected(file_transfer_handle)),
+        }
+
+        let channel_type = ChannelDataType::IncomingFileTransfer;
+        let channel = connection.channel_map.channel_type_to_id(&channel_type).ok_or(Error::TargetChannelTypeNotOpen(channel_type))?;
+
+        // send rejection
+        let file_id = file_transfer_handle.file_id;
+        let file_header_response = file_channel::FileHeaderResponse::new(file_id, file_channel::Response::Reject)?;
+        let packet = file_channel::Packet::FileHeaderResponse(file_header_response);
+        let reply = Packet::FileChannelPacket{channel, packet};
+        replies.push(reply);
+
+        Ok(connection_handle)
+    }
+
+    pub fn cancel_file_transfer(
+        &mut self,
+        service_id: &V3OnionServiceId,
+        file_transfer_handle: FileTransferHandle,
+        replies: &mut Vec<Packet>) -> Result<ConnectionHandle, Error> {
+
+        let connection_handle = self.service_id_to_connection_handle(service_id)?;
+        let connection = self.connection_mut(connection_handle)?;
+
+        // remove the file transfer
+        let file_transfer = connection.file_transfers.remove(&file_transfer_handle).ok_or(Error::FileTransferHandleToFileTransferMappingFailure(file_transfer_handle))?;
+
+        // get the appropriate file channel
+        let channel_type = match file_transfer_handle.direction {
+            Direction::Incoming => ChannelDataType::IncomingFileTransfer,
+            Direction::Outgoing => ChannelDataType::OutgoingFileTransfer,
+        };
+        let channel = connection.channel_map.channel_type_to_id(&channel_type).ok_or(Error::TargetChannelTypeNotOpen(channel_type))?;
+
+        // verify the file transfer type matches expect by then handle
+        match (file_transfer_handle.direction, file_transfer) {
+            (Direction::Incoming, FileTransfer::FileDownload(_)) |
+            (Direction::Outgoing, FileTransfer::FileUpload(_)) => (),
+            _ => unreachable!("mismatch between file handle's direction component and the mapped file transfer type"),
+        }
+
+        // send cancellation
+        let file_id = file_transfer_handle.file_id;
+        let file_transfer_complete_notification = file_channel::FileTransferCompleteNotification::new(file_id, file_channel::FileTransferResult::Cancelled)?;
+        let packet = file_channel::Packet::FileTransferCompleteNotification(file_transfer_complete_notification);
+        let reply = Packet::FileChannelPacket{channel, packet};
+        replies.push(reply);
+
+        Ok(connection_handle)
+    }
+
+    // chunk must be less than 63*1024 bytes
+    pub fn send_file_chunk(
+        &mut self,
+        service_id: &V3OnionServiceId,
+        file_transfer_handle: FileTransferHandle,
+        chunk_data: Vec<u8>,
+        replies: &mut Vec<Packet>) -> Result<ConnectionHandle, Error> {
+
+        let connection_handle = self.service_id_to_connection_handle(service_id)?;
+        let connection = self.connection_mut(connection_handle)?;
+
+        let channel_type = ChannelDataType::OutgoingFileTransfer;
+        let channel = connection.channel_map.channel_type_to_id(&channel_type).ok_or(Error::TargetChannelTypeNotOpen(channel_type))?;
+
+        let file_id = file_transfer_handle.file_id;
+        let chunk_len = chunk_data.len();
+        let file_transfer = connection.file_transfers.get_mut(&file_transfer_handle).ok_or(Error::FileTransferHandleToFileTransferMappingFailure(file_transfer_handle))?;
+
+        // verify the file transfer type is a file upload
+        let file_upload: &mut FileUpload = match file_transfer {
+            FileTransfer::FileUpload(file_upload) => file_upload,
+            _ => return Err(Error::FileTransferHandleToFileUploadMappingFailure(file_transfer_handle)),
+        };
+
+        // send file chunk
+        let chunk_data = file_channel::ChunkData::new(chunk_data)?;
+        let file_chunk = file_channel::FileChunk::new(file_id, chunk_data)?;
+        let packet = file_channel::Packet::FileChunk(file_chunk);
+        let reply = Packet::FileChannelPacket{channel, packet};
+        replies.push(reply);
+
+        // update our file upload progress
+        file_upload.uploaded_bytes += chunk_len as u64;
+
+        Ok(connection_handle)
     }
 }
