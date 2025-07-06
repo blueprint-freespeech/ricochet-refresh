@@ -1539,17 +1539,57 @@ pub extern "C" fn tego_context_send_message(
 /// @param error : filled on error
 #[no_mangle]
 pub extern "C" fn tego_context_send_file_transfer_request(
-    _context: *mut tego_context,
-    _user: *const tego_user_id,
-    _file_path: *const c_char,
-    _file_path_length: usize,
-    _out_id: *mut tego_file_transfer_id,
-    _out_file_hash: *mut *mut tego_file_hash,
-    _out_file_size: *mut tego_file_size,
+    context: *mut tego_context,
+    user: *const tego_user_id,
+    file_path: *const c_char,
+    file_path_length: usize,
+    out_id: *mut tego_file_transfer_id,
+    out_file_hash: *mut *mut tego_file_hash,
+    out_file_size: *mut tego_file_size,
     error: *mut *mut tego_error) -> () {
     translate_failures((), error, || -> Result<()> {
-        println!("tego_context_send_file_transfer_request() not implemented");
-        bail_not_implemented!()
+        bail_if_null!(context);
+        bail_if_null!(user);
+        bail_if_null!(file_path);
+        if !out_file_hash.is_null() {
+            let out_file_hash = unsafe {*out_file_hash};
+            bail_if_not_null!(out_file_hash);
+        }
+        bail_if_equal!(file_path_length, 0usize);
+
+        let mut object_map = get_object_map();
+
+        let context = context as TegoKey;
+        let context = match object_map.get(&context) {
+            Some(TegoObject::Context(context)) => context,
+            Some(_) => bail!("not a tego_context pointer: {:?}", context as *const c_void),
+            None => bail!("not a valid pointer: {:?}", context as *const c_void),
+        };
+
+        let user = user as TegoKey;
+        let user = match object_map.get(&user) {
+            Some(TegoObject::UserId(user)) => user.service_id.clone(),
+            Some(_) => bail!("not a tego_user_id pointer: {:?}", user as *const c_void),
+            None => bail!("not a valid pointer: {:?}", user as *const c_void),
+        };
+
+        let file_path = unsafe { std::slice::from_raw_parts(file_path as *const u8, file_path_length) };
+        let file_path = std::str::from_utf8(file_path)?.to_string();
+        let file_path = PathBuf::from(file_path);
+
+        let (id, file_size) = context.send_file_transfer_request(user, file_path)?;
+
+        // write out results
+        unsafe {
+            if !out_id.is_null() {
+                *out_id = id;
+            }
+            if !out_file_size.is_null() {
+                *out_file_size = file_size;
+            }
+        }
+
+        Ok(())
     })
 }
 
@@ -1572,16 +1612,53 @@ pub enum tego_file_transfer_response {
 /// @param error : filled on error
 #[no_mangle]
 pub extern "C" fn tego_context_respond_file_transfer_request(
-    _context: *mut tego_context,
-    _user: *const tego_user_id,
-    _id: tego_file_transfer_id,
-    _response: tego_file_transfer_response,
-    _dest_path: *const c_char,
-    _dest_path_length: usize,
+    context: *mut tego_context,
+    user: *const tego_user_id,
+    id: tego_file_transfer_id,
+    response: tego_file_transfer_response,
+    dest_path: *const c_char,
+    dest_path_length: usize,
     error: *mut *mut tego_error) -> () {
     translate_failures((), error, || -> Result<()> {
-        println!("tego_context_respond_file_transfer_request() not implemented");
-        bail_not_implemented!()
+        bail_if_null!(context);
+        bail_if_null!(user);
+
+        let object_map = get_object_map();
+
+        let context = context as TegoKey;
+        let context = match object_map.get(&context) {
+            Some(TegoObject::Context(context)) => context,
+            Some(_) => bail!("not a tego_context pointer: {:?}", context as *const c_void),
+            None => bail!("not a valid pointer: {:?}", context as *const c_void),
+        };
+
+        let user = user as TegoKey;
+        let user = match object_map.get(&user) {
+            Some(TegoObject::UserId(user)) => user.service_id.clone(),
+            Some(_) => bail!("not a tego_user_id pointer: {:?}", user as *const c_void),
+            None => bail!("not a valid pointer: {:?}", user as *const c_void),
+        };
+
+        match response {
+            tego_file_transfer_response::tego_file_transfer_response_accept => {
+                bail_if_null!(dest_path);
+                bail_if_equal!(dest_path_length, 0usize);
+                let dest_path = unsafe { std::slice::from_raw_parts(dest_path as *const u8, dest_path_length) };
+                let dest_path = std::str::from_utf8(dest_path)?.to_string();
+                let dest_path = PathBuf::from(dest_path);
+
+                context.accept_file_transfer_request(user, id, dest_path)?;
+            },
+            tego_file_transfer_response::tego_file_transfer_response_reject => {
+                bail_if_not_null!(dest_path);
+                bail_if_not_equal!(dest_path_length, 0usize);
+
+                context.reject_file_transfer_request(user, id)?;
+            },
+            _ => bail!("not a valid tego_file_transfer_response: {}", response as c_int),
+        }
+
+        Ok(())
     })
 }
 
@@ -1593,13 +1670,33 @@ pub extern "C" fn tego_context_respond_file_transfer_request(
 /// @param error: filled on error
 #[no_mangle]
 pub extern "C" fn tego_context_cancel_file_transfer(
-    _context: *mut tego_context,
-    _user: *const tego_user_id,
-    _id: tego_file_transfer_id,
+    context: *mut tego_context,
+    user: *const tego_user_id,
+    id: tego_file_transfer_id,
     error: *mut *mut tego_error) -> () {
     translate_failures((), error, || -> Result<()> {
-        println!("tego_context_cancel_file_transfer() not implemented");
-        bail_not_implemented!()
+        bail_if_null!(context);
+        bail_if_null!(user);
+
+        let object_map = get_object_map();
+
+        let context = context as TegoKey;
+        let context = match object_map.get(&context) {
+            Some(TegoObject::Context(context)) => context,
+            Some(_) => bail!("not a tego_context pointer: {:?}", context as *const c_void),
+            None => bail!("not a valid pointer: {:?}", context as *const c_void),
+        };
+
+        let user = user as TegoKey;
+        let user = match object_map.get(&user) {
+            Some(TegoObject::UserId(user)) => user.service_id.clone(),
+            Some(_) => bail!("not a tego_user_id pointer: {:?}", user as *const c_void),
+            None => bail!("not a valid pointer: {:?}", user as *const c_void),
+        };
+
+        context.cancel_file_transfer(user, id)?;
+
+        Ok(())
     })
 }
 

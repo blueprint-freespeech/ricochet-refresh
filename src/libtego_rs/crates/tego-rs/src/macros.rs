@@ -30,6 +30,16 @@ macro_rules! bail_if_null {
 }
 pub(crate) use bail_if_null;
 
+// ensure pointer is null
+macro_rules! bail_if_not_null {
+    ($ptr:ident) => {
+        if !$ptr.is_null() {
+            anyhow::bail!(stringify!([<$ptr>] must be null));
+        }
+    };
+}
+pub(crate) use bail_if_not_null;
+
 // ensure values are not equal
 macro_rules! bail_if_equal {
     ($left:expr, $right:expr) => {

@@ -2,6 +2,7 @@
 use std::cmp::Ord;
 use std::collections::BinaryHeap;
 use std::ops::{Add, DerefMut};
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex, MutexGuard, Weak};
 use std::time::{Duration, Instant};
 
@@ -71,17 +72,41 @@ pub(crate) enum CommandData {
         service_id: V3OnionServiceId,
         response: tego_chat_acknowledge,
     },
-    SendMessage{
-        service_id: V3OnionServiceId,
-        message_text: rico_protocol::v3::message::chat_channel::MessageText,
-        message_id: Promise<Result<tego_message_id>>,
-    },
     //connect to a peer and optionally request to be an allowed contact
     ConnectContact{
         service_id: V3OnionServiceId,
         failure_count: usize,
         contact_request_message: Option<rico_protocol::v3::message::contact_request_channel::MessageText>,
-    }
+    },
+    SendMessage{
+        service_id: V3OnionServiceId,
+        message_text: rico_protocol::v3::message::chat_channel::MessageText,
+        message_id: Promise<Result<tego_message_id>>,
+    },
+    SendFileTransferRequest{
+        service_id: V3OnionServiceId,
+        file_path: PathBuf,
+        result: Promise<Result<(tego_file_transfer_id, tego_file_size)>>
+    },
+    // accept an incoming file transfer request
+    AcceptFileTransferRequest{
+        service_id: V3OnionServiceId,
+        file_transfer_id: tego_file_transfer_id,
+        dest_path: PathBuf,
+        result: Promise<Result<()>>,
+    },
+    // reject an incoming file transfer request
+    RejectFileTransferRequest{
+        service_id: V3OnionServiceId,
+        file_transfer_id: tego_file_transfer_id,
+        result: Promise<Result<()>>,
+    },
+    // cancel an in-progress file transfer
+    CancelFileTransfer{
+        service_id: V3OnionServiceId,
+        file_transfer_id: tego_file_transfer_id,
+        result: Promise<Result<()>>,
+    },
 }
 
 pub(crate) struct CommandQueue {
