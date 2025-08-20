@@ -301,12 +301,27 @@ namespace shims
         if (auto it = std::find(types.begin(), types.end(), recommendedBridgeType); it != types.end()) {
             std::iter_swap(it, types.begin());
         }
+
+        // swap out legacy meek-azure name with meek
+        // TODO: we can remove this once upstream's pt_config.json has migrated from meek-azure
+        // to meek. See upstream issue:
+        // - https://gitlab.torproject.org/tpo/applications/tor-browser-build/-/issues/41532
+        if (auto it = std::find(types.begin(), types.end(), "meek-azure"); it != types.end()) {
+            *it = "meek";
+        }
+
         return types;
     }
 
     std::vector<std::string> TorControl::getBridgeStringsForType(const QString &bridgeType)
     {
-        if (auto it = defaultBridges.find(bridgeType); it != defaultBridges.end()) {
+        // check if we need to use the legacy name
+        // TODO: we can remove this once upstream's pt_config.json has migrated from meek-azure
+        // to meek. See upstream issue:
+        // - https://gitlab.torproject.org/tpo/applications/tor-browser-build/-/issues/41532
+        QString bridgeType2 = bridgeType != "meek" ? bridgeType : "meek-azure";
+
+        if (auto it = defaultBridges.find(bridgeType2); it != defaultBridges.end()) {
             return *it;
         }
         return {};

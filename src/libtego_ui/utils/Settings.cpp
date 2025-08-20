@@ -509,6 +509,14 @@ QJsonValue SettingsObject::read(const QString &key, const QJsonValue &defaultVal
     QJsonValue ret = d->file->d->read(d->object, splitKey);
     if (ret.isUndefined())
         ret = defaultValue;
+    else if (key == "tor") {
+        // migrate legacy "meek-azure" bridgeType to "meek"
+        QJsonObject tor = ret.toObject();
+        if (tor["bridgeType"] == "meek-azure") {
+            tor["bridgeType"] = "meek";
+        }
+        return tor;
+    }
     return ret;
 }
 
