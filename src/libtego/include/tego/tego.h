@@ -827,9 +827,9 @@ void tego_context_get_tor_bootstrap_status(
 // milliseconds since 1970-01-01T00:00:00 utc.
 typedef uint64_t tego_time_t;
 // unique (per user) message identifier
-typedef uint32_t tego_message_id_t;
+typedef uint64_t tego_message_id_t;
 // unique (per user) file transfer identifier
-typedef uint32_t tego_file_transfer_id_t;
+typedef uint64_t tego_file_transfer_id_t;
 // struct for file hash
 typedef struct tego_file_hash tego_file_hash_t;
 // integer type for file size

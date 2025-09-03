@@ -105,7 +105,14 @@ namespace shims
                     transfer["file_name"] = message.fileName;
                     transfer["file_size"] = message.fileSize;
                     transfer["file_hash"] = message.fileHash;
-                    transfer["id"] = message.identifier;
+                    // this is cursed
+                    // basically, the QVariant type will squish all numberss
+                    // into a double, and so it cannot store an arbitrary
+                    // uint64. So, we serialise it into a string, and
+                    // apparently QInvokable functions (e.g.
+                    // cancelFileTransfer) will convert back to
+                    // uint64 automatically
+                    transfer["id"] = QString("%1").arg(message.identifier);
                     transfer["status"] = message.transferStatus;
                     transfer["statusString"] = [=]()
                     {
@@ -424,7 +431,7 @@ namespace shims
         return true;
     }
 
-    void ConversationModel::tryAcceptFileTransfer(quint32 id)
+    void ConversationModel::tryAcceptFileTransfer(quint64 id)
     {
         auto row = this->indexOfIncomingMessage(id);
         if (row < 0)
@@ -470,7 +477,7 @@ namespace shims
         }
     }
 
-    void ConversationModel::cancelFileTransfer(tego_file_transfer_id_t id)
+    void ConversationModel::cancelFileTransfer(quint64 id)
     {
         // we get the cancelled callback if we cancel or if the other user cancelled,
         // so ensure we only do work if it was the other preson cancelling
@@ -506,7 +513,7 @@ namespace shims
         }
     }
 
-    void ConversationModel::rejectFileTransfer(quint32 id)
+    void ConversationModel::rejectFileTransfer(quint64 id)
     {
         auto row = this->indexOfIncomingMessage(id);
         if (row < 0)
@@ -743,7 +750,7 @@ namespace shims
         emit dataChanged(index(row, 0), index(row, 0));
     }
 
-    int ConversationModel::indexOfMessage(quint32 identifier) const
+    int ConversationModel::indexOfMessage(quint64 identifier) const
     {
         for (int i = 0; i < messages.size(); i++) {
             const auto& currentMessage = messages[i];
@@ -754,7 +761,7 @@ namespace shims
         return -1;
     }
 
-    int ConversationModel::indexOfOutgoingMessage(quint32 identifier) const
+    int ConversationModel::indexOfOutgoingMessage(quint64 identifier) const
     {
         for (int i = 0; i < messages.size(); i++) {
             const auto& currentMessage = messages[i];
@@ -765,7 +772,7 @@ namespace shims
         return -1;
     }
 
-    int ConversationModel::indexOfIncomingMessage(quint32 identifier) const
+    int ConversationModel::indexOfIncomingMessage(quint64 identifier) const
     {
         for (int i = 0; i < messages.size(); i++) {
             const auto& currentMessage = messages[i];

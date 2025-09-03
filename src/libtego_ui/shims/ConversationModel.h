@@ -2,6 +2,16 @@
 
 #include "ContactUser.h"
 
+// verify our used qt uint type has same properties as tego_* types
+static_assert(std::numeric_limits<quint64>::is_signed == std::numeric_limits<tego_message_id_t>::is_signed);
+static_assert(std::numeric_limits<quint64>::lowest() == std::numeric_limits<tego_message_id_t>::lowest());
+static_assert(std::numeric_limits<quint64>::max() == std::numeric_limits<tego_message_id_t>::max());
+
+static_assert(std::numeric_limits<quint64>::is_signed == std::numeric_limits<tego_file_transfer_id_t>::is_signed);
+static_assert(std::numeric_limits<quint64>::lowest() == std::numeric_limits<tego_file_transfer_id_t>::lowest());
+static_assert(std::numeric_limits<quint64>::max() == std::numeric_limits<tego_file_transfer_id_t>::max());
+
+
 namespace shims
 {
     class ContactUser;
@@ -94,11 +104,9 @@ namespace shims
         Q_INVOKABLE int getConversationEventCount() const { return this->events.size(); }
         bool exportConversation();
         // invokable function neeeds to use a Qt type since it is invokable from QML
-        static_assert(std::is_same_v<quint32, tego_file_transfer_id_t>);
-        Q_INVOKABLE void tryAcceptFileTransfer(quint32 id);
-        Q_INVOKABLE void cancelFileTransfer(quint32 id);
-        Q_INVOKABLE void rejectFileTransfer(quint32 id);
-
+        Q_INVOKABLE void tryAcceptFileTransfer(quint64 id);
+        Q_INVOKABLE void cancelFileTransfer(quint64 id);
+        Q_INVOKABLE void rejectFileTransfer(quint64 id);
 
         void setStatus(ContactUser::Status status);
 
@@ -129,9 +137,7 @@ namespace shims
             MessageDataType type = InvalidMessage;
             QString text = {};
             QDateTime time = {};
-            static_assert(std::is_same_v<quint32, tego_file_transfer_id_t>);
-            static_assert(std::is_same_v<quint32, tego_message_id_t>);
-            quint32 identifier = 0;
+            quint64 identifier = 0;
             MessageStatus status = None;
             quint8 attemptCount = 0;
             // file transfer data
@@ -180,9 +186,9 @@ namespace shims
 
         void emitDataChanged(int row);
 
-        int indexOfMessage(quint32 identifier) const;
-        int indexOfOutgoingMessage(quint32 identifier) const;
-        int indexOfIncomingMessage(quint32 identifier) const;
+        int indexOfMessage(quint64 identifier) const;
+        int indexOfOutgoingMessage(quint64 identifier) const;
+        int indexOfIncomingMessage(quint64 identifier) const;
 
         static const char* getMessageStatusString(const MessageStatus status);
         static const char* getTransferStatusString(const TransferStatus status);

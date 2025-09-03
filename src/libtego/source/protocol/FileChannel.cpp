@@ -61,7 +61,7 @@ static void logTransferStats(qint64 bytes, std::chrono::time_point<std::chrono::
 //
 
 FileChannel::outgoing_transfer_record::outgoing_transfer_record(
-    tego_file_transfer_id_t transferId,
+    FileId transferId,
     const std::string& filePath,
     tego_file_size_t fileSize)
 : id(transferId)
@@ -75,7 +75,7 @@ FileChannel::outgoing_transfer_record::outgoing_transfer_record(
 //
 
 FileChannel::incoming_transfer_record::incoming_transfer_record(
-    tego_file_transfer_id_t transferId,
+    FileId transferId,
     tego_file_size_t fileSize,
     const std::string& fileHash)
 : id(transferId)
@@ -297,7 +297,7 @@ void FileChannel::emitFatalError(std::string&& message, tego_file_transfer_resul
     }
 }
 
-void FileChannel::emitNonFatalError(std::string&& message, tego_file_transfer_id_t id, tego_file_transfer_result_t error)
+void FileChannel::emitNonFatalError(std::string&& message, FileId id, tego_file_transfer_result_t error)
 {
     // log error message to console
     qWarning() << message.data();
@@ -324,24 +324,6 @@ void FileChannel::emitNonFatalError(std::string&& message, tego_file_transfer_id
         break;
     }
 }
-
-// verify that all the file_id members are the right size
-template<typename S>
-constexpr static bool has_compatible_file_id()
-{
-    typedef decltype(S().file_id()) file_id_t;
-    return std::numeric_limits<tego_file_transfer_id_t>::max() == std::numeric_limits<file_id_t>::max() &&
-           std::numeric_limits<tego_file_transfer_id_t>::min() == std::numeric_limits<file_id_t>::min() &&
-           std::is_signed_v<tego_file_transfer_id_t> == std::is_signed_v<file_id_t>;
-}
-
-static_assert(has_compatible_file_id<Data::File::FileHeader>());
-static_assert(has_compatible_file_id<Data::File::FileHeaderAck>());
-static_assert(has_compatible_file_id<Data::File::FileHeaderResponse>());
-static_assert(has_compatible_file_id<Data::File::FileChunk>());
-static_assert(has_compatible_file_id<Data::File::FileChunkAck>());
-static_assert(has_compatible_file_id<Data::File::FileTransferCompleteNotification>());
-
 
 void FileChannel::handleFileHeader(const Data::File::FileHeader &message)
 {
@@ -658,7 +640,7 @@ void FileChannel::handleFileTransferCompleteNotification(const Data::File::FileT
 bool FileChannel::sendFileWithId(QString file_uri,
                                  tego_file_hash_t const& file_hash,
                                  QDateTime,
-                                 tego_file_transfer_id_t file_id)
+                                 FileId file_id)
 {
     Q_ASSERT(direction() == Outbound);
     Q_ASSERT(!outgoingTransfers.contains(file_id));
@@ -719,7 +701,7 @@ bool FileChannel::sendFileWithId(QString file_uri,
     return true;
 }
 
-void FileChannel::acceptFile(tego_file_transfer_id_t id, const std::string& dest)
+void FileChannel::acceptFile(FileId id, const std::string& dest)
 {
     auto it = incomingTransfers.find(id);
     TEGO_THROW_IF_FALSE(it != incomingTransfers.end());
@@ -740,7 +722,7 @@ void FileChannel::acceptFile(tego_file_transfer_id_t id, const std::string& dest
     emit this->fileTransferProgress(id, tego_file_transfer_direction_receiving, 0, it->second.size);
 }
 
-void FileChannel::rejectFile(tego_file_transfer_id_t id)
+void FileChannel::rejectFile(FileId id)
 {
     auto it = incomingTransfers.find(id);
     TEGO_THROW_IF_FALSE(it != incomingTransfers.end());
@@ -760,7 +742,7 @@ void FileChannel::rejectFile(tego_file_transfer_id_t id)
     emit fileTransferFinished(id, tego_file_transfer_direction_receiving, tego_file_transfer_result_rejected);
 }
 
-bool FileChannel::cancelTransfer(tego_file_transfer_id_t id)
+bool FileChannel::cancelTransfer(FileId id)
 {
     // verify the transfer exists in our system
     switch(direction())
@@ -803,7 +785,7 @@ bool FileChannel::cancelTransfer(tego_file_transfer_id_t id)
     return true;
 }
 
-void FileChannel::sendNextChunk(tego_file_transfer_id_t id)
+void FileChannel::sendNextChunk(FileId id)
 {
     Q_ASSERT(direction() == Outbound);
 
