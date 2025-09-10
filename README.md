@@ -1,4 +1,7 @@
-# Ricochet Refresh
+# Ricochet-Refresh Alpha
+
+## ⚠️ Warning ⚠️
+This is the development branch of Ricochet-Refresh. Things here may be unstable, in-flight, and untested. For the current release version, see the [maint-3.0](https://github.com/blueprint-freespeech/ricochet-refresh/tree/maint-3.0) branch.
 
 ## R<sup>2</sup>: Ricochet Refresh
 Ricochet Refresh is the new updated version of Ricochet, supported by Blueprint for Free Speech. We are a non-government, not-for-profit organisation working to safeguard the freedom of expression for whistleblowers, activists, and everybody else, worldwide. To find out more, check out our profile, or head to [blueprintforfreespeech.net](https://blueprintforfreespeech.net). Blueprint was the original sponsor of Ricochet, written by developer J. Brooks.
