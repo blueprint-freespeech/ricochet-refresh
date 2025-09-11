@@ -210,7 +210,6 @@ struct FileUpload {
 pub type ConnectionHandle = u32;
 // todo: ensure ConnectionHandles are not reused
 pub const CONNECTION_HANDLE_MAX: u32 = 0x7fffffffu32;
-pub const INVALID_CONNECTION_HANDLE: ConnectionHandle = 0xffffffffu32;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct MessageHandle {
@@ -234,6 +233,8 @@ impl From<MessageHandle> for u64 {
     // 32..63: connection handle (except the most significant bit)
     // 63: direction (0 for incoming, 1 for outgoing)
     fn from(message_handle: MessageHandle) -> u64 {
+        assert!(message_handle.connection_handle <= CONNECTION_HANDLE_MAX);
+
         let message_id = (message_handle.message_id as u64) << MessageHandle::MESSAGE_ID_SHIFT;
         let connection_handle = (message_handle.connection_handle as u64) << MessageHandle::CONNECTION_HANDLE_SHIFT;
         let direction = match message_handle.direction {
@@ -289,6 +290,8 @@ impl From<FileTransferHandle> for u64 {
     // 32..63: connection handle (except the most significant bit)
     // 63: direction (0 for incoming, 1 for outgoing)
     fn from(file_transfer_handle: FileTransferHandle) -> u64 {
+        assert!(file_transfer_handle.connection_handle <= CONNECTION_HANDLE_MAX);
+
         let file_id = (file_transfer_handle.file_id as u64) << FileTransferHandle::FILE_ID_SHIFT;
         let connection_handle = (file_transfer_handle.connection_handle as u64) << FileTransferHandle::CONNECTION_HANDLE_SHIFT;
         let direction = match file_transfer_handle.direction {
@@ -1484,28 +1487,35 @@ impl PacketHandler {
         &mut self,
         service_id: V3OnionServiceId,
         message_text: Option<contact_request_channel::MessageText>,
-        replies: &mut Vec<Packet>) -> ConnectionHandle {
+        replies: &mut Vec<Packet>) -> Result<ConnectionHandle, Error> {
         let handle = self.next_connection_handle;
+        if handle > CONNECTION_HANDLE_MAX {
+            return Err(Error::ConnectionHandlesExhausted);
+        }
         self.next_connection_handle += 1u32;
+
 
         let connection = Connection::new_outgoing(service_id.clone(), message_text);
         self.connections.insert(handle, connection);
 
-        let introduction = introduction::IntroductionPacket::new(vec![introduction::Version::RicochetRefresh3]).expect("IntroductionPacket construction failed");
+        let introduction = introduction::IntroductionPacket::new(vec![introduction::Version::RicochetRefresh3])?;
         let packet = Packet::IntroductionPacket(introduction);
         replies.push(packet);
 
-        handle
+        Ok(handle)
     }
 
-    pub fn new_incoming_connection(&mut self) -> ConnectionHandle {
+    pub fn new_incoming_connection(&mut self) -> Result<ConnectionHandle, Error> {
         let handle = self.next_connection_handle;
+        if handle > CONNECTION_HANDLE_MAX {
+            return Err(Error::ConnectionHandlesExhausted);
+        }
         self.next_connection_handle += 1u32;
 
         let connection = Connection::new_incoming();
         self.connections.insert(handle, connection);
 
-        handle
+        Ok(handle)
     }
 
     pub fn remove_connection(
@@ -1605,6 +1615,10 @@ impl PacketHandler {
         let connection = self.connection_mut(connection_handle)?;
         if let Some(channel) = connection.channel_map.channel_type_to_id(&ChannelDataType::OutgoingChat) {
             // get this message's id
+            if connection.sent_message_counter > (u32::MAX as u64) {
+                return Err(Error::MessageHandlesExhausted);
+            }
+
             let message_id = (connection.sent_message_counter & (u32::MAX as u64)) as u32;
             let message_handle = MessageHandle{message_id, connection_handle, direction: Direction::Outgoing};
 
@@ -1635,6 +1649,11 @@ impl PacketHandler {
         let connection = self.connection_mut(connection_handle)?;
         if let Some(channel) = connection.channel_map.channel_type_to_id(&ChannelDataType::OutgoingFileTransfer) {
             // get this file transfer's id
+            // get this message's id
+            if connection.sent_message_counter > (u32::MAX as u64) {
+                return Err(Error::FileTransferHandlesExhausted);
+            }
+
             let file_id = (connection.sent_message_counter & (u32::MAX as u64)) as u32;
             let file_transfer_handle = FileTransferHandle{file_id, connection_handle, direction: Direction::Outgoing};
 

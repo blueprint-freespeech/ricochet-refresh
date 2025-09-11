@@ -28,6 +28,8 @@ use crate::user_id::UserId;
 
 const RICOCHET_PORT: u16 = 9878u16;
 
+// TODO: replace println!s with a configurable logger
+
 #[derive(Default)]
 pub(crate) struct Context {
     tego_key: TegoKey,
@@ -458,32 +460,36 @@ impl EventLoopTask {
                         CallbackData::HostOnionServiceStateChanged{state: tego_host_onion_service_state::tego_host_onion_service_state_service_published});
                 },
                 TorEvent::ConnectComplete{handle, stream} => {
-                    if let Some(pending_connection) = self.pending_connections.remove(&handle) {
-                        stream.set_nonblocking(true).unwrap();
+                    let handle_connect_complete = || -> Result<()> {
+                        if let Some(pending_connection) = self.pending_connections.remove(&handle) {
+                            stream.set_nonblocking(true).unwrap();
 
-                        let service_id = pending_connection.service_id;
-                        let message_text = pending_connection.message_text;
+                            let service_id = pending_connection.service_id;
+                            let message_text = pending_connection.message_text;
 
-                        if !self.packet_handler.has_verified_connection(&service_id) {
-                            println!("--- connected to {service_id:?}");
-                            let mut replies: Vec<Packet> = Default::default();
-                            let handle = self.packet_handler.new_outgoing_connection(service_id.clone(), message_text, &mut replies);
+                            if !self.packet_handler.has_verified_connection(&service_id) {
+                                println!("--- connected to {service_id:?}");
+                                let mut replies: Vec<Packet> = Default::default();
+                                let handle = self.packet_handler.new_outgoing_connection(service_id.clone(), message_text, &mut replies)?;
 
-                            let connection = Connection{
-                                service_id: Some(service_id.clone()),
-                                stream,
-                                read_bytes: Default::default(),
-                                read_packets: Default::default(),
-                                write_packets: replies,
-                                file_downloads: Default::default(),
-                                file_uploads: Default::default(),
-                            };
+                                let connection = Connection{
+                                    service_id: Some(service_id),
+                                    stream,
+                                    read_bytes: Default::default(),
+                                    read_packets: Default::default(),
+                                    write_packets: replies,
+                                    file_downloads: Default::default(),
+                                    file_uploads: Default::default(),
+                                };
 
-                            self.connections.insert(handle, connection);
-                        } else {
-                            println!("--- connected to {service_id:?} but vefified connection already exists, dropping");
+                                self.connections.insert(handle, connection);
+                            } else {
+                                println!("--- connected to {service_id:?} but verified connection already exists, dropping");
+                            }
                         }
-                    }
+                        Ok(())
+                    };
+                    let _ = handle_connect_complete();
                 },
                 TorEvent::ConnectFailed{handle, error} => {
                     if let Some(pending_connection) = self.pending_connections.remove(&handle) {
@@ -528,21 +534,25 @@ impl EventLoopTask {
             match cmd.data() {
                 CommandData::EndEventLoop => self.task_complete = true,
                 CommandData::BeginServerHandshake{stream} => {
-                    let handle = self.packet_handler.new_incoming_connection();
+                    let handle_begin_server_handshake = || -> Result<()> {
+                        let handle = self.packet_handler.new_incoming_connection()?;
 
-                    let connection = Connection{
-                        service_id: None,
-                        stream,
-                        read_bytes: Default::default(),
-                        read_packets: Default::default(),
-                        write_packets: Default::default(),
-                        file_downloads: Default::default(),
-                        file_uploads: Default::default(),
+                        let connection = Connection{
+                            service_id: None,
+                            stream,
+                            read_bytes: Default::default(),
+                            read_packets: Default::default(),
+                            write_packets: Default::default(),
+                            file_downloads: Default::default(),
+                            file_uploads: Default::default(),
+                        };
+
+                        println!("begin server handshake: {connection:?}");
+
+                        self.connections.insert(handle, connection);
+                        Ok(())
                     };
-
-                    println!("begin server handshake: {connection:?}");
-
-                    self.connections.insert(handle, connection);
+                    let _ = handle_begin_server_handshake();
                 },
                 CommandData::AcknowledgeContactRequest{service_id, response} => {
                     let mut replies: Vec<Packet> = Default::default();
