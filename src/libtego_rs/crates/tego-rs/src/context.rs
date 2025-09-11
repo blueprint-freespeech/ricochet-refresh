@@ -738,6 +738,8 @@ impl EventLoopTask {
 
         // connections to be removed
         let mut to_remove: BTreeSet<ConnectionHandle> = Default::default();
+        // TODO: we need some kind of exponential backoff for repeated failures to connect+authenticate
+        // blocked users will currently spam over and over again
         let mut to_retry: BTreeSet<V3OnionServiceId> = Default::default();
 
         // read bytes from each connection
@@ -827,6 +829,11 @@ impl EventLoopTask {
                         if let Some(duplicate_connection) = duplicate_connection {
                             to_remove.insert(duplicate_connection);
                         }
+                    },
+                    Ok(Event::BlockedClientAuthenticationAttempted{service_id}) => {
+                        println!("--- blocked client attempted authentication, peer: {service_id}");
+                        to_remove.insert(handle);
+                        break 'packet_handle;
                     },
                     Ok(Event::HostAuthenticated{service_id, duplicate_connection}) => {
                         // todo: handle closed connection

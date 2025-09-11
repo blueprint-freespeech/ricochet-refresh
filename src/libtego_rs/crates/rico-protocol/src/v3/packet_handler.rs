@@ -335,6 +335,9 @@ pub enum Event {
         service_id: V3OnionServiceId,
         duplicate_connection: Option<ConnectionHandle>,
     },
+    BlockedClientAuthenticationAttempted{
+        service_id: V3OnionServiceId,
+    },
     // Fired when client receives proof confirmation from host
     // Optionally inludes handle of existing connection to drop
     HostAuthenticated{
@@ -1051,6 +1054,9 @@ impl PacketHandler {
                 };
 
                 let client_service_id = proof.service_id();
+                if self.blocked.contains(&client_service_id) {
+                    return Ok(Event::BlockedClientAuthenticationAttempted{service_id: client_service_id.clone()});
+                }
 
                 let message = auth_hidden_service::Proof::message(
                     &client_cookie,
@@ -1488,6 +1494,10 @@ impl PacketHandler {
         service_id: V3OnionServiceId,
         message_text: Option<contact_request_channel::MessageText>,
         replies: &mut Vec<Packet>) -> Result<ConnectionHandle, Error> {
+        if self.blocked.contains(&service_id) {
+            return Err(Error::OutgoingConnectionToBlockedPeerRejected(service_id));
+        }
+
         let handle = self.next_connection_handle;
         if handle > CONNECTION_HANDLE_MAX {
             return Err(Error::ConnectionHandlesExhausted);
@@ -1551,6 +1561,8 @@ impl PacketHandler {
         &mut self,
         service_id: V3OnionServiceId,
         replies: &mut Vec<Packet>) -> Result<ConnectionHandle, Error> {
+        // todo: we can probably remove these checks and specific errors
+        // in favor of checking for an IncomingContactRequest channel
         if self.allowed.contains(&service_id) {
             return Err(Error::PeerAlreadyAcceptedContact(service_id));
         } else if self.blocked.contains(&service_id) {
@@ -1562,7 +1574,8 @@ impl PacketHandler {
         let channel_identifier = if let Some(channel_identifier) = connection.channel_map.channel_type_to_id(&ChannelDataType::IncomingContactRequest) {
             channel_identifier
         } else {
-            return Err(Error::NotImplemented);
+            // properly handle this error
+            todo!();
         };
 
         let mut pending_replies: Vec<Packet> = Vec::with_capacity(3);

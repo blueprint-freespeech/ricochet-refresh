@@ -65,6 +65,8 @@ pub enum Error {
     //
     // user errors
     //
+    #[error("outgoing connection to blocked peer attempted: {0}")]
+    OutgoingConnectionToBlockedPeerRejected(tor_interface::tor_crypto::V3OnionServiceId),
     #[error("no ConnectionHandle associated with V3OnionServiceId: {0}")]
     ServiceIdToConnectionHandleMappingFailure(tor_interface::tor_crypto::V3OnionServiceId),
     #[error("no Connection associated with ConnectionHandle: {0}")]
