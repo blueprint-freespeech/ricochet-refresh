@@ -23,6 +23,7 @@ namespace shims
         {
             Online,
             Offline,
+            RequestAccepted,
             RequestPending,
             RequestRejected,
             Outdated

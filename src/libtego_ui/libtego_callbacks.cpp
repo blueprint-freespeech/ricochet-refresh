@@ -347,6 +347,7 @@ namespace
             if (requestAccepted)
             {
                 outgoingContactRequest->setAccepted();
+                contact->setStatus(shims::ContactUser::RequestAccepted);
             }
             else
             {

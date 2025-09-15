@@ -58,11 +58,11 @@ namespace shims
         auto userIdentity = shims::UserIdentity::userIdentity;
         auto context = userIdentity->getContext();
 
-        tego_context_acknowledge_chat_request(context, userId.get(), tego_chat_acknowledge_block, tego::throw_on_error());
+        tego_context_acknowledge_chat_request(context, userId.get(), tego_chat_acknowledge_reject, tego::throw_on_error());
 
         userIdentity->removeIncomingContactRequest(this);
 
         SettingsObject settings(QString("users.%1").arg(serviceIdString));
-        settings.write<QString>("type", "blocked");
+        settings.undefine();
     }
 }

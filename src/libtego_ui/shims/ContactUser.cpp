@@ -41,13 +41,18 @@ namespace shims
 
     void ContactUser::setStatus(ContactUser::Status newStatus)
     {
-        if (this->status != newStatus)
+        auto oldStatus = this->status;
+        if (oldStatus != newStatus)
         {
             this->status = newStatus;
             switch(this->status)
             {
                 case ContactUser::Online:
-                case ContactUser::Offline:
+                    if (oldStatus == ContactUser::RequestPending) {
+                        settings.write("type", "allowed");
+                    }
+                    break;
+                case ContactUser::RequestAccepted:
                     settings.write("type", "allowed");
                     break;
                 case ContactUser::RequestPending:
