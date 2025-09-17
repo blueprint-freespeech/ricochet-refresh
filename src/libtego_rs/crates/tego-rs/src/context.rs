@@ -196,6 +196,18 @@ impl Context {
         self.command_queue.push(data, delay);
     }
 
+    pub fn forget_user(
+        &mut self,
+        service_id: V3OnionServiceId,
+    ) -> Result<()> {
+        self.users.remove(&service_id);
+        let result: Promise<Result<()>> = Default::default();
+        let result_future = result.get_future();
+        self.push_command(CommandData::ForgetUser{service_id, result});
+
+        result_future.wait()
+    }
+
     pub fn send_contact_request(
         &self,
         service_id: V3OnionServiceId,
@@ -322,6 +334,12 @@ impl Drop for Context {
     }
 }
 
+struct UserData {
+    user_type: tego_user_type,
+    pending_connection_handle: Option<tor_interface::tor_provider::ConnectHandle>,
+    connection_handle: Option<ConnectionHandle>,
+    // todo: maybe we can queue messages here?
+}
 
 struct EventLoopTask {
     context: TegoKey,
@@ -344,7 +362,7 @@ struct EventLoopTask {
     // todo: we need to keep track of numberr of authentication failures
     // and use this in place of the decentralised connection  failures
     // which are passed along through the relevant Connect command
-    users: BTreeMap<V3OnionServiceId, tego_user_type>,
+    users: BTreeMap<V3OnionServiceId, UserData>,
 }
 
 impl EventLoopTask {
@@ -364,7 +382,10 @@ impl EventLoopTask {
     event_loop_complete: Promise<()>,
     ) -> Self {
         // create our list of known contacts from our users
+        // and our UserData structs
         let mut known_contacts: BTreeSet<V3OnionServiceId> = Default::default();
+        let mut user_data: BTreeMap<V3OnionServiceId, UserData> = Default::default();
+
         for (user_id, user_type) in users.iter() {
             use tego_user_type::*;
             match user_type {
@@ -373,6 +394,12 @@ impl EventLoopTask {
                 },
                 _ => (),
             }
+            user_data.insert(user_id.clone(),
+                UserData{
+                    user_type: *user_type,
+                    pending_connection_handle: None,
+                    connection_handle: None,
+                });
         }
 
         Self {
@@ -392,7 +419,7 @@ impl EventLoopTask {
             task_complete: false,
             event_loop_complete,
             file_read_buffer: [0u8; Self::FILE_READ_BUFFER_SIZE],
-            users,
+            users: user_data,
         }
     }
 
@@ -461,12 +488,9 @@ impl EventLoopTask {
                         }})?;
 
                     // try to connect to contacts
-                    // todo: iterate over self.allowed rather than dipping
-                    // into packet_handler's allowed list
-                    // for contact in self.packet_handler.allowed() {
-                    for (user_id, user_type) in self.users.iter() {
+                    for (user_id, user_data) in self.users.iter() {
                         use tego_user_type::*;
-                        match user_type {
+                        match user_data.user_type {
                             tego_user_type_allowed |
                             tego_user_type_pending => {
                                 self.command_queue.push(
@@ -566,6 +590,30 @@ impl EventLoopTask {
             let cmd = command_queue.pop().unwrap();
             match cmd.data() {
                 CommandData::EndEventLoop => self.task_complete = true,
+                CommandData::ForgetUser{service_id, result} => {
+                    let mut handle_forget_user = || -> Result<()> {
+                        // remove from our set of users
+                        match self.users.remove(&service_id) {
+                            Some(user_data) => {
+                                // ignore any pending connection
+                                if let Some(pending_connection_handle) = user_data.pending_connection_handle {
+                                    self.pending_connections.remove(&pending_connection_handle);
+                                }
+
+                                // kill open connection
+                                if let Some(connection_handle) = user_data.connection_handle {
+                                    self.connections.remove(&connection_handle);
+                                }
+                            },
+                            None => (),
+                        }
+                        // remove from packet handler
+                        self.packet_handler.forget_user(&service_id);
+
+                        Ok(())
+                    };
+                    result.resolve(handle_forget_user());
+                },
                 CommandData::BeginServerHandshake{stream} => {
                     let handle_begin_server_handshake = || -> Result<()> {
                         let handle = self.packet_handler.new_incoming_connection()?;
@@ -593,6 +641,7 @@ impl EventLoopTask {
                     use tego_chat_acknowledge::*;
                     let (result, remove) = match response {
                         tego_chat_acknowledge_accept => (self.packet_handler.accept_contact_request(service_id, &mut replies), false),
+                        // todo: add user to our user_data list
                         tego_chat_acknowledge_reject => (self.packet_handler.reject_contact_request(service_id, &mut replies), true),
                         tego_chat_acknowledge_block => todo!(),
                     };
@@ -1212,6 +1261,7 @@ impl EventLoopTask {
 
         // initiate connection retries for connections which had IO failures
         for service_id in to_retry.iter() {
+            // todo: check if user is allowed or pending or requesting
             let service_id = service_id.clone();
 
             let command_data = CommandData::ConnectContact{service_id, failure_count: 0, contact_request_message: None};
@@ -1595,9 +1645,4 @@ pub(crate) struct Callbacks {
     pub on_file_transfer_complete: tego_file_transfer_complete_callback,
     pub on_user_status_changed: tego_user_status_changed_callback,
     pub on_new_identity_created: tego_new_identity_created_callback,
-}
-
-pub(crate) enum UserData {
-    Allowed,
-    Blocked,
 }

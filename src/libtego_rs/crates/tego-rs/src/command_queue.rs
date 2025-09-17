@@ -64,6 +64,11 @@ impl Eq for Command {}
 pub(crate) enum CommandData {
     // library is going away we need to cleanup
     EndEventLoop,
+    // remove a user from our internal lists
+    ForgetUser{
+        service_id: V3OnionServiceId,
+        result: Promise<Result<()>>,
+    },
     // client connects to our listener triggering an incoming handshake
     BeginServerHandshake{
         stream: OnionStream

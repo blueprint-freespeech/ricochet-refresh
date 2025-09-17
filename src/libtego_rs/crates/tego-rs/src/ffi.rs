@@ -13,7 +13,7 @@ use tor_interface::tor_crypto::{Ed25519PrivateKey, V3OnionServiceId};
 use tor_interface::tor_provider::{DomainAddr, TargetAddr};
 
 // internal crates
-use crate::context::{Context, UserData};
+use crate::context::Context;
 use crate::error::{Error, translate_failures};
 use crate::file_hash::*;
 use crate::macros::*;
@@ -1797,12 +1797,29 @@ pub extern "C" fn tego_context_acknowledge_chat_request(
 /// @param error : filled on error
 #[no_mangle]
 pub extern "C" fn tego_context_forget_user(
-    _context: *mut tego_context,
-    _user: *const tego_user_id,
+    context: *mut tego_context,
+    user: *const tego_user_id,
     error: *mut *mut tego_error) -> () {
     translate_failures((), error, || -> Result<()> {
-        println!("tego_context_forget_user() not implemented");
-        bail_not_implemented!()
+        let key = user as TegoKey;
+        let service_id = match get_object_map().get(&key) {
+            Some(TegoObject::UserId(user_id)) => {
+                user_id.service_id.clone()
+            },
+            Some(_) => bail!("not a tego_user_id pointer: {:?}", key as *const c_void),
+            None => bail!("not a valid pointer: {:?}", key as *const c_void),
+        };
+
+        let key = context as TegoKey;
+        match get_object_map().get_mut(&key) {
+            Some(TegoObject::Context(context)) => {
+                context.forget_user(service_id)?;
+            },
+            Some(_) => bail!("not a tego_context pointer: {:?}", key as *const c_void),
+            None => bail!("not a valid pointer: {:?}", key as *const c_void),
+        }
+
+        Ok(())
     })
 }
 
