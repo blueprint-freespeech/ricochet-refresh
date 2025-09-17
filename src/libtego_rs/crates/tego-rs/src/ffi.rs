@@ -1,5 +1,5 @@
 // standard
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::{c_char, c_int, c_void};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use std::path::PathBuf;
@@ -440,6 +440,7 @@ pub enum tego_user_status {
 
 /// enum for user type
 #[repr(C)]
+#[derive(Clone, Copy)]
 pub enum tego_user_type {
     /// the host user
     tego_user_type_host,
@@ -447,11 +448,11 @@ pub enum tego_user_type {
     tego_user_type_allowed,
     /// users who have added host but the host has not replied yet
     tego_user_type_requesting,
-    /// users who have added host but the host has rejected
+    /// users who have added host but the host has blocked
     tego_user_type_blocked,
     /// users the host has added but who have not replied yet
     tego_user_type_pending,
-    /// user the host has added but replied with rejection
+    /// user the host has added but who have replied with rejection
     tego_user_type_rejected,
 }
 
@@ -1054,8 +1055,9 @@ pub extern "C" fn tego_context_start_service(
             }
         };
 
-        let mut allowed: BTreeSet<V3OnionServiceId> = Default::default();
-        let mut blocked: BTreeSet<V3OnionServiceId> = Default::default();
+        let host_service_id = V3OnionServiceId::from_private_key(&private_key);
+
+        let mut users: BTreeMap<V3OnionServiceId, tego_user_type> = Default::default();
 
         if !user_buffer.is_null() && !user_type_buffer.is_null() {
             let user_buffer = unsafe { std::slice::from_raw_parts(user_buffer, user_count) };
@@ -1069,19 +1071,16 @@ pub extern "C" fn tego_context_start_service(
                     None => bail!("not a valid pointer: {:?}", key as *const c_void),
                 };
 
+                // ensure we have no dupes
+                bail_if!(users.contains_key(&service_id));
+                // ensure we're not adding our own service id
+                bail_if_equal!(host_service_id, service_id);
+
                 use tego_user_type::*;
                 match user_type {
-                    tego_user_type_allowed => {
-                        bail_if!(blocked.contains(&service_id));
-                        bail_if!(!allowed.insert(service_id));
-                    },
-                    tego_user_type_blocked => {
-                        bail_if!(allowed.contains(&service_id));
-                        bail_if!(!blocked.insert(service_id));
-                    },
                     tego_user_type_host => bail!("user type may not be tego_user_type_host"),
-                    _ => (),
-                }
+                    _ => users.insert(service_id, *user_type),
+                };
             }
         }
 
@@ -1089,7 +1088,7 @@ pub extern "C" fn tego_context_start_service(
         match get_object_map().get_mut(&key) {
             Some(TegoObject::Context(context)) => {
                 context.set_private_key(private_key);
-                context.set_users(allowed, blocked);
+                context.set_users(users);
             },
             Some(_) => bail!("not a tego_context pointer: {:?}", key as *const c_void),
             None => bail!("not a valid pointer: {:?}", key as *const c_void),

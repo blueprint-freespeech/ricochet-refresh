@@ -451,18 +451,14 @@ pub struct PacketHandler {
     // our service id
     private_key: Ed25519PrivateKey,
     service_id: V3OnionServiceId,
-    // set of approved contacts
-    allowed: BTreeSet<V3OnionServiceId>,
-    // set of blocked contacts
-    // todo: handle blocked
-    blocked: BTreeSet<V3OnionServiceId>
+    // set of known contacts which have been approved by host
+    known_contacts: BTreeSet<V3OnionServiceId>,
 }
 
 impl PacketHandler {
     pub fn new(
         private_key: Ed25519PrivateKey,
-        allowed: BTreeSet<V3OnionServiceId>,
-        blocked: BTreeSet<V3OnionServiceId>,
+        known_contacts: BTreeSet<V3OnionServiceId>,
     ) -> Self {
         let service_id = V3OnionServiceId::from_private_key(&private_key);
         Self {
@@ -471,13 +467,12 @@ impl PacketHandler {
             service_id_to_connection_handle: Default::default(),
             private_key,
             service_id,
-            allowed,
-            blocked,
+            known_contacts,
         }
     }
 
-    pub fn allowed(&self) -> &BTreeSet<V3OnionServiceId> {
-        &self.allowed
+    fn known_contacts(&self) -> &BTreeSet<V3OnionServiceId> {
+        &self.known_contacts
     }
 
     fn connection(
@@ -564,6 +559,7 @@ impl PacketHandler {
                             let packet = chat_channel::Packet::try_from(bytes)?;
                             Packet::ChatChannelPacket{channel, packet}
                         },
+                        // todo: why does IncomingContactRequest rueturn an error?
                         Some(ChannelData::IncomingContactRequest) => return Err(Error::BadDataStream),
                         Some(ChannelData::OutgoingContactRequest) => {
                             let packet = contact_request_channel::Packet::try_from(bytes)?;
@@ -787,7 +783,7 @@ impl PacketHandler {
                         // verify peer is authorised and a contact
                         let connection = self.connection(connection_handle)?;
                         let service_id = if let Some(service_id) = &connection.peer_service_id {
-                            if !self.allowed.contains(service_id) {
+                            if !self.known_contacts.contains(service_id) {
                                 return Ok(Event::FatalProtocolFailure)
                             } else {
                                 service_id.clone()
@@ -815,7 +811,7 @@ impl PacketHandler {
                         // verify peer is authorised and a contact
                         let connection = self.connection(connection_handle)?;
                         let service_id = if let Some(service_id) = &connection.peer_service_id {
-                            if !self.allowed.contains(service_id) {
+                            if !self.known_contacts.contains(service_id) {
                                 return Ok(Event::FatalProtocolFailure)
                             } else {
                                 service_id.clone()
@@ -918,8 +914,17 @@ impl PacketHandler {
         packet: contact_request_channel::Packet,
         replies: &mut Vec<Packet>) -> Result<Event, Error> {
 
+        let connection = self.connection(connection_handle)?;
+        let channel_type = connection.channel_map.channel_id_to_type(&channel_id);
+
         match packet {
             contact_request_channel::Packet::Response(response) => {
+                // chat messags should only come in on the incoming chat channel
+                match channel_type {
+                    Some(ChannelDataType::OutgoingContactRequest) => (),
+                    _ => return Ok(Event::FatalProtocolFailure),
+                }
+
                 let connection = self.connection_mut(connection_handle)?;
 
                 use contact_request_channel::Status;
@@ -949,7 +954,7 @@ impl PacketHandler {
                         pending_replies.push(reply);
                         connection.channel_map.insert(channel_id, ChannelData::OutgoingFileTransfer)?;
 
-                        self.allowed.insert(service_id.clone());
+                        self.known_contacts.insert(service_id.clone());
                         replies.append(&mut pending_replies);
                         Ok(Event::ContactRequestResultAccepted{service_id})
                     },
@@ -970,15 +975,20 @@ impl PacketHandler {
         packet: chat_channel::Packet,
         replies: &mut Vec<Packet>) -> Result<Event, Error> {
 
+        let connection = self.connection(connection_handle)?;
+        let channel_type = connection.channel_map.channel_id_to_type(&channel);
+
         match packet {
             chat_channel::Packet::ChatMessage(message) => {
+                // chat messags should only come in on the incoming chat channel
+                match channel_type {
+                    Some(ChannelDataType::IncomingChat) => (),
+                    _ => return Ok(Event::FatalProtocolFailure),
+                }
+
                 let connection = self.connection(connection_handle)?;
                 let service_id = if let Some(service_id) = &connection.peer_service_id {
-                    if !self.allowed.contains(service_id) {
-                        return Ok(Event::FatalProtocolFailure)
-                    } else {
-                        service_id.clone()
-                    }
+                    service_id.clone()
                 } else {
                     return Ok(Event::FatalProtocolFailure)
                 };
@@ -1002,13 +1012,15 @@ impl PacketHandler {
                 Ok(Event::ChatMessageReceived{service_id, message_text, message_handle, time_delta})
             },
             chat_channel::Packet::ChatAcknowledge(acknowledge) => {
+                // chat ack messsages should only come in on the outgoing chat channel
+                match channel_type {
+                    Some(ChannelDataType::OutgoingChat) => (),
+                    _ => return Ok(Event::FatalProtocolFailure),
+                }
+
                 let connection = self.connection(connection_handle)?;
                 let service_id = if let Some(service_id) = &connection.peer_service_id {
-                    if !self.allowed.contains(service_id) {
-                        return Ok(Event::FatalProtocolFailure)
-                    } else {
-                        service_id.clone()
-                    }
+                    service_id.clone()
                 } else {
                     return Ok(Event::FatalProtocolFailure)
                 };
@@ -1054,9 +1066,6 @@ impl PacketHandler {
                 };
 
                 let client_service_id = proof.service_id();
-                if self.blocked.contains(&client_service_id) {
-                    return Ok(Event::BlockedClientAuthenticationAttempted{service_id: client_service_id.clone()});
-                }
 
                 let message = auth_hidden_service::Proof::message(
                     &client_cookie,
@@ -1077,7 +1086,7 @@ impl PacketHandler {
                     // build reply packets
 
                     let connection = self.connection(connection_handle)?;
-                    let is_known_contact = self.allowed.contains(&client_service_id);
+                    let is_known_contact = self.known_contacts.contains(&client_service_id);
                     let result = auth_hidden_service::Result::new(true, Some(is_known_contact))?;
                     let packet = auth_hidden_service::Packet::Result(result);
                     let reply = Packet::AuthHiddenServicePacket{channel, packet};
@@ -1235,8 +1244,6 @@ impl PacketHandler {
                                 let reply = Packet::ControlChannelPacket(packet);
                                 pending_replies.push(reply);
                                 connection.channel_map.insert(channel_id, ChannelData::OutgoingFileTransfer)?;
-
-                                self.allowed.insert(server_service_id.clone());
                             },
                         }
 
@@ -1300,22 +1307,20 @@ impl PacketHandler {
 
         let connection = self.connection(connection_handle)?;
         let service_id = if let Some(service_id) = &connection.peer_service_id {
-            if !self.allowed.contains(service_id) {
-                return Ok(Event::FatalProtocolFailure)
-            } else {
-                service_id.clone()
-            }
+            service_id.clone()
         } else {
             return Ok(Event::FatalProtocolFailure)
         };
-        let channel_type = match connection.channel_map.channel_id_to_type(&channel) {
-            Some(ChannelDataType::IncomingFileTransfer) => ChannelDataType::IncomingFileTransfer,
-            Some(ChannelDataType::OutgoingFileTransfer) => ChannelDataType::OutgoingFileTransfer,
-            _ => return Ok(Event::FatalProtocolFailure),
-        };
+        let channel_type = connection.channel_map.channel_id_to_type(&channel);
 
         match packet {
             file_channel::Packet::FileHeader(file_header) => {
+                // file header should only come in on the incoming file channel
+                match channel_type {
+                    Some(ChannelDataType::IncomingFileTransfer) => (),
+                    _ => return Ok(Event::FatalProtocolFailure),
+                }
+
                 let file_id = file_header.file_id();
                 let file_transfer_handle = FileTransferHandle{file_id, connection_handle, direction: Direction::Incoming};
                 let file_name = file_header.name().to_string();
@@ -1344,6 +1349,12 @@ impl PacketHandler {
                 Ok(Event::FileTransferRequestReceived{service_id, file_transfer_handle, file_name, file_size, file_hash})
             },
             file_channel::Packet::FileChunk(file_chunk) => {
+                // file chunks should only come in on the incoming file channel
+                match channel_type {
+                    Some(ChannelDataType::IncomingFileTransfer) => (),
+                    _ => return Ok(Event::FatalProtocolFailure),
+                }
+
                 let file_id = file_chunk.file_id();
                 let file_transfer_handle = FileTransferHandle{file_id, connection_handle, direction: Direction::Incoming};
                 let data: Vec<u8> = file_chunk.take_chunk_data().into();
@@ -1407,12 +1418,24 @@ impl PacketHandler {
                 }
             },
             file_channel::Packet::FileHeaderAck(file_header_ack) => {
+                // file header ack should only come in on the outgoing file channel
+                match channel_type {
+                    Some(ChannelDataType::OutgoingFileTransfer) => (),
+                    _ => return Ok(Event::FatalProtocolFailure),
+                }
+
                 let file_id = file_header_ack.file_id();
                 let file_transfer_handle = FileTransferHandle{file_id, connection_handle, direction: Direction::Outgoing};
                 let accepted = file_header_ack.accepted();
                 Ok(Event::FileTransferRequestAcknowledgeReceived{service_id, file_transfer_handle, accepted})
             },
             file_channel::Packet::FileHeaderResponse(file_header_response) => {
+                // file header response should only come in on the outgoing file channel
+                match channel_type {
+                    Some(ChannelDataType::OutgoingFileTransfer) => (),
+                    _ => return Ok(Event::FatalProtocolFailure),
+                }
+
                 let file_id = file_header_response.file_id();
                 let file_transfer_handle = FileTransferHandle{file_id, connection_handle, direction: Direction::Outgoing};
                 let response = file_header_response.response();
@@ -1432,6 +1455,12 @@ impl PacketHandler {
                 }
             },
             file_channel::Packet::FileChunkAck(file_chunk_ack) => {
+                // file chunk ack should only come in on the outgoing file channel
+                match channel_type {
+                    Some(ChannelDataType::OutgoingFileTransfer) => (),
+                    _ => return Ok(Event::FatalProtocolFailure),
+                }
+
                 let file_id = file_chunk_ack.file_id();
                 let file_transfer_handle = FileTransferHandle{file_id, connection_handle, direction: Direction::Outgoing};
                 // the number of bytes our counterpart claims to have
@@ -1445,7 +1474,7 @@ impl PacketHandler {
 
                 let file_upload = match connection.file_transfers.get(&file_transfer_handle) {
                     Some(FileTransfer::FileUpload(file_upload)) => file_upload,
-                    Some(FileTransfer::FileDownload(_)) => todo!(),
+                    Some(FileTransfer::FileDownload(_)) => unreachable!("we should only receive file chunk acks for uploads"),
                     None => return Ok(Event::ProtocolFailure{message: "Received orphaned FileChunkAck packet".to_string()}),
                 };
 
@@ -1460,12 +1489,14 @@ impl PacketHandler {
                     Ok(Event::FatalProtocolFailure)
                 }
             },
-            file_channel::Packet::FileTransferCompleteNotification(file_transfer_complete_notification) => {
+            file_channel::Packet::FileTransferCompleteNotification(
+                // file header should only come in on the incoming file channel
+                file_transfer_complete_notification) => {
                 let file_id = file_transfer_complete_notification.file_id();
                 let direction = match channel_type {
-                    ChannelDataType::IncomingFileTransfer => Direction::Incoming,
-                    ChannelDataType::OutgoingFileTransfer => Direction::Outgoing,
-                    _ => unreachable!(),
+                    Some(ChannelDataType::IncomingFileTransfer) => Direction::Incoming,
+                    Some(ChannelDataType::OutgoingFileTransfer) => Direction::Outgoing,
+                    _ => return Ok(Event::FatalProtocolFailure),
                 };
                 let file_transfer_handle = FileTransferHandle{file_id, connection_handle, direction};
                 use file_channel::FileTransferResult;
@@ -1494,9 +1525,8 @@ impl PacketHandler {
         service_id: V3OnionServiceId,
         message_text: Option<contact_request_channel::MessageText>,
         replies: &mut Vec<Packet>) -> Result<ConnectionHandle, Error> {
-        if self.blocked.contains(&service_id) {
-            return Err(Error::OutgoingConnectionToBlockedPeerRejected(service_id));
-        }
+
+        self.known_contacts.insert(service_id.clone());
 
         let handle = self.next_connection_handle;
         if handle > CONNECTION_HANDLE_MAX {
@@ -1505,7 +1535,7 @@ impl PacketHandler {
         self.next_connection_handle += 1u32;
 
 
-        let connection = Connection::new_outgoing(service_id.clone(), message_text);
+        let connection = Connection::new_outgoing(service_id, message_text);
         self.connections.insert(handle, connection);
 
         let introduction = introduction::IntroductionPacket::new(vec![introduction::Version::RicochetRefresh3])?;
@@ -1563,10 +1593,8 @@ impl PacketHandler {
         replies: &mut Vec<Packet>) -> Result<ConnectionHandle, Error> {
         // todo: we can probably remove these checks and specific errors
         // in favor of checking for an IncomingContactRequest channel
-        if self.allowed.contains(&service_id) {
-            return Err(Error::PeerAlreadyAcceptedContact(service_id));
-        } else if self.blocked.contains(&service_id) {
-            return Err(Error::PeerIsBlocked(service_id));
+        if self.known_contacts.contains(&service_id) {
+            return Err(Error::PeerAlreadyKnownContact(service_id));
         }
 
         let connection_handle = self.service_id_to_connection_handle(&service_id)?;
@@ -1613,8 +1641,40 @@ impl PacketHandler {
         pending_replies.push(reply);
         connection.channel_map.insert(channel_id, ChannelData::OutgoingFileTransfer)?;
 
-        self.allowed.insert(service_id);
+        self.known_contacts.insert(service_id);
         replies.append(&mut pending_replies);
+        Ok(connection_handle)
+    }
+
+    pub fn reject_contact_request(
+        &mut self,
+        service_id: V3OnionServiceId,
+        replies: &mut Vec<Packet>) -> Result<ConnectionHandle, Error> {
+
+        let connection_handle = self.service_id_to_connection_handle(&service_id)?;
+        let connection = self.connection_mut(connection_handle)?;
+        let channel_identifier = if let Some(channel_identifier) = connection.channel_map.channel_type_to_id(&ChannelDataType::IncomingContactRequest) {
+            channel_identifier
+        } else {
+            // properly handle this error
+            todo!();
+        };
+
+        let mut pending_replies: Vec<Packet> = Vec::with_capacity(3);
+
+        // build contact request accepted packet
+        use contact_request_channel::{Response, Status};
+        let channel = channel_identifier;
+        let response = Response{status: Status::Rejected};
+        let packet = contact_request_channel::Packet::Response(response);
+        let reply = Packet::ContactRequestChannelPacket{channel, packet};
+        pending_replies.push(reply);
+
+        // close this contact request channel
+        connection.close_channel(channel, Some(&mut pending_replies));
+
+        replies.append(&mut pending_replies);
+
         Ok(connection_handle)
     }
 

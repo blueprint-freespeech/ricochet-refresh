@@ -75,10 +75,8 @@ pub enum Error {
     ChannelAlreadyOpen(u16),
     #[error("channel type already open: {0:?}")]
     ChannelTypeAlreadyOpen(crate::v3::channel_map::ChannelDataType),
-    #[error("peer is already an accepted contact: {0}")]
-    PeerAlreadyAcceptedContact(tor_interface::tor_crypto::V3OnionServiceId),
-    #[error("peer may not be accepted as it is blocked: {0}")]
-    PeerIsBlocked(tor_interface::tor_crypto::V3OnionServiceId),
+    #[error("peer is already a known contact: {0}")]
+    PeerAlreadyKnownContact(tor_interface::tor_crypto::V3OnionServiceId),
     #[error("no FileTransfer associated with FileTransferHandle: {0:?}")]
     FileTransferHandleToFileTransferMappingFailure(crate::v3::packet_handler::FileTransferHandle),
     #[error("no FileDownload associated with FileTransferHandle: {0:?}")]

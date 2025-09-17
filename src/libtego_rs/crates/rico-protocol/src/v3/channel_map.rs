@@ -23,6 +23,7 @@ pub(crate) enum ChannelData {
     OutgoingFileTransfer,
 }
 
+// todo: rename this to ChannelType
 #[derive(Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub(crate) enum ChannelDataType {
     Control,
