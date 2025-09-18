@@ -40,7 +40,7 @@ pub enum Error {
     #[error("target channel does not exist: {0}")]
     TargetChannelDoesNotExist(u16),
     #[error("target channel type is not open: {0:?}")]
-    TargetChannelTypeNotOpen(channel_map::ChannelDataType),
+    TargetChannelTypeNotOpen(channel_map::ChannelType),
     #[error("no more ConnectionHandles available")]
     ConnectionHandlesExhausted,
     #[error("no more MessageHandles available")]
@@ -74,7 +74,7 @@ pub enum Error {
     #[error("channel already open: {0}")]
     ChannelAlreadyOpen(u16),
     #[error("channel type already open: {0:?}")]
-    ChannelTypeAlreadyOpen(crate::v3::channel_map::ChannelDataType),
+    ChannelTypeAlreadyOpen(crate::v3::channel_map::ChannelType),
     #[error("peer is already a known contact: {0}")]
     PeerAlreadyKnownContact(tor_interface::tor_crypto::V3OnionServiceId),
     #[error("no FileTransfer associated with FileTransferHandle: {0:?}")]

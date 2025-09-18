@@ -921,7 +921,7 @@ impl PacketHandler {
             contact_request_channel::Packet::Response(response) => {
                 // chat messags should only come in on the incoming chat channel
                 match channel_type {
-                    Some(ChannelDataType::OutgoingContactRequest) => (),
+                    Some(ChannelType::OutgoingContactRequest) => (),
                     _ => return Ok(Event::FatalProtocolFailure),
                 }
 
@@ -982,7 +982,7 @@ impl PacketHandler {
             chat_channel::Packet::ChatMessage(message) => {
                 // chat messags should only come in on the incoming chat channel
                 match channel_type {
-                    Some(ChannelDataType::IncomingChat) => (),
+                    Some(ChannelType::IncomingChat) => (),
                     _ => return Ok(Event::FatalProtocolFailure),
                 }
 
@@ -1014,7 +1014,7 @@ impl PacketHandler {
             chat_channel::Packet::ChatAcknowledge(acknowledge) => {
                 // chat ack messsages should only come in on the outgoing chat channel
                 match channel_type {
-                    Some(ChannelDataType::OutgoingChat) => (),
+                    Some(ChannelType::OutgoingChat) => (),
                     _ => return Ok(Event::FatalProtocolFailure),
                 }
 
@@ -1048,7 +1048,7 @@ impl PacketHandler {
                     connection.direction != Direction::Incoming ||
                     // channel has wrong data
                     match connection.channel_map.channel_id_to_type(&channel) {
-                        Some(ChannelDataType::IncomingAuthHiddenService) => false,
+                        Some(ChannelType::IncomingAuthHiddenService) => false,
                         _ => true
                     }
                 };
@@ -1179,7 +1179,7 @@ impl PacketHandler {
                     connection.direction != Direction::Outgoing ||
                     // channel has wrong data
                     match connection.channel_map.channel_id_to_type(&channel) {
-                        Some(ChannelDataType::OutgoingAuthHiddenService) => false,
+                        Some(ChannelType::OutgoingAuthHiddenService) => false,
                         _ => true
                     }
                 };
@@ -1317,7 +1317,7 @@ impl PacketHandler {
             file_channel::Packet::FileHeader(file_header) => {
                 // file header should only come in on the incoming file channel
                 match channel_type {
-                    Some(ChannelDataType::IncomingFileTransfer) => (),
+                    Some(ChannelType::IncomingFileTransfer) => (),
                     _ => return Ok(Event::FatalProtocolFailure),
                 }
 
@@ -1351,7 +1351,7 @@ impl PacketHandler {
             file_channel::Packet::FileChunk(file_chunk) => {
                 // file chunks should only come in on the incoming file channel
                 match channel_type {
-                    Some(ChannelDataType::IncomingFileTransfer) => (),
+                    Some(ChannelType::IncomingFileTransfer) => (),
                     _ => return Ok(Event::FatalProtocolFailure),
                 }
 
@@ -1420,7 +1420,7 @@ impl PacketHandler {
             file_channel::Packet::FileHeaderAck(file_header_ack) => {
                 // file header ack should only come in on the outgoing file channel
                 match channel_type {
-                    Some(ChannelDataType::OutgoingFileTransfer) => (),
+                    Some(ChannelType::OutgoingFileTransfer) => (),
                     _ => return Ok(Event::FatalProtocolFailure),
                 }
 
@@ -1432,7 +1432,7 @@ impl PacketHandler {
             file_channel::Packet::FileHeaderResponse(file_header_response) => {
                 // file header response should only come in on the outgoing file channel
                 match channel_type {
-                    Some(ChannelDataType::OutgoingFileTransfer) => (),
+                    Some(ChannelType::OutgoingFileTransfer) => (),
                     _ => return Ok(Event::FatalProtocolFailure),
                 }
 
@@ -1457,7 +1457,7 @@ impl PacketHandler {
             file_channel::Packet::FileChunkAck(file_chunk_ack) => {
                 // file chunk ack should only come in on the outgoing file channel
                 match channel_type {
-                    Some(ChannelDataType::OutgoingFileTransfer) => (),
+                    Some(ChannelType::OutgoingFileTransfer) => (),
                     _ => return Ok(Event::FatalProtocolFailure),
                 }
 
@@ -1494,8 +1494,8 @@ impl PacketHandler {
                 file_transfer_complete_notification) => {
                 let file_id = file_transfer_complete_notification.file_id();
                 let direction = match channel_type {
-                    Some(ChannelDataType::IncomingFileTransfer) => Direction::Incoming,
-                    Some(ChannelDataType::OutgoingFileTransfer) => Direction::Outgoing,
+                    Some(ChannelType::IncomingFileTransfer) => Direction::Incoming,
+                    Some(ChannelType::OutgoingFileTransfer) => Direction::Outgoing,
                     _ => return Ok(Event::FatalProtocolFailure),
                 };
                 let file_transfer_handle = FileTransferHandle{file_id, connection_handle, direction};
@@ -1609,7 +1609,7 @@ impl PacketHandler {
 
         let connection_handle = self.service_id_to_connection_handle(&service_id)?;
         let connection = self.connection_mut(connection_handle)?;
-        let channel_identifier = if let Some(channel_identifier) = connection.channel_map.channel_type_to_id(&ChannelDataType::IncomingContactRequest) {
+        let channel_identifier = if let Some(channel_identifier) = connection.channel_map.channel_type_to_id(&ChannelType::IncomingContactRequest) {
             channel_identifier
         } else {
             // properly handle this error
@@ -1663,7 +1663,7 @@ impl PacketHandler {
 
         let connection_handle = self.service_id_to_connection_handle(&service_id)?;
         let connection = self.connection_mut(connection_handle)?;
-        let channel_identifier = if let Some(channel_identifier) = connection.channel_map.channel_type_to_id(&ChannelDataType::IncomingContactRequest) {
+        let channel_identifier = if let Some(channel_identifier) = connection.channel_map.channel_type_to_id(&ChannelType::IncomingContactRequest) {
             channel_identifier
         } else {
             // properly handle this error
@@ -1696,7 +1696,7 @@ impl PacketHandler {
 
         let connection_handle = self.service_id_to_connection_handle(&service_id)?;
         let connection = self.connection_mut(connection_handle)?;
-        if let Some(channel) = connection.channel_map.channel_type_to_id(&ChannelDataType::OutgoingChat) {
+        if let Some(channel) = connection.channel_map.channel_type_to_id(&ChannelType::OutgoingChat) {
             // get this message's id
             if connection.sent_message_counter > (u32::MAX as u64) {
                 return Err(Error::MessageHandlesExhausted);
@@ -1730,7 +1730,7 @@ impl PacketHandler {
 
         let connection_handle = self.service_id_to_connection_handle(&service_id)?;
         let connection = self.connection_mut(connection_handle)?;
-        if let Some(channel) = connection.channel_map.channel_type_to_id(&ChannelDataType::OutgoingFileTransfer) {
+        if let Some(channel) = connection.channel_map.channel_type_to_id(&ChannelType::OutgoingFileTransfer) {
             // get this file transfer's id
             // get this message's id
             if connection.sent_message_counter > (u32::MAX as u64) {
@@ -1767,7 +1767,7 @@ impl PacketHandler {
         let connection_handle = self.service_id_to_connection_handle(service_id)?  ;
         let connection = self.connection_mut(connection_handle)?;
 
-        if let Some(channel) = connection.channel_map.channel_type_to_id(&ChannelDataType::IncomingFileTransfer) {
+        if let Some(channel) = connection.channel_map.channel_type_to_id(&ChannelType::IncomingFileTransfer) {
 
             let file_id = file_transfer_handle.file_id;
             let file_header_response = file_channel::FileHeaderResponse::new(file_id, file_channel::Response::Accept)?;
@@ -1802,7 +1802,7 @@ impl PacketHandler {
             FileTransfer::FileUpload(_) => return Err(Error::FileUploadCannotBeRejected(file_transfer_handle)),
         }
 
-        let channel_type = ChannelDataType::IncomingFileTransfer;
+        let channel_type = ChannelType::IncomingFileTransfer;
         let channel = connection.channel_map.channel_type_to_id(&channel_type).ok_or(Error::TargetChannelTypeNotOpen(channel_type))?;
 
         // send rejection
@@ -1829,8 +1829,8 @@ impl PacketHandler {
 
         // get the appropriate file channel
         let channel_type = match file_transfer_handle.direction {
-            Direction::Incoming => ChannelDataType::IncomingFileTransfer,
-            Direction::Outgoing => ChannelDataType::OutgoingFileTransfer,
+            Direction::Incoming => ChannelType::IncomingFileTransfer,
+            Direction::Outgoing => ChannelType::OutgoingFileTransfer,
         };
         let channel = connection.channel_map.channel_type_to_id(&channel_type).ok_or(Error::TargetChannelTypeNotOpen(channel_type))?;
 
@@ -1862,7 +1862,7 @@ impl PacketHandler {
         let connection_handle = self.service_id_to_connection_handle(service_id)?;
         let connection = self.connection_mut(connection_handle)?;
 
-        let channel_type = ChannelDataType::OutgoingFileTransfer;
+        let channel_type = ChannelType::OutgoingFileTransfer;
         let channel = connection.channel_map.channel_type_to_id(&channel_type).ok_or(Error::TargetChannelTypeNotOpen(channel_type))?;
 
         let file_id = file_transfer_handle.file_id;

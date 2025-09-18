@@ -23,9 +23,8 @@ pub(crate) enum ChannelData {
     OutgoingFileTransfer,
 }
 
-// todo: rename this to ChannelType
 #[derive(Debug, Eq, Ord, PartialEq, PartialOrd)]
-pub(crate) enum ChannelDataType {
+pub(crate) enum ChannelType {
     Control,
     IncomingChat,
     OutgoingChat,
@@ -37,25 +36,25 @@ pub(crate) enum ChannelDataType {
     OutgoingFileTransfer,
 }
 
-impl From<&ChannelData> for ChannelDataType {
-    fn from(channel_data: &ChannelData) -> ChannelDataType {
+impl From<&ChannelData> for ChannelType {
+    fn from(channel_data: &ChannelData) -> ChannelType {
         match channel_data {
-            ChannelData::Control => ChannelDataType::Control,
-            ChannelData::IncomingChat => ChannelDataType::IncomingChat,
-            ChannelData::OutgoingChat => ChannelDataType::OutgoingChat,
-            ChannelData::IncomingContactRequest => ChannelDataType::IncomingContactRequest,
-            ChannelData::OutgoingContactRequest => ChannelDataType::OutgoingContactRequest,
-            ChannelData::IncomingAuthHiddenService{..} => ChannelDataType::IncomingAuthHiddenService,
-            ChannelData::OutgoingAuthHiddenService{..} => ChannelDataType::OutgoingAuthHiddenService,
-            ChannelData::IncomingFileTransfer => ChannelDataType::IncomingFileTransfer,
-            ChannelData::OutgoingFileTransfer => ChannelDataType::OutgoingFileTransfer,
+            ChannelData::Control => ChannelType::Control,
+            ChannelData::IncomingChat => ChannelType::IncomingChat,
+            ChannelData::OutgoingChat => ChannelType::OutgoingChat,
+            ChannelData::IncomingContactRequest => ChannelType::IncomingContactRequest,
+            ChannelData::OutgoingContactRequest => ChannelType::OutgoingContactRequest,
+            ChannelData::IncomingAuthHiddenService{..} => ChannelType::IncomingAuthHiddenService,
+            ChannelData::OutgoingAuthHiddenService{..} => ChannelType::OutgoingAuthHiddenService,
+            ChannelData::IncomingFileTransfer => ChannelType::IncomingFileTransfer,
+            ChannelData::OutgoingFileTransfer => ChannelType::OutgoingFileTransfer,
         }
     }
 }
 
 #[derive(Default)]
 pub(crate) struct ChannelMap {
-    type_to_id: BTreeMap<ChannelDataType, u16>,
+    type_to_id: BTreeMap<ChannelType, u16>,
     id_to_channel: BTreeMap<u16, ChannelData>,
 }
 
@@ -70,7 +69,7 @@ impl ChannelMap {
 
     pub fn channel_type_to_id(
         &self,
-        channel_type: &ChannelDataType) -> Option<u16> {
+        channel_type: &ChannelType) -> Option<u16> {
         if let Some(id) = self.type_to_id.get(channel_type) {
             Some(*id)
         } else {
@@ -80,7 +79,7 @@ impl ChannelMap {
 
     pub fn channel_id_to_type(
         &self,
-        channel_id: &u16) -> Option<ChannelDataType> {
+        channel_id: &u16) -> Option<ChannelType> {
         match self.id_to_channel.get(channel_id) {
             Some(channel) => Some(channel.into()),
             None => None,
@@ -92,7 +91,7 @@ impl ChannelMap {
         channel_id: u16,
         channel_data: ChannelData) -> Result<(), Error> {
 
-        let channel_type: ChannelDataType = (&channel_data).into();
+        let channel_type: ChannelType = (&channel_data).into();
 
         if self.id_to_channel.contains_key(&channel_id) {
             Err(Error::ChannelAlreadyOpen(channel_id))
@@ -119,7 +118,7 @@ impl ChannelMap {
 
     pub fn get_by_type(
         &self,
-        channel_type: &ChannelDataType) -> Option<&ChannelData> {
+        channel_type: &ChannelType) -> Option<&ChannelData> {
         if let Some(id)  = self.type_to_id.get(channel_type) {
             let channel = self.id_to_channel.get(id).expect("ChannelMap corrupted");
             Some(channel)
@@ -130,7 +129,7 @@ impl ChannelMap {
 
     pub fn get_by_type_mut(
         &mut self,
-        channel_type: &ChannelDataType) -> Option<&ChannelData> {
+        channel_type: &ChannelType) -> Option<&ChannelData> {
         if let Some(id)  = self.type_to_id.get(channel_type) {
             let channel = self.id_to_channel.get_mut(id).expect("ChannelMap corrupted");
             Some(channel)
@@ -143,7 +142,7 @@ impl ChannelMap {
         &mut self,
         channel_id: &u16) -> Option<ChannelData> {
         if let Some(channel) = self.id_to_channel.remove(channel_id) {
-            let channel_type: ChannelDataType = (&channel).into();
+            let channel_type: ChannelType = (&channel).into();
             self.type_to_id.remove(&channel_type).expect("ChannelMap corrupted");
             Some(channel)
         } else {
