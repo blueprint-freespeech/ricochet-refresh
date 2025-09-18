@@ -79,6 +79,13 @@ if (ENABLE_LIBTEGO_RS)
     add_compile_definitions(ENABLE_LIBTEGO_RS)
 endif()
 
+# Run Rust's clippy for Rust targets and cppcheck for C++ targets
+option(ENABLE_LINTING "Enable lint make target" OFF)
+if (ENABLE_LINTING)
+    # todo: add C++ support once we move off of the Qt frontend
+    add_custom_target(linting)
+endif()
+
 if (NOT ENABLE_LIBTEGO_RS)
     # openssl configuration. this propogates to all subprojects
     set(OPENSSL_USE_STATIC_LIBS OFF CACHE BOOL "Use statically-linked OpenSSL")
