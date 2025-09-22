@@ -3,14 +3,16 @@ use std::cmp::Ord;
 use std::collections::{BTreeMap, BTreeSet};
 
 // extern
-use rand::{TryRngCore, rngs::OsRng};
-use tor_interface::tor_crypto::{Ed25519PrivateKey, Ed25519PublicKey, Ed25519Signature, V3OnionServiceId};
+use rand::{rngs::OsRng, TryRngCore};
+use tor_interface::tor_crypto::{
+    Ed25519PrivateKey, Ed25519PublicKey, Ed25519Signature, V3OnionServiceId,
+};
 
 // internal
-use crate::v3::Error;
+use crate::v3::channel_map::*;
 use crate::v3::file_hasher::{FileHash, FileHasher};
 use crate::v3::message::*;
-use crate::v3::channel_map::*;
+use crate::v3::Error;
 
 //
 // Ricochet-Refresh Protocol Packet
@@ -24,31 +26,33 @@ pub enum Packet {
     // used to open various channel types
     ControlChannelPacket(control_channel::Packet),
     // used to close a channel
-    CloseChannelPacket{channel: u16},
+    CloseChannelPacket {
+        channel: u16,
+    },
     // used to accept/reject contact requests
-    ContactRequestChannelPacket{
+    ContactRequestChannelPacket {
         channel: u16,
         packet: contact_request_channel::Packet,
     },
     // used to send/ack messages
-    ChatChannelPacket{
+    ChatChannelPacket {
         channel: u16,
         packet: chat_channel::Packet,
     },
     // used to authenticate connecting clients
-    AuthHiddenServicePacket{
+    AuthHiddenServicePacket {
         channel: u16,
         packet: auth_hidden_service::Packet,
     },
     // used to send file attachments
-    FileChannelPacket{
+    FileChannelPacket {
         channel: u16,
         packet: file_channel::Packet,
     },
 }
 
 impl Packet {
-    pub fn write_to_vec(&self, v:& mut Vec<u8>) -> Result<(), Error> {
+    pub fn write_to_vec(&self, v: &mut Vec<u8>) -> Result<(), Error> {
         match self {
             Packet::IntroductionPacket(packet) => packet.write_to_vec(v)?,
             Packet::IntroductionResponsePacket(packet) => packet.write_to_vec(v)?,
@@ -71,31 +75,30 @@ impl Packet {
 
                 let data_begin = v.len();
                 let channel = match packet {
-                    Packet::IntroductionPacket(_) |
-                    Packet::IntroductionResponsePacket(_) => unreachable!(),
+                    Packet::IntroductionPacket(_) | Packet::IntroductionResponsePacket(_) => {
+                        unreachable!()
+                    }
                     Packet::ControlChannelPacket(packet) => {
                         packet.write_to_vec(v)?;
                         0u16
-                    },
-                    Packet::CloseChannelPacket{channel} => {
-                        *channel
-                    },
-                    Packet::ContactRequestChannelPacket{channel, packet} => {
+                    }
+                    Packet::CloseChannelPacket { channel } => *channel,
+                    Packet::ContactRequestChannelPacket { channel, packet } => {
                         packet.write_to_vec(v)?;
                         *channel
-                    },
-                    Packet::ChatChannelPacket{channel, packet} => {
+                    }
+                    Packet::ChatChannelPacket { channel, packet } => {
                         packet.write_to_vec(v)?;
                         *channel
-                    },
-                    Packet::AuthHiddenServicePacket{channel, packet} => {
+                    }
+                    Packet::AuthHiddenServicePacket { channel, packet } => {
                         packet.write_to_vec(v)?;
                         *channel
-                    },
-                    Packet::FileChannelPacket{channel, packet} => {
+                    }
+                    Packet::FileChannelPacket { channel, packet } => {
                         packet.write_to_vec(v)?;
                         *channel
-                    },
+                    }
                 };
                 let data_end = v.len();
                 let data_size = data_end - data_begin;
@@ -151,7 +154,8 @@ impl Connection {
 
     fn new_outgoing(
         service_id: V3OnionServiceId,
-        message: Option<contact_request_channel::MessageText>) -> Self {
+        message: Option<contact_request_channel::MessageText>,
+    ) -> Self {
         Self {
             creation_time: std::time::Instant::now(),
             channel_map: Default::default(),
@@ -176,14 +180,10 @@ impl Connection {
         }
     }
 
-    fn close_channel(
-        &mut self,
-        channel: u16,
-        replies: Option<&mut Vec<Packet>>,
-    ) -> bool {
+    fn close_channel(&mut self, channel: u16, replies: Option<&mut Vec<Packet>>) -> bool {
         if let Some(_channel_data) = self.channel_map.remove_by_id(&channel) {
             if let Some(replies) = replies {
-                let reply = Packet::CloseChannelPacket{channel};
+                let reply = Packet::CloseChannelPacket { channel };
                 replies.push(reply);
             }
             true
@@ -240,7 +240,8 @@ impl From<MessageHandle> for u64 {
         assert!(message_handle.connection_handle <= CONNECTION_HANDLE_MAX);
 
         let message_id = (message_handle.message_id as u64) << MessageHandle::MESSAGE_ID_SHIFT;
-        let connection_handle = (message_handle.connection_handle as u64) << MessageHandle::CONNECTION_HANDLE_SHIFT;
+        let connection_handle =
+            (message_handle.connection_handle as u64) << MessageHandle::CONNECTION_HANDLE_SHIFT;
         let direction = match message_handle.direction {
             Direction::Incoming => 0u64,
             Direction::Outgoing => 1u64,
@@ -268,7 +269,11 @@ impl From<u64> for MessageHandle {
             _ => unreachable!(),
         };
 
-        MessageHandle{message_id, connection_handle, direction}
+        MessageHandle {
+            message_id,
+            connection_handle,
+            direction,
+        }
     }
 }
 
@@ -297,7 +302,8 @@ impl From<FileTransferHandle> for u64 {
         assert!(file_transfer_handle.connection_handle <= CONNECTION_HANDLE_MAX);
 
         let file_id = (file_transfer_handle.file_id as u64) << FileTransferHandle::FILE_ID_SHIFT;
-        let connection_handle = (file_transfer_handle.connection_handle as u64) << FileTransferHandle::CONNECTION_HANDLE_SHIFT;
+        let connection_handle = (file_transfer_handle.connection_handle as u64)
+            << FileTransferHandle::CONNECTION_HANDLE_SHIFT;
         let direction = match file_transfer_handle.direction {
             Direction::Incoming => 0u64,
             Direction::Outgoing => 1u64,
@@ -313,7 +319,8 @@ impl From<u64> for FileTransferHandle {
         let file_id = file_id >> FileTransferHandle::FILE_ID_SHIFT;
         let file_id = file_id as u32;
 
-        let connection_handle = file_transfer_handle_raw & FileTransferHandle::CONNECTION_HANDLE_BITS;
+        let connection_handle =
+            file_transfer_handle_raw & FileTransferHandle::CONNECTION_HANDLE_BITS;
         let connection_handle = connection_handle >> FileTransferHandle::CONNECTION_HANDLE_SHIFT;
         let connection_handle = connection_handle as ConnectionHandle;
 
@@ -325,7 +332,11 @@ impl From<u64> for FileTransferHandle {
             _ => unreachable!(),
         };
 
-        FileTransferHandle{file_id, connection_handle, direction}
+        FileTransferHandle {
+            file_id,
+            connection_handle,
+            direction,
+        }
     }
 }
 
@@ -335,16 +346,16 @@ pub enum Event {
     OpenChannelAuthHiddenServiceReceived,
     // Fired when a host authorises a connecting client
     // Optionally includes handle of existing connection to drop
-    ClientAuthenticated{
+    ClientAuthenticated {
         service_id: V3OnionServiceId,
         duplicate_connection: Option<ConnectionHandle>,
     },
-    BlockedClientAuthenticationAttempted{
+    BlockedClientAuthenticationAttempted {
         service_id: V3OnionServiceId,
     },
     // Fired when client receives proof confirmation from host
     // Optionally inludes handle of existing connection to drop
-    HostAuthenticated{
+    HostAuthenticated {
         service_id: V3OnionServiceId,
         duplicate_connection: Option<ConnectionHandle>,
     },
@@ -352,95 +363,95 @@ pub enum Event {
     DuplicateConnectionDropped {
         duplicate_connection: ConnectionHandle,
     },
-    ContactRequestReceived{
+    ContactRequestReceived {
         service_id: V3OnionServiceId,
         nickname: String,
         message_text: String,
     },
-    ContactRequestResultPending{
+    ContactRequestResultPending {
         service_id: V3OnionServiceId,
     },
-    ContactRequestResultAccepted{
+    ContactRequestResultAccepted {
         service_id: V3OnionServiceId,
     },
-    ContactRequestResultRejected{
+    ContactRequestResultRejected {
         service_id: V3OnionServiceId,
     },
-    IncomingChatChannelOpened{
+    IncomingChatChannelOpened {
         service_id: V3OnionServiceId,
     },
-    IncomingFileTransferChannelOpened{
+    IncomingFileTransferChannelOpened {
         service_id: V3OnionServiceId,
     },
-    OutgoingAuthHiddenServiceChannelOpened{
+    OutgoingAuthHiddenServiceChannelOpened {
         service_id: V3OnionServiceId,
     },
-    OutgoingChatChannelOpened{
+    OutgoingChatChannelOpened {
         service_id: V3OnionServiceId,
     },
-    OutgoingFileTransferChannelOpened{
+    OutgoingFileTransferChannelOpened {
         service_id: V3OnionServiceId,
     },
-    ChatMessageReceived{
+    ChatMessageReceived {
         service_id: V3OnionServiceId,
         message_text: String,
         message_handle: MessageHandle,
         time_delta: std::time::Duration,
     },
-    ChatAcknowledgeReceived{
+    ChatAcknowledgeReceived {
         service_id: V3OnionServiceId,
         message_handle: MessageHandle,
         accepted: bool,
     },
-    FileTransferRequestReceived{
+    FileTransferRequestReceived {
         service_id: V3OnionServiceId,
         file_transfer_handle: FileTransferHandle,
         file_name: String,
         file_size: u64,
         file_hash: FileHash,
     },
-    FileTransferRequestAcknowledgeReceived{
+    FileTransferRequestAcknowledgeReceived {
         service_id: V3OnionServiceId,
         file_transfer_handle: FileTransferHandle,
-        accepted: bool
+        accepted: bool,
     },
-    FileTransferRequestAccepted{
-        service_id: V3OnionServiceId,
-        file_transfer_handle: FileTransferHandle,
-    },
-    FileTransferRequestRejected{
+    FileTransferRequestAccepted {
         service_id: V3OnionServiceId,
         file_transfer_handle: FileTransferHandle,
     },
-    FileChunkReceived{
+    FileTransferRequestRejected {
+        service_id: V3OnionServiceId,
+        file_transfer_handle: FileTransferHandle,
+    },
+    FileChunkReceived {
         service_id: V3OnionServiceId,
         file_transfer_handle: FileTransferHandle,
         data: Vec<u8>,
         last_chunk: bool,
         hash_matches: Option<bool>,
     },
-    FileChunkAckReceived{
+    FileChunkAckReceived {
         service_id: V3OnionServiceId,
         file_transfer_handle: FileTransferHandle,
         offset: u64,
     },
-    FileTransferSucceeded{
+    FileTransferSucceeded {
         service_id: V3OnionServiceId,
         file_transfer_handle: FileTransferHandle,
     },
-    FileTransferFailed{
+    FileTransferFailed {
         service_id: V3OnionServiceId,
         file_transfer_handle: FileTransferHandle,
     },
-    FileTransferCancelled{
+    FileTransferCancelled {
         service_id: V3OnionServiceId,
         file_transfer_handle: FileTransferHandle,
     },
-    ChannelClosed{
+    ChannelClosed {
         id: u16,
     },
-    ProtocolFailure{
-        message: String
+    ProtocolFailure {
+        message: String,
     },
     // TODO: add a message
     FatalProtocolFailure,
@@ -460,10 +471,7 @@ pub struct PacketHandler {
 }
 
 impl PacketHandler {
-    pub fn new(
-        private_key: Ed25519PrivateKey,
-        known_contacts: BTreeSet<V3OnionServiceId>,
-    ) -> Self {
+    pub fn new(private_key: Ed25519PrivateKey, known_contacts: BTreeSet<V3OnionServiceId>) -> Self {
         let service_id = V3OnionServiceId::from_private_key(&private_key);
         Self {
             next_connection_handle: Default::default(),
@@ -475,28 +483,30 @@ impl PacketHandler {
         }
     }
 
-    fn connection(
-        &self,
-        connection_handle: ConnectionHandle) -> Result<&Connection, Error> {
-        self.connections
-            .get(&connection_handle)
-            .ok_or(Error::ConnectionHandleToConnectionMappingFailure(connection_handle))
+    fn connection(&self, connection_handle: ConnectionHandle) -> Result<&Connection, Error> {
+        self.connections.get(&connection_handle).ok_or(
+            Error::ConnectionHandleToConnectionMappingFailure(connection_handle),
+        )
     }
 
     fn connection_mut(
         &mut self,
-        connection_handle: ConnectionHandle) -> Result<&mut Connection, Error> {
-        self.connections
-            .get_mut(&connection_handle)
-            .ok_or(Error::ConnectionHandleToConnectionMappingFailure(connection_handle))
+        connection_handle: ConnectionHandle,
+    ) -> Result<&mut Connection, Error> {
+        self.connections.get_mut(&connection_handle).ok_or(
+            Error::ConnectionHandleToConnectionMappingFailure(connection_handle),
+        )
     }
 
     fn service_id_to_connection_handle(
         &self,
-        service_id: &V3OnionServiceId) -> Result<ConnectionHandle, Error> {
+        service_id: &V3OnionServiceId,
+    ) -> Result<ConnectionHandle, Error> {
         self.service_id_to_connection_handle
             .get(service_id)
-            .ok_or(Error::ServiceIdToConnectionHandleMappingFailure(service_id.clone()))
+            .ok_or(Error::ServiceIdToConnectionHandleMappingFailure(
+                service_id.clone(),
+            ))
             .copied()
     }
 
@@ -507,9 +517,11 @@ impl PacketHandler {
     pub fn try_parse_packet(
         &self,
         connection_handle: ConnectionHandle,
-        bytes: &[u8]) -> Result<(Packet, usize), Error> {
-
-        let connection = self.connections.get(&connection_handle).ok_or(Error::ConnectionHandleToConnectionMappingFailure(connection_handle))?;
+        bytes: &[u8],
+    ) -> Result<(Packet, usize), Error> {
+        let connection = self.connections.get(&connection_handle).ok_or(
+            Error::ConnectionHandleToConnectionMappingFailure(connection_handle),
+        )?;
         let channel_map = &connection.channel_map;
 
         if channel_map.is_empty() {
@@ -517,7 +529,7 @@ impl PacketHandler {
                 Ok(packet) => {
                     let offset = 3 + packet.versions().len();
                     return Ok((Packet::IntroductionPacket(packet), offset));
-                },
+                }
                 Err(Error::NeedMoreBytes) => return Err(Error::NeedMoreBytes),
                 _ => (),
             }
@@ -526,7 +538,7 @@ impl PacketHandler {
                 Ok(packet) => {
                     let offset = 1;
                     return Ok((Packet::IntroductionResponsePacket(packet), offset));
-                },
+                }
                 Err(Error::NeedMoreBytes) => return Err(Error::NeedMoreBytes),
                 _ => (),
             }
@@ -547,35 +559,34 @@ impl PacketHandler {
             } else if bytes.len() < size {
                 Err(Error::NeedMoreBytes)
             } else if size == 4 {
-                Ok((Packet::CloseChannelPacket{channel}, 4))
+                Ok((Packet::CloseChannelPacket { channel }, 4))
             } else {
                 let bytes = &bytes[4..size];
                 let packet = match channel_map.get_by_id(&channel) {
                     Some(ChannelData::Control) => {
                         let packet = control_channel::Packet::try_from(bytes)?;
                         Packet::ControlChannelPacket(packet)
-                    },
-                    Some(ChannelData::IncomingChat) |
-                    Some(ChannelData::OutgoingChat) => {
+                    }
+                    Some(ChannelData::IncomingChat) | Some(ChannelData::OutgoingChat) => {
                         let packet = chat_channel::Packet::try_from(bytes)?;
-                        Packet::ChatChannelPacket{channel, packet}
-                    },
+                        Packet::ChatChannelPacket { channel, packet }
+                    }
                     // todo: why does IncomingContactRequest rueturn an error?
                     Some(ChannelData::IncomingContactRequest) => return Err(Error::BadDataStream),
                     Some(ChannelData::OutgoingContactRequest) => {
                         let packet = contact_request_channel::Packet::try_from(bytes)?;
-                        Packet::ContactRequestChannelPacket{channel, packet}
-                    },
-                    Some(ChannelData::IncomingAuthHiddenService{..}) |
-                    Some(ChannelData::OutgoingAuthHiddenService{..}) => {
+                        Packet::ContactRequestChannelPacket { channel, packet }
+                    }
+                    Some(ChannelData::IncomingAuthHiddenService { .. })
+                    | Some(ChannelData::OutgoingAuthHiddenService { .. }) => {
                         let packet = auth_hidden_service::Packet::try_from(bytes)?;
-                        Packet::AuthHiddenServicePacket{channel, packet}
-                    },
-                    Some(ChannelData::IncomingFileTransfer) |
-                    Some(ChannelData::OutgoingFileTransfer) => {
+                        Packet::AuthHiddenServicePacket { channel, packet }
+                    }
+                    Some(ChannelData::IncomingFileTransfer)
+                    | Some(ChannelData::OutgoingFileTransfer) => {
                         let packet = file_channel::Packet::try_from(bytes)?;
-                        Packet::FileChannelPacket{channel, packet}
-                    },
+                        Packet::FileChannelPacket { channel, packet }
+                    }
                     None => return Err(Error::TargetChannelDoesNotExist(channel)),
                 };
                 Ok((packet, size))
@@ -592,17 +603,32 @@ impl PacketHandler {
         &mut self,
         connection_handle: ConnectionHandle,
         packet: Packet,
-        replies: &mut Vec<Packet>) -> Result<Event, Error> {
-
+        replies: &mut Vec<Packet>,
+    ) -> Result<Event, Error> {
         match packet {
-            Packet::IntroductionPacket(packet) => self.handle_introduction_packet(connection_handle, packet, replies),
-            Packet::IntroductionResponsePacket(packet) => self.handle_introduction_response_packet(connection_handle, packet, replies),
-            Packet::ControlChannelPacket(packet) => self.handle_control_channel_packet(connection_handle, packet, replies),
-            Packet::CloseChannelPacket{channel} => self.handle_close_channel_packet(connection_handle, channel),
-            Packet::ContactRequestChannelPacket{channel, packet} => self.handle_contact_request_channel_packet(connection_handle, channel, packet, replies),
-            Packet::ChatChannelPacket{channel, packet} => self.handle_chat_channel_packet(connection_handle, channel, packet, replies),
-            Packet::AuthHiddenServicePacket{channel, packet} => self.handle_auth_hidden_service_packet(connection_handle, channel, packet, replies),
-            Packet::FileChannelPacket{channel, packet} => self.handle_file_channel_packet(connection_handle, channel, packet, replies),
+            Packet::IntroductionPacket(packet) => {
+                self.handle_introduction_packet(connection_handle, packet, replies)
+            }
+            Packet::IntroductionResponsePacket(packet) => {
+                self.handle_introduction_response_packet(connection_handle, packet, replies)
+            }
+            Packet::ControlChannelPacket(packet) => {
+                self.handle_control_channel_packet(connection_handle, packet, replies)
+            }
+            Packet::CloseChannelPacket { channel } => {
+                self.handle_close_channel_packet(connection_handle, channel)
+            }
+            Packet::ContactRequestChannelPacket { channel, packet } => self
+                .handle_contact_request_channel_packet(connection_handle, channel, packet, replies),
+            Packet::ChatChannelPacket { channel, packet } => {
+                self.handle_chat_channel_packet(connection_handle, channel, packet, replies)
+            }
+            Packet::AuthHiddenServicePacket { channel, packet } => {
+                self.handle_auth_hidden_service_packet(connection_handle, channel, packet, replies)
+            }
+            Packet::FileChannelPacket { channel, packet } => {
+                self.handle_file_channel_packet(connection_handle, channel, packet, replies)
+            }
         }
     }
 
@@ -610,8 +636,8 @@ impl PacketHandler {
         &mut self,
         connection_handle: ConnectionHandle,
         packet: introduction::IntroductionPacket,
-        replies: &mut Vec<Packet>) -> Result<Event, Error> {
-
+        replies: &mut Vec<Packet>,
+    ) -> Result<Event, Error> {
         use introduction::*;
 
         let protocol_failure = {
@@ -637,7 +663,7 @@ impl PacketHandler {
                 None
             };
 
-            let reply = Packet::IntroductionResponsePacket(IntroductionResponsePacket{version});
+            let reply = Packet::IntroductionResponsePacket(IntroductionResponsePacket { version });
             replies.push(reply);
             Ok(Event::IntroductionReceived)
         }
@@ -647,8 +673,8 @@ impl PacketHandler {
         &mut self,
         connection_handle: ConnectionHandle,
         packet: introduction::IntroductionResponsePacket,
-        replies: &mut Vec<Packet>) -> Result<Event, Error> {
-
+        replies: &mut Vec<Packet>,
+    ) -> Result<Event, Error> {
         use introduction::*;
 
         let protocol_failure = {
@@ -672,21 +698,33 @@ impl PacketHandler {
             // construct AuthHiddenService OpenChannel packet
             let channel_id = connection.next_channel_id();
 
-            let mut client_cookie: [u8; auth_hidden_service::CLIENT_COOKIE_SIZE] = Default::default();
-            OsRng.try_fill_bytes(&mut client_cookie)
+            let mut client_cookie: [u8; auth_hidden_service::CLIENT_COOKIE_SIZE] =
+                Default::default();
+            OsRng
+                .try_fill_bytes(&mut client_cookie)
                 .map_err(Error::RandOsError)?;
 
             use crate::control_channel::{ChannelType, OpenChannel, OpenChannelExtension};
 
-            let open_channel_extension = OpenChannelExtension::AuthHiddenService(auth_hidden_service::OpenChannel{client_cookie});
+            let open_channel_extension =
+                OpenChannelExtension::AuthHiddenService(auth_hidden_service::OpenChannel {
+                    client_cookie,
+                });
 
-            let open_channel = OpenChannel::new(channel_id as i32, ChannelType::AuthHiddenService, Some(open_channel_extension))?;
+            let open_channel = OpenChannel::new(
+                channel_id as i32,
+                ChannelType::AuthHiddenService,
+                Some(open_channel_extension),
+            )?;
             let packet = control_channel::Packet::OpenChannel(open_channel);
             let reply = Packet::ControlChannelPacket(packet);
             replies.push(reply);
 
             // save off channel state
-            connection.channel_map.insert(channel_id, ChannelData::OutgoingAuthHiddenService{client_cookie})?;
+            connection.channel_map.insert(
+                channel_id,
+                ChannelData::OutgoingAuthHiddenService { client_cookie },
+            )?;
 
             Ok(Event::IntroductionResponseReceived)
         } else {
@@ -700,8 +738,8 @@ impl PacketHandler {
         &mut self,
         connection_handle: ConnectionHandle,
         packet: control_channel::Packet,
-        replies: &mut Vec<Packet>) -> Result<Event, Error> {
-
+        replies: &mut Vec<Packet>,
+    ) -> Result<Event, Error> {
         match packet {
             control_channel::Packet::OpenChannel(open_channel) => {
                 let channel_identifier = open_channel.channel_identifier();
@@ -719,57 +757,85 @@ impl PacketHandler {
                 };
                 if protocol_failure {
                     let _ = self.connections.remove(&connection_handle);
-                    return Ok(Event::FatalProtocolFailure)
+                    return Ok(Event::FatalProtocolFailure);
                 }
 
-                use control_channel::{ChannelResultExtension, ChannelResult, ChannelType, OpenChannelExtension};
+                use control_channel::{
+                    ChannelResult, ChannelResultExtension, ChannelType, OpenChannelExtension,
+                };
                 match (open_channel.channel_type(), open_channel.extension()) {
                     // IncomingAuthHiddenService
-                    (ChannelType::AuthHiddenService, Some(OpenChannelExtension::AuthHiddenService(extension))) => {
-
+                    (
+                        ChannelType::AuthHiddenService,
+                        Some(OpenChannelExtension::AuthHiddenService(extension)),
+                    ) => {
                         // build ChannelResult packet
-                        let mut server_cookie: [u8; auth_hidden_service::SERVER_COOKIE_SIZE] = Default::default();
-                        OsRng.try_fill_bytes(&mut server_cookie)
+                        let mut server_cookie: [u8; auth_hidden_service::SERVER_COOKIE_SIZE] =
+                            Default::default();
+                        OsRng
+                            .try_fill_bytes(&mut server_cookie)
                             .map_err(Error::RandOsError)?;
-                        let channel_result_extension = ChannelResultExtension::AuthHiddenService(auth_hidden_service::ChannelResult{server_cookie});
+                        let channel_result_extension = ChannelResultExtension::AuthHiddenService(
+                            auth_hidden_service::ChannelResult { server_cookie },
+                        );
 
                         // save off channel state
                         let client_cookie = extension.client_cookie;
                         let connection = self.connection_mut(connection_handle)?;
-                        connection.channel_map.insert(channel_identifier, ChannelData::IncomingAuthHiddenService{client_cookie, server_cookie})?;
+                        connection.channel_map.insert(
+                            channel_identifier,
+                            ChannelData::IncomingAuthHiddenService {
+                                client_cookie,
+                                server_cookie,
+                            },
+                        )?;
 
                         // buld reply packet
                         let channel_result = ChannelResult::new(
                             channel_identifier as i32,
                             true,
                             None,
-                            Some(channel_result_extension))?;
+                            Some(channel_result_extension),
+                        )?;
                         let packet = control_channel::Packet::ChannelResult(channel_result);
                         let reply = Packet::ControlChannelPacket(packet);
                         replies.push(reply);
 
                         Ok(Event::OpenChannelAuthHiddenServiceReceived)
-                    },
+                    }
                     // ContactRequest
-                    (ChannelType::ContactRequest, Some(OpenChannelExtension::ContactRequestChannel(extension))) => {
+                    (
+                        ChannelType::ContactRequest,
+                        Some(OpenChannelExtension::ContactRequestChannel(extension)),
+                    ) => {
                         let connection = self.connection_mut(connection_handle)?;
                         if let Some(service_id) = &connection.peer_service_id {
-                            connection.channel_map.insert(channel_identifier, ChannelData::IncomingContactRequest)?;
+                            connection
+                                .channel_map
+                                .insert(channel_identifier, ChannelData::IncomingContactRequest)?;
 
-                            use control_channel::ChannelResultExtension;
                             use contact_request_channel::{Response, Status};
-                            let channel_result_extension = ChannelResultExtension::ContactRequestChannel(contact_request_channel::ChannelResult{response: Response{status: Status::Pending}});
+                            use control_channel::ChannelResultExtension;
+                            let channel_result_extension =
+                                ChannelResultExtension::ContactRequestChannel(
+                                    contact_request_channel::ChannelResult {
+                                        response: Response {
+                                            status: Status::Pending,
+                                        },
+                                    },
+                                );
 
                             let channel_result = control_channel::ChannelResult::new(
                                 channel_identifier as i32,
                                 true,
                                 None,
-                                Some(channel_result_extension))?;
+                                Some(channel_result_extension),
+                            )?;
                             let packet = control_channel::Packet::ChannelResult(channel_result);
                             let reply = Packet::ControlChannelPacket(packet);
                             replies.push(reply);
 
-                            Ok(Event::ContactRequestReceived{
+                            Ok(Event::ContactRequestReceived {
                                 service_id: service_id.clone(),
                                 nickname: (&extension.contact_request.nickname).into(),
                                 message_text: (&extension.contact_request.message_text).into(),
@@ -777,34 +843,33 @@ impl PacketHandler {
                         } else {
                             Ok(Event::FatalProtocolFailure)
                         }
-                    },
+                    }
                     // Chat
                     (ChannelType::Chat, None) => {
                         // verify peer is authorised and a contact
                         let connection = self.connection(connection_handle)?;
                         let service_id = if let Some(service_id) = &connection.peer_service_id {
                             if !self.known_contacts.contains(service_id) {
-                                return Ok(Event::FatalProtocolFailure)
+                                return Ok(Event::FatalProtocolFailure);
                             } else {
                                 service_id.clone()
                             }
                         } else {
-                            return Ok(Event::FatalProtocolFailure)
+                            return Ok(Event::FatalProtocolFailure);
                         };
 
                         let connection = self.connection_mut(connection_handle)?;
-                        connection.channel_map.insert(channel_identifier, ChannelData::IncomingChat)?;
+                        connection
+                            .channel_map
+                            .insert(channel_identifier, ChannelData::IncomingChat)?;
 
                         // buld reply packet
-                        let channel_result = ChannelResult::new(
-                            channel_identifier as i32,
-                            true,
-                            None,
-                            None)?;
+                        let channel_result =
+                            ChannelResult::new(channel_identifier as i32, true, None, None)?;
                         let packet = control_channel::Packet::ChannelResult(channel_result);
                         let reply = Packet::ControlChannelPacket(packet);
                         replies.push(reply);
-                        Ok(Event::IncomingChatChannelOpened{service_id})
+                        Ok(Event::IncomingChatChannelOpened { service_id })
                     }
                     // FileTransfer
                     (ChannelType::FileTransfer, None) => {
@@ -812,31 +877,30 @@ impl PacketHandler {
                         let connection = self.connection(connection_handle)?;
                         let service_id = if let Some(service_id) = &connection.peer_service_id {
                             if !self.known_contacts.contains(service_id) {
-                                return Ok(Event::FatalProtocolFailure)
+                                return Ok(Event::FatalProtocolFailure);
                             } else {
                                 service_id.clone()
                             }
                         } else {
-                            return Ok(Event::FatalProtocolFailure)
+                            return Ok(Event::FatalProtocolFailure);
                         };
 
                         let connection = self.connection_mut(connection_handle)?;
-                        connection.channel_map.insert(channel_identifier, ChannelData::IncomingFileTransfer)?;
+                        connection
+                            .channel_map
+                            .insert(channel_identifier, ChannelData::IncomingFileTransfer)?;
 
                         // buld reply packet
-                        let channel_result = ChannelResult::new(
-                            channel_identifier as i32,
-                            true,
-                            None,
-                            None)?;
+                        let channel_result =
+                            ChannelResult::new(channel_identifier as i32, true, None, None)?;
                         let packet = control_channel::Packet::ChannelResult(channel_result);
                         let reply = Packet::ControlChannelPacket(packet);
                         replies.push(reply);
-                        Ok(Event::IncomingFileTransferChannelOpened{service_id})
-                    },
-                    _ => Err(Error::NotImplemented)
+                        Ok(Event::IncomingFileTransferChannelOpened { service_id })
+                    }
+                    _ => Err(Error::NotImplemented),
                 }
-            },
+            }
             control_channel::Packet::ChannelResult(channel_result) => {
                 let connection = self.connection(connection_handle)?;
                 let channel_id = channel_result.channel_identifier();
@@ -844,15 +908,32 @@ impl PacketHandler {
                 let channel_data = if let Some(channel_data) = channel_data {
                     channel_data
                 } else {
-                    return Ok(Event::ProtocolFailure{message:
-                        format!("recived ChannelResult for channel which does not exist: {channel_id}")});
+                    return Ok(Event::ProtocolFailure {
+                        message: format!(
+                            "recived ChannelResult for channel which does not exist: {channel_id}"
+                        ),
+                    });
                 };
                 let service_id = &connection.peer_service_id;
 
-                use control_channel::ChannelResultExtension;
                 use auth_hidden_service::{ChannelResult, Proof};
-                match (channel_data, service_id, channel_result.opened(), channel_result.common_error(), channel_result.extension()) {
-                    (ChannelData::OutgoingAuthHiddenService{client_cookie}, Some(service_id), true, None, Some(ChannelResultExtension::AuthHiddenService(ChannelResult{server_cookie}))) => {
+                use control_channel::ChannelResultExtension;
+                match (
+                    channel_data,
+                    service_id,
+                    channel_result.opened(),
+                    channel_result.common_error(),
+                    channel_result.extension(),
+                ) {
+                    (
+                        ChannelData::OutgoingAuthHiddenService { client_cookie },
+                        Some(service_id),
+                        true,
+                        None,
+                        Some(ChannelResultExtension::AuthHiddenService(ChannelResult {
+                            server_cookie,
+                        })),
+                    ) => {
                         // construct proof
 
                         let client_service_id = &self.service_id;
@@ -862,31 +943,57 @@ impl PacketHandler {
                             client_cookie,
                             server_cookie,
                             client_service_id,
-                            server_service_id);
+                            server_service_id,
+                        );
 
                         let signature = self.private_key.sign_message(&message);
                         let signature = signature.to_bytes();
 
                         let proof = Proof::new(signature, client_service_id.clone())?;
                         let packet = auth_hidden_service::Packet::Proof(proof);
-                        let reply = Packet::AuthHiddenServicePacket{channel: channel_id, packet};
+                        let reply = Packet::AuthHiddenServicePacket {
+                            channel: channel_id,
+                            packet,
+                        };
 
                         replies.push(reply);
 
-                        Ok(Event::OutgoingAuthHiddenServiceChannelOpened{service_id: service_id.clone()})
-                    },
-                    (ChannelData::OutgoingContactRequest, Some(service_id), true, None, Some(ChannelResultExtension::ContactRequestChannel(contact_request_channel::ChannelResult{response}))) => {
+                        Ok(Event::OutgoingAuthHiddenServiceChannelOpened {
+                            service_id: service_id.clone(),
+                        })
+                    }
+                    (
+                        ChannelData::OutgoingContactRequest,
+                        Some(service_id),
+                        true,
+                        None,
+                        Some(ChannelResultExtension::ContactRequestChannel(
+                            contact_request_channel::ChannelResult { response },
+                        )),
+                    ) => {
                         use contact_request_channel::Status;
-                        match response.status{
+                        match response.status {
                             Status::Undefined => Err(Error::NotImplemented),
-                            Status::Pending => Ok(Event::ContactRequestResultPending{service_id: service_id.clone()}),
+                            Status::Pending => Ok(Event::ContactRequestResultPending {
+                                service_id: service_id.clone(),
+                            }),
                             Status::Accepted => Err(Error::NotImplemented),
-                            Status::Rejected => Ok(Event::ContactRequestResultRejected{service_id: service_id.clone()}),
+                            Status::Rejected => Ok(Event::ContactRequestResultRejected {
+                                service_id: service_id.clone(),
+                            }),
                             Status::Error => Err(Error::NotImplemented),
                         }
-                    },
-                    (ChannelData::OutgoingChat, Some(service_id), true, None, None) => Ok(Event::OutgoingChatChannelOpened{service_id: service_id.clone()}),
-                    (ChannelData::OutgoingFileTransfer, Some(service_id), true, None, None) => Ok(Event::OutgoingFileTransferChannelOpened{service_id: service_id.clone()}),
+                    }
+                    (ChannelData::OutgoingChat, Some(service_id), true, None, None) => {
+                        Ok(Event::OutgoingChatChannelOpened {
+                            service_id: service_id.clone(),
+                        })
+                    }
+                    (ChannelData::OutgoingFileTransfer, Some(service_id), true, None, None) => {
+                        Ok(Event::OutgoingFileTransferChannelOpened {
+                            service_id: service_id.clone(),
+                        })
+                    }
                     _ => Err(Error::NotImplemented),
                 }
             }
@@ -896,13 +1003,15 @@ impl PacketHandler {
     fn handle_close_channel_packet(
         &mut self,
         connection_handle: ConnectionHandle,
-        channel_id: u16) -> Result<Event, Error> {
+        channel_id: u16,
+    ) -> Result<Event, Error> {
         let connection = self.connection_mut(connection_handle)?;
         if connection.close_channel(channel_id, None) {
-            Ok(Event::ChannelClosed{id: channel_id})
+            Ok(Event::ChannelClosed { id: channel_id })
         } else {
-            Ok(Event::ProtocolFailure{message:
-                format!("requested closing channel which does not exist: {channel_id}")})
+            Ok(Event::ProtocolFailure {
+                message: format!("requested closing channel which does not exist: {channel_id}"),
+            })
         }
     }
 
@@ -911,8 +1020,8 @@ impl PacketHandler {
         connection_handle: ConnectionHandle,
         channel_id: u16,
         packet: contact_request_channel::Packet,
-        replies: &mut Vec<Packet>) -> Result<Event, Error> {
-
+        replies: &mut Vec<Packet>,
+    ) -> Result<Event, Error> {
         let connection = self.connection(connection_handle)?;
         let channel_type = connection.channel_map.channel_id_to_type(&channel_id);
 
@@ -936,30 +1045,38 @@ impl PacketHandler {
                         let open_channel = control_channel::OpenChannel::new(
                             channel_id as i32,
                             control_channel::ChannelType::Chat,
-                            None).expect("OpenChannel creation failed");
+                            None,
+                        )
+                        .expect("OpenChannel creation failed");
                         let packet = control_channel::Packet::OpenChannel(open_channel);
                         let reply = Packet::ControlChannelPacket(packet);
                         pending_replies.push(reply);
-                        connection.channel_map.insert(channel_id, ChannelData::OutgoingChat)?;
+                        connection
+                            .channel_map
+                            .insert(channel_id, ChannelData::OutgoingChat)?;
 
                         // build file transfer channel open packet
                         let channel_id = connection.next_channel_id();
                         let open_channel = control_channel::OpenChannel::new(
                             channel_id as i32,
                             control_channel::ChannelType::FileTransfer,
-                            None).expect("OpenChannel creation failed");
+                            None,
+                        )
+                        .expect("OpenChannel creation failed");
                         let packet = control_channel::Packet::OpenChannel(open_channel);
                         let reply = Packet::ControlChannelPacket(packet);
                         pending_replies.push(reply);
-                        connection.channel_map.insert(channel_id, ChannelData::OutgoingFileTransfer)?;
+                        connection
+                            .channel_map
+                            .insert(channel_id, ChannelData::OutgoingFileTransfer)?;
 
                         self.known_contacts.insert(service_id.clone());
                         replies.append(&mut pending_replies);
-                        Ok(Event::ContactRequestResultAccepted{service_id})
-                    },
+                        Ok(Event::ContactRequestResultAccepted { service_id })
+                    }
                     (Status::Rejected, Some(service_id)) => {
                         connection.close_channel(channel_id, Some(replies));
-                        Ok(Event::ContactRequestResultRejected{service_id})
+                        Ok(Event::ContactRequestResultRejected { service_id })
                     }
                     _ => todo!(),
                 }
@@ -972,8 +1089,8 @@ impl PacketHandler {
         connection_handle: ConnectionHandle,
         channel: u16,
         packet: chat_channel::Packet,
-        replies: &mut Vec<Packet>) -> Result<Event, Error> {
-
+        replies: &mut Vec<Packet>,
+    ) -> Result<Event, Error> {
         let connection = self.connection(connection_handle)?;
         let channel_type = connection.channel_map.channel_id_to_type(&channel);
 
@@ -989,12 +1106,16 @@ impl PacketHandler {
                 let service_id = if let Some(service_id) = &connection.peer_service_id {
                     service_id.clone()
                 } else {
-                    return Ok(Event::FatalProtocolFailure)
+                    return Ok(Event::FatalProtocolFailure);
                 };
 
                 let message_text: String = message.message_text().into();
                 let message_id = message.message_id();
-                let message_handle = MessageHandle{message_id, connection_handle, direction: Direction::Incoming};
+                let message_handle = MessageHandle {
+                    message_id,
+                    connection_handle,
+                    direction: Direction::Incoming,
+                };
                 let time_delta = if let Some(time_delta) = message.time_delta() {
                     *time_delta
                 } else {
@@ -1005,11 +1126,16 @@ impl PacketHandler {
                 let accepted = true;
                 let acknowledge = chat_channel::ChatAcknowledge::new(message_id, accepted)?;
                 let packet = chat_channel::Packet::ChatAcknowledge(acknowledge);
-                let reply = Packet::ChatChannelPacket{channel, packet};
+                let reply = Packet::ChatChannelPacket { channel, packet };
                 replies.push(reply);
 
-                Ok(Event::ChatMessageReceived{service_id, message_text, message_handle, time_delta})
-            },
+                Ok(Event::ChatMessageReceived {
+                    service_id,
+                    message_text,
+                    message_handle,
+                    time_delta,
+                })
+            }
             chat_channel::Packet::ChatAcknowledge(acknowledge) => {
                 // chat ack messsages should only come in on the outgoing chat channel
                 match channel_type {
@@ -1021,13 +1147,21 @@ impl PacketHandler {
                 let service_id = if let Some(service_id) = &connection.peer_service_id {
                     service_id.clone()
                 } else {
-                    return Ok(Event::FatalProtocolFailure)
+                    return Ok(Event::FatalProtocolFailure);
                 };
                 let message_id = acknowledge.message_id();
-                let message_handle = MessageHandle{message_id, connection_handle, direction: Direction::Outgoing};
+                let message_handle = MessageHandle {
+                    message_id,
+                    connection_handle,
+                    direction: Direction::Outgoing,
+                };
                 let accepted = acknowledge.accepted();
-                Ok(Event::ChatAcknowledgeReceived{service_id, message_handle, accepted})
-            },
+                Ok(Event::ChatAcknowledgeReceived {
+                    service_id,
+                    message_handle,
+                    accepted,
+                })
+            }
         }
     }
 
@@ -1036,8 +1170,8 @@ impl PacketHandler {
         connection_handle: ConnectionHandle,
         channel: u16,
         packet: auth_hidden_service::Packet,
-        replies: &mut Vec<Packet>) -> Result<Event, Error> {
-
+        replies: &mut Vec<Packet>,
+    ) -> Result<Event, Error> {
         match packet {
             auth_hidden_service::Packet::Proof(proof) => {
                 let protocol_failure = {
@@ -1050,16 +1184,24 @@ impl PacketHandler {
                 };
                 if protocol_failure {
                     let _ = self.connections.remove(&connection_handle);
-                    return Ok(Event::FatalProtocolFailure)
+                    return Ok(Event::FatalProtocolFailure);
                 }
 
                 let server_service_id = self.service_id.clone();
 
-                let (client_cookie, server_cookie) = if let Some(ChannelData::IncomingAuthHiddenService{client_cookie, server_cookie}) = self.connection_mut(connection_handle)?.channel_map.get_by_id(&channel) {
-                    (*client_cookie, *server_cookie)
-                } else {
-                    return Ok(Event::FatalProtocolFailure)
-                };
+                let (client_cookie, server_cookie) =
+                    if let Some(ChannelData::IncomingAuthHiddenService {
+                        client_cookie,
+                        server_cookie,
+                    }) = self
+                        .connection_mut(connection_handle)?
+                        .channel_map
+                        .get_by_id(&channel)
+                    {
+                        (*client_cookie, *server_cookie)
+                    } else {
+                        return Ok(Event::FatalProtocolFailure);
+                    };
 
                 let client_service_id = proof.service_id();
 
@@ -1067,11 +1209,16 @@ impl PacketHandler {
                     &client_cookie,
                     &server_cookie,
                     client_service_id,
-                    &server_service_id);
+                    &server_service_id,
+                );
 
-                let signature = Ed25519Signature::from_raw(proof.signature()).expect("ed25519 signature creation should never fail");
+                let signature = Ed25519Signature::from_raw(proof.signature())
+                    .expect("ed25519 signature creation should never fail");
 
-                let client_public_key = Ed25519PublicKey::from_service_id(client_service_id).expect("v3 onion service id to ed25519 public key conversion should never fail");
+                let client_public_key = Ed25519PublicKey::from_service_id(client_service_id)
+                    .expect(
+                        "v3 onion service id to ed25519 public key conversion should never fail",
+                    );
 
                 if signature.verify(&message, &client_public_key) {
                     let mut pending_replies: Vec<Packet> = Vec::with_capacity(3);
@@ -1084,7 +1231,7 @@ impl PacketHandler {
                     let is_known_contact = self.known_contacts.contains(client_service_id);
                     let result = auth_hidden_service::Result::new(true, Some(is_known_contact))?;
                     let packet = auth_hidden_service::Packet::Result(result);
-                    let reply = Packet::AuthHiddenServicePacket{channel, packet};
+                    let reply = Packet::AuthHiddenServicePacket { channel, packet };
                     pending_replies.push(reply);
 
                     let connection = self.connection_mut(connection_handle)?;
@@ -1099,22 +1246,30 @@ impl PacketHandler {
                         let open_channel = control_channel::OpenChannel::new(
                             channel_id as i32,
                             control_channel::ChannelType::Chat,
-                            None).expect("OpenChannel creation failed");
+                            None,
+                        )
+                        .expect("OpenChannel creation failed");
                         let packet = control_channel::Packet::OpenChannel(open_channel);
                         let reply = Packet::ControlChannelPacket(packet);
                         pending_replies.push(reply);
-                        connection.channel_map.insert(channel_id, ChannelData::OutgoingChat)?;
+                        connection
+                            .channel_map
+                            .insert(channel_id, ChannelData::OutgoingChat)?;
 
                         // build file transfer channel open packet
                         let channel_id = connection.next_channel_id();
                         let open_channel = control_channel::OpenChannel::new(
                             channel_id as i32,
                             control_channel::ChannelType::FileTransfer,
-                            None).expect("OpenChannel creation failed");
+                            None,
+                        )
+                        .expect("OpenChannel creation failed");
                         let packet = control_channel::Packet::OpenChannel(open_channel);
                         let reply = Packet::ControlChannelPacket(packet);
                         pending_replies.push(reply);
-                        connection.channel_map.insert(channel_id, ChannelData::OutgoingFileTransfer)?;
+                        connection
+                            .channel_map
+                            .insert(channel_id, ChannelData::OutgoingFileTransfer)?;
                     }
 
                     let service_id = client_service_id.clone();
@@ -1123,7 +1278,7 @@ impl PacketHandler {
                     // equivalent lives in ContactUser.cpp
                     // handle existence of duplicate existing connection
                     let event = match self.service_id_to_connection_handle(&service_id) {
-                        Ok(duplicate_connection) =>  {
+                        Ok(duplicate_connection) => {
                             let connection = self.connection(duplicate_connection).unwrap();
 
                             // newest incoming takes precedence
@@ -1132,28 +1287,40 @@ impl PacketHandler {
                                connection.age() > std::time::Duration::from_secs(30) ||
                             // only drop old connection if the peer's service id is less
                             // than our own
-                               service_id < self.service_id {
+                               service_id < self.service_id
+                            {
                                 replies.append(&mut pending_replies);
                                 let service_id = service_id.clone();
                                 let duplicate_connection = Some(duplicate_connection);
-                                Event::ClientAuthenticated{service_id, duplicate_connection}
+                                Event::ClientAuthenticated {
+                                    service_id,
+                                    duplicate_connection,
+                                }
                             } else {
                                 // otherwise we drop this new conneciton in favor of previous outgoing connection
                                 let duplicate_connection = connection_handle;
-                                Event::DuplicateConnectionDropped{duplicate_connection}
+                                Event::DuplicateConnectionDropped {
+                                    duplicate_connection,
+                                }
                             }
-                        },
+                        }
                         Err(Error::ServiceIdToConnectionHandleMappingFailure(..)) => {
                             // no previous connection to drop
                             replies.append(&mut pending_replies);
                             let service_id = service_id.clone();
-                            Event::ClientAuthenticated{service_id, duplicate_connection: None}
-                        },
+                            Event::ClientAuthenticated {
+                                service_id,
+                                duplicate_connection: None,
+                            }
+                        }
                         Err(_) => unreachable!(),
                     };
 
-                    if let Event::ClientAuthenticated{..} = &event {
-                        if let Some(old_connection_handle) = self.service_id_to_connection_handle.insert(service_id, connection_handle) {
+                    if let Event::ClientAuthenticated { .. } = &event {
+                        if let Some(old_connection_handle) = self
+                            .service_id_to_connection_handle
+                            .insert(service_id, connection_handle)
+                        {
                             // remove the old connection
                             self.connections.remove(&old_connection_handle);
                         }
@@ -1165,7 +1332,7 @@ impl PacketHandler {
                     let _ = self.connections.remove(&connection_handle);
                     Ok(Event::FatalProtocolFailure)
                 }
-            },
+            }
             auth_hidden_service::Packet::Result(result) => {
                 let protocol_failure = {
                     let connection = self.connection(connection_handle)?;
@@ -1177,7 +1344,7 @@ impl PacketHandler {
                 };
                 if protocol_failure {
                     let _ = self.connections.remove(&connection_handle);
-                    return Ok(Event::FatalProtocolFailure)
+                    return Ok(Event::FatalProtocolFailure);
                 }
 
                 let connection = self.connection_mut(connection_handle)?;
@@ -1189,52 +1356,73 @@ impl PacketHandler {
                         match result.is_known_contact() {
                             None | Some(false) => {
                                 // contact request
-                                let message_text = if let Some(message_text) = connection.contact_request_message.take() {
+                                let message_text = if let Some(message_text) =
+                                    connection.contact_request_message.take()
+                                {
                                     message_text
                                 } else {
                                     String::new().try_into().unwrap()
                                 };
 
-                                let contact_request = contact_request_channel::ContactRequest{nickname: String::new().try_into().unwrap(), message_text};
-                                let contact_request = contact_request_channel::OpenChannel {contact_request };
-                                let extension = control_channel::OpenChannelExtension::ContactRequestChannel(contact_request);
+                                let contact_request = contact_request_channel::ContactRequest {
+                                    nickname: String::new().try_into().unwrap(),
+                                    message_text,
+                                };
+                                let contact_request =
+                                    contact_request_channel::OpenChannel { contact_request };
+                                let extension =
+                                    control_channel::OpenChannelExtension::ContactRequestChannel(
+                                        contact_request,
+                                    );
 
                                 // build contact request open packet
                                 let channel_id = connection.next_channel_id();
                                 let open_channel = control_channel::OpenChannel::new(
                                     channel_id as i32,
                                     control_channel::ChannelType::ContactRequest,
-                                    Some(extension)).expect("OpenChannel creation failed");
+                                    Some(extension),
+                                )
+                                .expect("OpenChannel creation failed");
 
                                 let packet = control_channel::Packet::OpenChannel(open_channel);
                                 let reply = Packet::ControlChannelPacket(packet);
                                 pending_replies.push(reply);
 
-                                connection.channel_map.insert(channel_id, ChannelData::OutgoingContactRequest)?;
-                            },
+                                connection
+                                    .channel_map
+                                    .insert(channel_id, ChannelData::OutgoingContactRequest)?;
+                            }
                             Some(true) => {
                                 // build chat channel open packet
                                 let channel_id = connection.next_channel_id();
                                 let open_channel = control_channel::OpenChannel::new(
                                     channel_id as i32,
                                     control_channel::ChannelType::Chat,
-                                    None).expect("OpenChannel creation failed");
+                                    None,
+                                )
+                                .expect("OpenChannel creation failed");
                                 let packet = control_channel::Packet::OpenChannel(open_channel);
                                 let reply = Packet::ControlChannelPacket(packet);
                                 pending_replies.push(reply);
-                                connection.channel_map.insert(channel_id, ChannelData::OutgoingChat)?;
+                                connection
+                                    .channel_map
+                                    .insert(channel_id, ChannelData::OutgoingChat)?;
 
                                 // build file transfer channel open packet
                                 let channel_id = connection.next_channel_id();
                                 let open_channel = control_channel::OpenChannel::new(
                                     channel_id as i32,
                                     control_channel::ChannelType::FileTransfer,
-                                    None).expect("OpenChannel creation failed");
+                                    None,
+                                )
+                                .expect("OpenChannel creation failed");
                                 let packet = control_channel::Packet::OpenChannel(open_channel);
                                 let reply = Packet::ControlChannelPacket(packet);
                                 pending_replies.push(reply);
-                                connection.channel_map.insert(channel_id, ChannelData::OutgoingFileTransfer)?;
-                            },
+                                connection
+                                    .channel_map
+                                    .insert(channel_id, ChannelData::OutgoingFileTransfer)?;
+                            }
                         }
 
                         let service_id = server_service_id.clone();
@@ -1253,38 +1441,50 @@ impl PacketHandler {
                                   connection.age() > std::time::Duration::from_secs(30) ||
                                 // only drop old connection if the peer's service id is less
                                 // than our own
-                                  service_id < self.service_id {
+                                  service_id < self.service_id
+                                {
                                     replies.append(&mut pending_replies);
                                     let service_id = service_id.clone();
                                     let duplicate_connection = Some(duplicate_connection);
-                                    Event::HostAuthenticated{service_id, duplicate_connection}
+                                    Event::HostAuthenticated {
+                                        service_id,
+                                        duplicate_connection,
+                                    }
                                 } else {
                                     // otherwise we drop this new connection in favor of previous incoming connection
                                     let duplicate_connection = connection_handle;
-                                    Event::DuplicateConnectionDropped{duplicate_connection}
+                                    Event::DuplicateConnectionDropped {
+                                        duplicate_connection,
+                                    }
                                 }
-                            },
+                            }
                             Err(Error::ServiceIdToConnectionHandleMappingFailure(..)) => {
                                 // no previous connection to drop
                                 replies.append(&mut pending_replies);
                                 let service_id = service_id.clone();
-                                Event::HostAuthenticated{service_id, duplicate_connection: None}
-                            },
-                            Err(_) => unreachable!()
+                                Event::HostAuthenticated {
+                                    service_id,
+                                    duplicate_connection: None,
+                                }
+                            }
+                            Err(_) => unreachable!(),
                         };
 
-                        if let Event::HostAuthenticated{..} = &event {
-                            if let Some (old_connection_handle) = self.service_id_to_connection_handle.insert(service_id, connection_handle) {
+                        if let Event::HostAuthenticated { .. } = &event {
+                            if let Some(old_connection_handle) = self
+                                .service_id_to_connection_handle
+                                .insert(service_id, connection_handle)
+                            {
                                 // remove the old connection
                                 self.connections.remove(&old_connection_handle);
                             }
                         }
 
                         Ok(event)
-                    },
+                    }
                     _ => Ok(Event::FatalProtocolFailure),
                 }
-            },
+            }
         }
     }
 
@@ -1293,13 +1493,13 @@ impl PacketHandler {
         connection_handle: ConnectionHandle,
         channel: u16,
         packet: file_channel::Packet,
-        replies: &mut Vec<Packet>) -> Result<Event, Error> {
-
+        replies: &mut Vec<Packet>,
+    ) -> Result<Event, Error> {
         let connection = self.connection(connection_handle)?;
         let service_id = if let Some(service_id) = &connection.peer_service_id {
             service_id.clone()
         } else {
-            return Ok(Event::FatalProtocolFailure)
+            return Ok(Event::FatalProtocolFailure);
         };
         let channel_type = connection.channel_map.channel_id_to_type(&channel);
 
@@ -1312,19 +1512,30 @@ impl PacketHandler {
                 }
 
                 let file_id = file_header.file_id();
-                let file_transfer_handle = FileTransferHandle{file_id, connection_handle, direction: Direction::Incoming};
+                let file_transfer_handle = FileTransferHandle {
+                    file_id,
+                    connection_handle,
+                    direction: Direction::Incoming,
+                };
                 let file_name = file_header.name().to_string();
                 let file_size = file_header.file_size();
                 let file_hash = *file_header.file_hash();
 
                 // construct our internal state for this download
                 let connection = self.connection_mut(connection_handle)?;
-                if connection.file_transfers.insert(file_transfer_handle, FileTransfer::FileDownload(FileDownload{
-                    expected_bytes: file_size,
-                    downloaded_bytes: 0u64,
-                    expected_hash: file_hash,
-                    hasher: Default::default(),
-                })).is_some() {
+                if connection
+                    .file_transfers
+                    .insert(
+                        file_transfer_handle,
+                        FileTransfer::FileDownload(FileDownload {
+                            expected_bytes: file_size,
+                            downloaded_bytes: 0u64,
+                            expected_hash: file_hash,
+                            hasher: Default::default(),
+                        }),
+                    )
+                    .is_some()
+                {
                     // peer initiated file transfer with duplicate id
                     return Ok(Event::FatalProtocolFailure);
                 }
@@ -1333,11 +1544,17 @@ impl PacketHandler {
                 let accepted = true;
                 let file_header_ack = file_channel::FileHeaderAck::new(file_id, accepted)?;
                 let packet = file_channel::Packet::FileHeaderAck(file_header_ack);
-                let reply = Packet::FileChannelPacket{channel, packet};
+                let reply = Packet::FileChannelPacket { channel, packet };
                 replies.push(reply);
 
-                Ok(Event::FileTransferRequestReceived{service_id, file_transfer_handle, file_name, file_size, file_hash})
-            },
+                Ok(Event::FileTransferRequestReceived {
+                    service_id,
+                    file_transfer_handle,
+                    file_name,
+                    file_size,
+                    file_hash,
+                })
+            }
             file_channel::Packet::FileChunk(file_chunk) => {
                 // file chunks should only come in on the incoming file channel
                 match channel_type {
@@ -1346,15 +1563,21 @@ impl PacketHandler {
                 }
 
                 let file_id = file_chunk.file_id();
-                let file_transfer_handle = FileTransferHandle{file_id, connection_handle, direction: Direction::Incoming};
+                let file_transfer_handle = FileTransferHandle {
+                    file_id,
+                    connection_handle,
+                    direction: Direction::Incoming,
+                };
                 let data: Vec<u8> = file_chunk.take_chunk_data().into();
 
                 let connection = self.connection_mut(connection_handle)?;
                 let file_download = match connection.file_transfers.get_mut(&file_transfer_handle) {
                     Some(FileTransfer::FileDownload(file_download)) => file_download,
                     None => {
-                        return Ok(Event::ProtocolFailure{message: "Received orphaned FileChunk packet".to_string()});
-                    },
+                        return Ok(Event::ProtocolFailure {
+                            message: "Received orphaned FileChunk packet".to_string(),
+                        });
+                    }
                     _ => todo!(),
                 };
 
@@ -1363,21 +1586,30 @@ impl PacketHandler {
                 file_download.hasher.update(&data);
 
                 // build ack reply
-                let file_chunk_ack = file_channel::FileChunkAck::new(file_id, file_download.downloaded_bytes)?;
+                let file_chunk_ack =
+                    file_channel::FileChunkAck::new(file_id, file_download.downloaded_bytes)?;
                 let packet = file_channel::Packet::FileChunkAck(file_chunk_ack);
-                let reply = Packet::FileChannelPacket{channel, packet};
+                let reply = Packet::FileChannelPacket { channel, packet };
                 replies.push(reply);
 
                 use std::cmp::Ordering;
-                match file_download.downloaded_bytes.cmp(&file_download.expected_bytes) {
-                    Ordering::Less => {
-                        Ok(Event::FileChunkReceived{service_id, file_transfer_handle, data, last_chunk: false, hash_matches: None})
-                    },
+                match file_download
+                    .downloaded_bytes
+                    .cmp(&file_download.expected_bytes)
+                {
+                    Ordering::Less => Ok(Event::FileChunkReceived {
+                        service_id,
+                        file_transfer_handle,
+                        data,
+                        last_chunk: false,
+                        hash_matches: None,
+                    }),
                     ordering => {
-                        let file_download = match connection.file_transfers.remove(&file_transfer_handle) {
-                            Some(FileTransfer::FileDownload(file_download)) => file_download,
-                            _ => todo!(),
-                        };
+                        let file_download =
+                            match connection.file_transfers.remove(&file_transfer_handle) {
+                                Some(FileTransfer::FileDownload(file_download)) => file_download,
+                                _ => todo!(),
+                            };
 
                         match ordering {
                             Ordering::Equal => {
@@ -1392,21 +1624,33 @@ impl PacketHandler {
                                 } else {
                                     FileTransferResult::Failure
                                 };
-                                let file_transfer_complete_notification = file_channel::FileTransferCompleteNotification::new(file_id, result).unwrap();
-                                let packet = file_channel::Packet::FileTransferCompleteNotification(file_transfer_complete_notification);
-                                let reply = Packet::FileChannelPacket{channel, packet};
+                                let file_transfer_complete_notification =
+                                    file_channel::FileTransferCompleteNotification::new(
+                                        file_id, result,
+                                    )
+                                    .unwrap();
+                                let packet = file_channel::Packet::FileTransferCompleteNotification(
+                                    file_transfer_complete_notification,
+                                );
+                                let reply = Packet::FileChannelPacket { channel, packet };
                                 replies.push(reply);
 
                                 let hash_matches = Some(hash_matches);
-                                Ok(Event::FileChunkReceived{service_id, file_transfer_handle, data, last_chunk: true, hash_matches})
-                            },
+                                Ok(Event::FileChunkReceived {
+                                    service_id,
+                                    file_transfer_handle,
+                                    data,
+                                    last_chunk: true,
+                                    hash_matches,
+                                })
+                            }
                             // recevied too many bytes from peer something weird is happening
                             Ordering::Greater => Ok(Event::FatalProtocolFailure),
                             _ => unreachable!(),
                         }
-                    },
+                    }
                 }
-            },
+            }
             file_channel::Packet::FileHeaderAck(file_header_ack) => {
                 // file header ack should only come in on the outgoing file channel
                 match channel_type {
@@ -1415,10 +1659,18 @@ impl PacketHandler {
                 }
 
                 let file_id = file_header_ack.file_id();
-                let file_transfer_handle = FileTransferHandle{file_id, connection_handle, direction: Direction::Outgoing};
+                let file_transfer_handle = FileTransferHandle {
+                    file_id,
+                    connection_handle,
+                    direction: Direction::Outgoing,
+                };
                 let accepted = file_header_ack.accepted();
-                Ok(Event::FileTransferRequestAcknowledgeReceived{service_id, file_transfer_handle, accepted})
-            },
+                Ok(Event::FileTransferRequestAcknowledgeReceived {
+                    service_id,
+                    file_transfer_handle,
+                    accepted,
+                })
+            }
             file_channel::Packet::FileHeaderResponse(file_header_response) => {
                 // file header response should only come in on the outgoing file channel
                 match channel_type {
@@ -1427,11 +1679,18 @@ impl PacketHandler {
                 }
 
                 let file_id = file_header_response.file_id();
-                let file_transfer_handle = FileTransferHandle{file_id, connection_handle, direction: Direction::Outgoing};
+                let file_transfer_handle = FileTransferHandle {
+                    file_id,
+                    connection_handle,
+                    direction: Direction::Outgoing,
+                };
                 let response = file_header_response.response();
                 use file_channel::Response;
                 match response {
-                    Response::Accept => Ok(Event::FileTransferRequestAccepted{service_id, file_transfer_handle}),
+                    Response::Accept => Ok(Event::FileTransferRequestAccepted {
+                        service_id,
+                        file_transfer_handle,
+                    }),
                     Response::Reject => {
                         // clean up upload record
                         let connection = self.connection_mut(connection_handle)?;
@@ -1440,10 +1699,13 @@ impl PacketHandler {
                             Some(FileTransfer::FileDownload(_)) => todo!(),
                             None => todo!(),
                         }
-                        Ok(Event::FileTransferRequestRejected{service_id, file_transfer_handle})
+                        Ok(Event::FileTransferRequestRejected {
+                            service_id,
+                            file_transfer_handle,
+                        })
                     }
                 }
-            },
+            }
             file_channel::Packet::FileChunkAck(file_chunk_ack) => {
                 // file chunk ack should only come in on the outgoing file channel
                 match channel_type {
@@ -1452,7 +1714,11 @@ impl PacketHandler {
                 }
 
                 let file_id = file_chunk_ack.file_id();
-                let file_transfer_handle = FileTransferHandle{file_id, connection_handle, direction: Direction::Outgoing};
+                let file_transfer_handle = FileTransferHandle {
+                    file_id,
+                    connection_handle,
+                    direction: Direction::Outgoing,
+                };
                 // the number of bytes our counterpart claims to have
                 // received from us during this file transfer
                 let bytes_received = file_chunk_ack.bytes_received();
@@ -1464,8 +1730,14 @@ impl PacketHandler {
 
                 let file_upload = match connection.file_transfers.get(&file_transfer_handle) {
                     Some(FileTransfer::FileUpload(file_upload)) => file_upload,
-                    Some(FileTransfer::FileDownload(_)) => unreachable!("we should only receive file chunk acks for uploads"),
-                    None => return Ok(Event::ProtocolFailure{message: "Received orphaned FileChunkAck packet".to_string()}),
+                    Some(FileTransfer::FileDownload(_)) => {
+                        unreachable!("we should only receive file chunk acks for uploads")
+                    }
+                    None => {
+                        return Ok(Event::ProtocolFailure {
+                            message: "Received orphaned FileChunkAck packet".to_string(),
+                        })
+                    }
                 };
 
                 // ensure our state is synchronized before sending more bytes
@@ -1474,21 +1746,30 @@ impl PacketHandler {
                 // ensure we've sent no more bytes than the size of the file
                 } else if file_upload.file_size >= bytes_sent {
                     let offset = bytes_sent;
-                    Ok(Event::FileChunkAckReceived{service_id, file_transfer_handle, offset})
+                    Ok(Event::FileChunkAckReceived {
+                        service_id,
+                        file_transfer_handle,
+                        offset,
+                    })
                 } else {
                     Ok(Event::FatalProtocolFailure)
                 }
-            },
+            }
             file_channel::Packet::FileTransferCompleteNotification(
                 // file header should only come in on the incoming file channel
-                file_transfer_complete_notification) => {
+                file_transfer_complete_notification,
+            ) => {
                 let file_id = file_transfer_complete_notification.file_id();
                 let direction = match channel_type {
                     Some(ChannelType::IncomingFileTransfer) => Direction::Incoming,
                     Some(ChannelType::OutgoingFileTransfer) => Direction::Outgoing,
                     _ => return Ok(Event::FatalProtocolFailure),
                 };
-                let file_transfer_handle = FileTransferHandle{file_id, connection_handle, direction};
+                let file_transfer_handle = FileTransferHandle {
+                    file_id,
+                    connection_handle,
+                    direction,
+                };
                 use file_channel::FileTransferResult;
 
                 let connection = self.connection_mut(connection_handle)?;
@@ -1502,11 +1783,20 @@ impl PacketHandler {
                 }
 
                 match file_transfer_complete_notification.result() {
-                    FileTransferResult::Success => Ok(Event::FileTransferSucceeded{service_id, file_transfer_handle}),
-                    FileTransferResult::Failure => Ok(Event::FileTransferFailed{service_id, file_transfer_handle}),
-                    FileTransferResult::Cancelled => Ok(Event::FileTransferCancelled{service_id, file_transfer_handle}),
+                    FileTransferResult::Success => Ok(Event::FileTransferSucceeded {
+                        service_id,
+                        file_transfer_handle,
+                    }),
+                    FileTransferResult::Failure => Ok(Event::FileTransferFailed {
+                        service_id,
+                        file_transfer_handle,
+                    }),
+                    FileTransferResult::Cancelled => Ok(Event::FileTransferCancelled {
+                        service_id,
+                        file_transfer_handle,
+                    }),
                 }
-            },
+            }
         }
     }
 
@@ -1514,8 +1804,8 @@ impl PacketHandler {
         &mut self,
         service_id: V3OnionServiceId,
         message_text: Option<contact_request_channel::MessageText>,
-        replies: &mut Vec<Packet>) -> Result<ConnectionHandle, Error> {
-
+        replies: &mut Vec<Packet>,
+    ) -> Result<ConnectionHandle, Error> {
         self.known_contacts.insert(service_id.clone());
 
         let handle = self.next_connection_handle;
@@ -1524,11 +1814,11 @@ impl PacketHandler {
         }
         self.next_connection_handle += 1u32;
 
-
         let connection = Connection::new_outgoing(service_id, message_text);
         self.connections.insert(handle, connection);
 
-        let introduction = introduction::IntroductionPacket::new(vec![introduction::Version::RicochetRefresh3])?;
+        let introduction =
+            introduction::IntroductionPacket::new(vec![introduction::Version::RicochetRefresh3])?;
         let packet = Packet::IntroductionPacket(introduction);
         replies.push(packet);
 
@@ -1548,16 +1838,15 @@ impl PacketHandler {
         Ok(handle)
     }
 
-    pub fn remove_connection(
-        &mut self,
-        handle: &ConnectionHandle,
-    ) {
+    pub fn remove_connection(&mut self, handle: &ConnectionHandle) {
         // remove this connection
         if let Some(connection) = self.connections.remove(handle) {
             // remove service_id to handle entry only if it is associated with
             // the passed in handle
             if let Some(service_id) = connection.peer_service_id {
-                let remove = if let Some(stored_handle) = self.service_id_to_connection_handle.get(&service_id) {
+                let remove = if let Some(stored_handle) =
+                    self.service_id_to_connection_handle.get(&service_id)
+                {
                     stored_handle == handle
                 } else {
                     false
@@ -1570,17 +1859,12 @@ impl PacketHandler {
         }
     }
 
-    pub fn has_verified_connection(
-        &self,
-        service_id: &V3OnionServiceId,
-    ) -> bool {
-        self.service_id_to_connection_handle.contains_key(service_id)
+    pub fn has_verified_connection(&self, service_id: &V3OnionServiceId) -> bool {
+        self.service_id_to_connection_handle
+            .contains_key(service_id)
     }
 
-    pub fn forget_user(
-        &mut self,
-        service_id: &V3OnionServiceId,
-    ) {
+    pub fn forget_user(&mut self, service_id: &V3OnionServiceId) {
         if let Ok(connection_handle) = self.service_id_to_connection_handle(service_id) {
             self.remove_connection(&connection_handle);
         }
@@ -1590,7 +1874,8 @@ impl PacketHandler {
     pub fn accept_contact_request(
         &mut self,
         service_id: V3OnionServiceId,
-        replies: &mut Vec<Packet>) -> Result<ConnectionHandle, Error> {
+        replies: &mut Vec<Packet>,
+    ) -> Result<ConnectionHandle, Error> {
         // todo: we can probably remove these checks and specific errors
         // in favor of checking for an IncomingContactRequest channel
         if self.known_contacts.contains(&service_id) {
@@ -1599,7 +1884,10 @@ impl PacketHandler {
 
         let connection_handle = self.service_id_to_connection_handle(&service_id)?;
         let connection = self.connection_mut(connection_handle)?;
-        let channel_identifier = if let Some(channel_identifier) = connection.channel_map.channel_type_to_id(&ChannelType::IncomingContactRequest) {
+        let channel_identifier = if let Some(channel_identifier) = connection
+            .channel_map
+            .channel_type_to_id(&ChannelType::IncomingContactRequest)
+        {
             channel_identifier
         } else {
             // properly handle this error
@@ -1611,9 +1899,11 @@ impl PacketHandler {
         // build contact request accepted packet
         use contact_request_channel::{Response, Status};
         let channel = channel_identifier;
-        let response = Response{status: Status::Accepted};
+        let response = Response {
+            status: Status::Accepted,
+        };
         let packet = contact_request_channel::Packet::Response(response);
-        let reply = Packet::ContactRequestChannelPacket{channel, packet};
+        let reply = Packet::ContactRequestChannelPacket { channel, packet };
         pending_replies.push(reply);
 
         // close this contact request channel
@@ -1624,22 +1914,30 @@ impl PacketHandler {
         let open_channel = control_channel::OpenChannel::new(
             channel_id as i32,
             control_channel::ChannelType::Chat,
-            None).expect("OpenChannel creation failed");
+            None,
+        )
+        .expect("OpenChannel creation failed");
         let packet = control_channel::Packet::OpenChannel(open_channel);
         let reply = Packet::ControlChannelPacket(packet);
         pending_replies.push(reply);
-        connection.channel_map.insert(channel_id, ChannelData::OutgoingChat)?;
+        connection
+            .channel_map
+            .insert(channel_id, ChannelData::OutgoingChat)?;
 
         // build file transfer channel open packet
         let channel_id = connection.next_channel_id();
         let open_channel = control_channel::OpenChannel::new(
             channel_id as i32,
             control_channel::ChannelType::FileTransfer,
-            None).expect("OpenChannel creation failed");
+            None,
+        )
+        .expect("OpenChannel creation failed");
         let packet = control_channel::Packet::OpenChannel(open_channel);
         let reply = Packet::ControlChannelPacket(packet);
         pending_replies.push(reply);
-        connection.channel_map.insert(channel_id, ChannelData::OutgoingFileTransfer)?;
+        connection
+            .channel_map
+            .insert(channel_id, ChannelData::OutgoingFileTransfer)?;
 
         self.known_contacts.insert(service_id);
         replies.append(&mut pending_replies);
@@ -1649,11 +1947,14 @@ impl PacketHandler {
     pub fn reject_contact_request(
         &mut self,
         service_id: V3OnionServiceId,
-        replies: &mut Vec<Packet>) -> Result<ConnectionHandle, Error> {
-
+        replies: &mut Vec<Packet>,
+    ) -> Result<ConnectionHandle, Error> {
         let connection_handle = self.service_id_to_connection_handle(&service_id)?;
         let connection = self.connection_mut(connection_handle)?;
-        let channel_identifier = if let Some(channel_identifier) = connection.channel_map.channel_type_to_id(&ChannelType::IncomingContactRequest) {
+        let channel_identifier = if let Some(channel_identifier) = connection
+            .channel_map
+            .channel_type_to_id(&ChannelType::IncomingContactRequest)
+        {
             channel_identifier
         } else {
             // properly handle this error
@@ -1665,9 +1966,11 @@ impl PacketHandler {
         // build contact request accepted packet
         use contact_request_channel::{Response, Status};
         let channel = channel_identifier;
-        let response = Response{status: Status::Rejected};
+        let response = Response {
+            status: Status::Rejected,
+        };
         let packet = contact_request_channel::Packet::Response(response);
-        let reply = Packet::ContactRequestChannelPacket{channel, packet};
+        let reply = Packet::ContactRequestChannelPacket { channel, packet };
         pending_replies.push(reply);
 
         // close this contact request channel
@@ -1682,27 +1985,33 @@ impl PacketHandler {
         &mut self,
         service_id: V3OnionServiceId,
         message_text: chat_channel::MessageText,
-        replies: &mut Vec<Packet>) -> Result<(ConnectionHandle, MessageHandle), Error> {
-
+        replies: &mut Vec<Packet>,
+    ) -> Result<(ConnectionHandle, MessageHandle), Error> {
         let connection_handle = self.service_id_to_connection_handle(&service_id)?;
         let connection = self.connection_mut(connection_handle)?;
-        if let Some(channel) = connection.channel_map.channel_type_to_id(&ChannelType::OutgoingChat) {
+        if let Some(channel) = connection
+            .channel_map
+            .channel_type_to_id(&ChannelType::OutgoingChat)
+        {
             // get this message's id
             if connection.sent_message_counter > (u32::MAX as u64) {
                 return Err(Error::MessageHandlesExhausted);
             }
 
             let message_id = (connection.sent_message_counter & (u32::MAX as u64)) as u32;
-            let message_handle = MessageHandle{message_id, connection_handle, direction: Direction::Outgoing};
+            let message_handle = MessageHandle {
+                message_id,
+                connection_handle,
+                direction: Direction::Outgoing,
+            };
 
             // and increment counter
             connection.sent_message_counter += 1u64;
 
             let chat_message = chat_channel::ChatMessage::new(message_text, message_id, None)?;
             let packet = chat_channel::Packet::ChatMessage(chat_message);
-            let reply = Packet::ChatChannelPacket{channel, packet};
+            let reply = Packet::ChatChannelPacket { channel, packet };
             replies.push(reply);
-
 
             Ok((connection_handle, message_handle))
         } else {
@@ -1716,11 +2025,14 @@ impl PacketHandler {
         file_name: String,
         file_size: u64,
         file_hash: FileHash,
-        replies: &mut Vec<Packet>) -> Result<(ConnectionHandle, FileTransferHandle), Error> {
-
+        replies: &mut Vec<Packet>,
+    ) -> Result<(ConnectionHandle, FileTransferHandle), Error> {
         let connection_handle = self.service_id_to_connection_handle(&service_id)?;
         let connection = self.connection_mut(connection_handle)?;
-        if let Some(channel) = connection.channel_map.channel_type_to_id(&ChannelType::OutgoingFileTransfer) {
+        if let Some(channel) = connection
+            .channel_map
+            .channel_type_to_id(&ChannelType::OutgoingFileTransfer)
+        {
             // get this file transfer's id
             // get this message's id
             if connection.sent_message_counter > (u32::MAX as u64) {
@@ -1728,19 +2040,29 @@ impl PacketHandler {
             }
 
             let file_id = (connection.sent_message_counter & (u32::MAX as u64)) as u32;
-            let file_transfer_handle = FileTransferHandle{file_id, connection_handle, direction: Direction::Outgoing};
+            let file_transfer_handle = FileTransferHandle {
+                file_id,
+                connection_handle,
+                direction: Direction::Outgoing,
+            };
 
             // and increment counter
             connection.sent_message_counter += 1;
 
             // add a file upload record for this pending transfer
-            connection.file_transfers.insert(file_transfer_handle, FileTransfer::FileUpload(FileUpload{file_size, uploaded_bytes: 0u64}));
+            connection.file_transfers.insert(
+                file_transfer_handle,
+                FileTransfer::FileUpload(FileUpload {
+                    file_size,
+                    uploaded_bytes: 0u64,
+                }),
+            );
 
-            let file_header = file_channel::FileHeader::new(file_id, file_size, file_name, file_hash)?;
+            let file_header =
+                file_channel::FileHeader::new(file_id, file_size, file_name, file_hash)?;
             let packet = file_channel::Packet::FileHeader(file_header);
-            let reply = Packet::FileChannelPacket{channel, packet};
+            let reply = Packet::FileChannelPacket { channel, packet };
             replies.push(reply);
-
 
             Ok((connection_handle, file_transfer_handle))
         } else {
@@ -1752,17 +2074,20 @@ impl PacketHandler {
         &mut self,
         service_id: &V3OnionServiceId,
         file_transfer_handle: FileTransferHandle,
-        replies: &mut Vec<Packet>) -> Result<ConnectionHandle, Error> {
-
-        let connection_handle = self.service_id_to_connection_handle(service_id)?  ;
+        replies: &mut Vec<Packet>,
+    ) -> Result<ConnectionHandle, Error> {
+        let connection_handle = self.service_id_to_connection_handle(service_id)?;
         let connection = self.connection_mut(connection_handle)?;
 
-        if let Some(channel) = connection.channel_map.channel_type_to_id(&ChannelType::IncomingFileTransfer) {
-
+        if let Some(channel) = connection
+            .channel_map
+            .channel_type_to_id(&ChannelType::IncomingFileTransfer)
+        {
             let file_id = file_transfer_handle.file_id;
-            let file_header_response = file_channel::FileHeaderResponse::new(file_id, file_channel::Response::Accept)?;
+            let file_header_response =
+                file_channel::FileHeaderResponse::new(file_id, file_channel::Response::Accept)?;
             let packet = file_channel::Packet::FileHeaderResponse(file_header_response);
-            let reply = Packet::FileChannelPacket{channel, packet};
+            let reply = Packet::FileChannelPacket { channel, packet };
             replies.push(reply);
 
             Ok(connection_handle)
@@ -1775,8 +2100,8 @@ impl PacketHandler {
         &mut self,
         service_id: &V3OnionServiceId,
         file_transfer_handle: FileTransferHandle,
-        replies: &mut Vec<Packet>) -> Result<ConnectionHandle, Error> {
-
+        replies: &mut Vec<Packet>,
+    ) -> Result<ConnectionHandle, Error> {
         let connection_handle = self.service_id_to_connection_handle(service_id)?;
         let connection = self.connection_mut(connection_handle)?;
 
@@ -1786,20 +2111,31 @@ impl PacketHandler {
         }
 
         // remove the pending file transfer
-        let file_transfer = connection.file_transfers.remove(&file_transfer_handle).ok_or(Error::FileTransferHandleToFileTransferMappingFailure(file_transfer_handle))?;
+        let file_transfer = connection
+            .file_transfers
+            .remove(&file_transfer_handle)
+            .ok_or(Error::FileTransferHandleToFileTransferMappingFailure(
+                file_transfer_handle,
+            ))?;
         match file_transfer {
             FileTransfer::FileDownload(_) => (),
-            FileTransfer::FileUpload(_) => return Err(Error::FileUploadCannotBeRejected(file_transfer_handle)),
+            FileTransfer::FileUpload(_) => {
+                return Err(Error::FileUploadCannotBeRejected(file_transfer_handle))
+            }
         }
 
         let channel_type = ChannelType::IncomingFileTransfer;
-        let channel = connection.channel_map.channel_type_to_id(&channel_type).ok_or(Error::TargetChannelTypeNotOpen(channel_type))?;
+        let channel = connection
+            .channel_map
+            .channel_type_to_id(&channel_type)
+            .ok_or(Error::TargetChannelTypeNotOpen(channel_type))?;
 
         // send rejection
         let file_id = file_transfer_handle.file_id;
-        let file_header_response = file_channel::FileHeaderResponse::new(file_id, file_channel::Response::Reject)?;
+        let file_header_response =
+            file_channel::FileHeaderResponse::new(file_id, file_channel::Response::Reject)?;
         let packet = file_channel::Packet::FileHeaderResponse(file_header_response);
-        let reply = Packet::FileChannelPacket{channel, packet};
+        let reply = Packet::FileChannelPacket { channel, packet };
         replies.push(reply);
 
         Ok(connection_handle)
@@ -1809,20 +2145,28 @@ impl PacketHandler {
         &mut self,
         service_id: &V3OnionServiceId,
         file_transfer_handle: FileTransferHandle,
-        replies: &mut Vec<Packet>) -> Result<ConnectionHandle, Error> {
-
+        replies: &mut Vec<Packet>,
+    ) -> Result<ConnectionHandle, Error> {
         let connection_handle = self.service_id_to_connection_handle(service_id)?;
         let connection = self.connection_mut(connection_handle)?;
 
         // remove the file transfer
-        let file_transfer = connection.file_transfers.remove(&file_transfer_handle).ok_or(Error::FileTransferHandleToFileTransferMappingFailure(file_transfer_handle))?;
+        let file_transfer = connection
+            .file_transfers
+            .remove(&file_transfer_handle)
+            .ok_or(Error::FileTransferHandleToFileTransferMappingFailure(
+                file_transfer_handle,
+            ))?;
 
         // get the appropriate file channel
         let channel_type = match file_transfer_handle.direction {
             Direction::Incoming => ChannelType::IncomingFileTransfer,
             Direction::Outgoing => ChannelType::OutgoingFileTransfer,
         };
-        let channel = connection.channel_map.channel_type_to_id(&channel_type).ok_or(Error::TargetChannelTypeNotOpen(channel_type))?;
+        let channel = connection
+            .channel_map
+            .channel_type_to_id(&channel_type)
+            .ok_or(Error::TargetChannelTypeNotOpen(channel_type))?;
 
         // verify the file transfer type matches expect by then handle
         match (file_transfer_handle.direction, file_transfer) {
@@ -1833,9 +2177,15 @@ impl PacketHandler {
 
         // send cancellation
         let file_id = file_transfer_handle.file_id;
-        let file_transfer_complete_notification = file_channel::FileTransferCompleteNotification::new(file_id, file_channel::FileTransferResult::Cancelled)?;
-        let packet = file_channel::Packet::FileTransferCompleteNotification(file_transfer_complete_notification);
-        let reply = Packet::FileChannelPacket{channel, packet};
+        let file_transfer_complete_notification =
+            file_channel::FileTransferCompleteNotification::new(
+                file_id,
+                file_channel::FileTransferResult::Cancelled,
+            )?;
+        let packet = file_channel::Packet::FileTransferCompleteNotification(
+            file_transfer_complete_notification,
+        );
+        let reply = Packet::FileChannelPacket { channel, packet };
         replies.push(reply);
 
         Ok(connection_handle)
@@ -1847,29 +2197,41 @@ impl PacketHandler {
         service_id: &V3OnionServiceId,
         file_transfer_handle: FileTransferHandle,
         chunk_data: Vec<u8>,
-        replies: &mut Vec<Packet>) -> Result<ConnectionHandle, Error> {
-
+        replies: &mut Vec<Packet>,
+    ) -> Result<ConnectionHandle, Error> {
         let connection_handle = self.service_id_to_connection_handle(service_id)?;
         let connection = self.connection_mut(connection_handle)?;
 
         let channel_type = ChannelType::OutgoingFileTransfer;
-        let channel = connection.channel_map.channel_type_to_id(&channel_type).ok_or(Error::TargetChannelTypeNotOpen(channel_type))?;
+        let channel = connection
+            .channel_map
+            .channel_type_to_id(&channel_type)
+            .ok_or(Error::TargetChannelTypeNotOpen(channel_type))?;
 
         let file_id = file_transfer_handle.file_id;
         let chunk_len = chunk_data.len();
-        let file_transfer = connection.file_transfers.get_mut(&file_transfer_handle).ok_or(Error::FileTransferHandleToFileTransferMappingFailure(file_transfer_handle))?;
+        let file_transfer = connection
+            .file_transfers
+            .get_mut(&file_transfer_handle)
+            .ok_or(Error::FileTransferHandleToFileTransferMappingFailure(
+                file_transfer_handle,
+            ))?;
 
         // verify the file transfer type is a file upload
         let file_upload: &mut FileUpload = match file_transfer {
             FileTransfer::FileUpload(file_upload) => file_upload,
-            _ => return Err(Error::FileTransferHandleToFileUploadMappingFailure(file_transfer_handle)),
+            _ => {
+                return Err(Error::FileTransferHandleToFileUploadMappingFailure(
+                    file_transfer_handle,
+                ))
+            }
         };
 
         // send file chunk
         let chunk_data = file_channel::ChunkData::new(chunk_data)?;
         let file_chunk = file_channel::FileChunk::new(file_id, chunk_data)?;
         let packet = file_channel::Packet::FileChunk(file_chunk);
-        let reply = Packet::FileChannelPacket{channel, packet};
+        let reply = Packet::FileChannelPacket { channel, packet };
         replies.push(reply);
 
         // update our file upload progress

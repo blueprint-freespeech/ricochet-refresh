@@ -21,15 +21,9 @@ pub(crate) struct Command {
 }
 
 impl Command {
-    pub fn new(
-        data: CommandData,
-        delay: Duration,
-    ) -> Self {
+    pub fn new(data: CommandData, delay: Duration) -> Self {
         let start_time = Instant::now().add(delay);
-        Self{
-            start_time,
-            data,
-        }
+        Self { start_time, data }
     }
 
     pub fn start_time(&self) -> &Instant {
@@ -48,13 +42,13 @@ impl Ord for Command {
 }
 
 impl PartialOrd for Command {
-    fn partial_cmp(&self, other:&Self) -> Option<std::cmp::Ordering> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
 impl PartialEq for Command {
-    fn eq(&self, other: &Self)-> bool {
+    fn eq(&self, other: &Self) -> bool {
         std::ptr::eq(self, other)
     }
 }
@@ -65,49 +59,50 @@ pub(crate) enum CommandData {
     // library is going away we need to cleanup
     EndEventLoop,
     // remove a user from our internal lists
-    ForgetUser{
+    ForgetUser {
         service_id: V3OnionServiceId,
         result: Promise<Result<()>>,
     },
     // client connects to our listener triggering an incoming handshake
-    BeginServerHandshake{
-        stream: OnionStream
+    BeginServerHandshake {
+        stream: OnionStream,
     },
-    AcknowledgeContactRequest{
+    AcknowledgeContactRequest {
         service_id: V3OnionServiceId,
         response: tego_chat_acknowledge,
     },
     //connect to a peer and optionally request to be an allowed contact
-    ConnectContact{
+    ConnectContact {
         service_id: V3OnionServiceId,
         failure_count: usize,
-        contact_request_message: Option<rico_protocol::v3::message::contact_request_channel::MessageText>,
+        contact_request_message:
+            Option<rico_protocol::v3::message::contact_request_channel::MessageText>,
     },
-    SendMessage{
+    SendMessage {
         service_id: V3OnionServiceId,
         message_text: rico_protocol::v3::message::chat_channel::MessageText,
         message_id: Promise<Result<tego_message_id>>,
     },
-    SendFileTransferRequest{
+    SendFileTransferRequest {
         service_id: V3OnionServiceId,
         file_path: PathBuf,
-        result: Promise<Result<(tego_file_transfer_id, tego_file_size)>>
+        result: Promise<Result<(tego_file_transfer_id, tego_file_size)>>,
     },
     // accept an incoming file transfer request
-    AcceptFileTransferRequest{
+    AcceptFileTransferRequest {
         service_id: V3OnionServiceId,
         file_transfer_id: tego_file_transfer_id,
         dest_path: PathBuf,
         result: Promise<Result<()>>,
     },
     // reject an incoming file transfer request
-    RejectFileTransferRequest{
+    RejectFileTransferRequest {
         service_id: V3OnionServiceId,
         file_transfer_id: tego_file_transfer_id,
         result: Promise<Result<()>>,
     },
     // cancel an in-progress file transfer
-    CancelFileTransfer{
+    CancelFileTransfer {
         service_id: V3OnionServiceId,
         file_transfer_id: tego_file_transfer_id,
         result: Promise<Result<()>>,
@@ -126,12 +121,8 @@ enum CommandQueueInner {
 impl CommandQueue {
     fn queue(&self) -> Option<Arc<Mutex<BinaryHeap<Command>>>> {
         match &self.queue {
-            CommandQueueInner::Arc(queue) => {
-                Some(queue.clone())
-            },
-            CommandQueueInner::Weak(queue) => {
-                queue.upgrade()
-            },
+            CommandQueueInner::Arc(queue) => Some(queue.clone()),
+            CommandQueueInner::Weak(queue) => queue.upgrade(),
         }
     }
 
@@ -142,25 +133,18 @@ impl CommandQueue {
             },
             CommandQueueInner::Weak(queue) => Self {
                 queue: CommandQueueInner::Weak(queue.clone()),
-            }
+            },
         }
     }
 
-    pub fn push(
-        &self,
-        data: CommandData,
-        delay: Duration,
-    ) {
+    pub fn push(&self, data: CommandData, delay: Duration) {
         if let Some(queue) = self.queue() {
             let mut queue = queue.lock().expect("queue mutex poisoned");
             queue.push(Command::new(data, delay));
         }
     }
 
-    pub fn append(
-        &self,
-        mut commands: BinaryHeap<Command>,
-    ) {
+    pub fn append(&self, mut commands: BinaryHeap<Command>) {
         if let Some(queue) = self.queue() {
             let mut queue = queue.lock().expect("queue mutex poisoned");
             queue.append(&mut commands);
@@ -179,6 +163,8 @@ impl CommandQueue {
 
 impl Default for CommandQueue {
     fn default() -> Self {
-        Self{queue: CommandQueueInner::Arc(Default::default())}
+        Self {
+            queue: CommandQueueInner::Arc(Default::default()),
+        }
     }
 }

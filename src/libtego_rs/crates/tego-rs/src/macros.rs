@@ -12,7 +12,6 @@ macro_rules! bail_if {
 }
 pub(crate) use bail_if;
 
-
 // ensure pointer is not null
 macro_rules! bail_if_null {
     ($ptr:ident) => {

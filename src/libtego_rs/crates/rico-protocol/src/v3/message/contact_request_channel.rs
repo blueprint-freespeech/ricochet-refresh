@@ -4,13 +4,13 @@ pub(crate) const CHANNEL_TYPE: &str = "im.ricochet.contact.request";
 
 #[derive(Debug, PartialEq)]
 pub enum Packet {
-    Response(Response)
+    Response(Response),
 }
 
 impl Packet {
     pub fn write_to_vec(&self, v: &mut Vec<u8>) -> Result<(), Error> {
-        use protobuf::Message;
         use crate::v3::protos;
+        use protobuf::Message;
 
         let mut pb: protos::ContactRequestChannel::Response = Default::default();
         match self {
@@ -35,10 +35,11 @@ impl TryFrom<&[u8]> for Packet {
     type Error = Error;
 
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
-        use protobuf::Message;
         use crate::v3::protos;
+        use protobuf::Message;
 
-        let pb = protos::ContactRequestChannel::Response::parse_from_bytes(value).map_err(Self::Error::ProtobufError)?;
+        let pb = protos::ContactRequestChannel::Response::parse_from_bytes(value)
+            .map_err(Self::Error::ProtobufError)?;
 
         let status = match pb.status() {
             protos::ContactRequestChannel::response::Status::Undefined => Status::Undefined,
@@ -47,7 +48,7 @@ impl TryFrom<&[u8]> for Packet {
             protos::ContactRequestChannel::response::Status::Rejected => Status::Rejected,
             protos::ContactRequestChannel::response::Status::Error => Status::Error,
         };
-        let response = Response{status};
+        let response = Response { status };
         Ok(Packet::Response(response))
     }
 }
@@ -69,7 +70,7 @@ pub struct ContactRequest {
 
 #[derive(Debug, PartialEq)]
 pub struct MessageText {
-    value: String
+    value: String,
 }
 
 impl From<&MessageText> for String {
@@ -85,7 +86,7 @@ impl TryFrom<String> for MessageText {
         // - must contain no more than 2000 utf16 code units
 
         const MAX_MESSAGE_SIZE: usize = 2000;
-        let mut count:usize = 0;
+        let mut count: usize = 0;
         for _code_unit in value.encode_utf16() {
             count += 1;
             if count > MAX_MESSAGE_SIZE {
@@ -93,13 +94,13 @@ impl TryFrom<String> for MessageText {
             }
         }
 
-        Ok(MessageText{value})
+        Ok(MessageText { value })
     }
 }
 
 #[derive(Debug, PartialEq)]
 pub struct Nickname {
-    value: String
+    value: String,
 }
 
 impl From<&Nickname> for String {
@@ -120,7 +121,7 @@ impl TryFrom<String> for Nickname {
         // - must not be non-characters (i.e.  0xFFFE, 0xFFFF, and 0xFDD0 through 0xFDEF)
 
         const MAX_NICKNAME_SIZE: usize = 30;
-        let mut count:usize = 0;
+        let mut count: usize = 0;
         for code_unit in value.encode_utf16() {
             count += 1;
             if count > MAX_NICKNAME_SIZE {
@@ -128,7 +129,8 @@ impl TryFrom<String> for Nickname {
             }
 
             // ensure not a non-character
-            let is_non_character = matches!(code_unit, 0xFFFEu16..=0xFFFFu16 | 0xFDD0u16..=0xFDEFu16);
+            let is_non_character =
+                matches!(code_unit, 0xFFFEu16..=0xFFFFu16 | 0xFDD0u16..=0xFDEFu16);
 
             if is_non_character {
                 return Err(Self::Error::InvalidNicknameContainsNonCharacter(code_unit));
@@ -146,19 +148,22 @@ impl TryFrom<String> for Nickname {
                 match get_general_category(character) {
                     // ensure not a format code unit (Cf)
                     GeneralCategory::Format => {
-                        return Err(Self::Error::InvalidNicknameContainsFormatCodeUnit(code_unit));
-                    },
+                        return Err(Self::Error::InvalidNicknameContainsFormatCodeUnit(
+                            code_unit,
+                        ));
+                    }
                     // ensure not a control code unit (Cc)
                     GeneralCategory::Control => {
-                        return Err(Self::Error::InvalidNicknameContainsControlCodeUnit(code_unit));
-                    },
-                    _ => ()
+                        return Err(Self::Error::InvalidNicknameContainsControlCodeUnit(
+                            code_unit,
+                        ));
+                    }
+                    _ => (),
                 }
             }
-
         }
 
-        Ok(Nickname{value})
+        Ok(Nickname { value })
     }
 }
 

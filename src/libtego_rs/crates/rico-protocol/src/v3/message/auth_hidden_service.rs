@@ -2,8 +2,8 @@
 use std::io::Write;
 
 //extern
-use sha2::Sha256;
 use hmac::{Hmac, Mac};
+use sha2::Sha256;
 use tor_interface::tor_crypto::{V3OnionServiceId, V3_ONION_SERVICE_ID_STRING_LENGTH};
 
 // internal
@@ -22,9 +22,9 @@ pub enum Packet {
 }
 
 impl Packet {
-    pub fn write_to_vec(&self, v:& mut Vec<u8>) -> std::result::Result<(), Error> {
-        use protobuf::Message;
+    pub fn write_to_vec(&self, v: &mut Vec<u8>) -> std::result::Result<(), Error> {
         use crate::v3::protos;
+        use protobuf::Message;
 
         let mut pb: protos::AuthHiddenService::Packet = Default::default();
 
@@ -33,15 +33,23 @@ impl Packet {
                 let signature: Option<Vec<u8>> = Some(proof.signature().into());
                 let service_id = Some(proof.service_id().to_string());
 
-                let proof = protos::AuthHiddenService::Proof{signature, service_id, ..Default::default()};
+                let proof = protos::AuthHiddenService::Proof {
+                    signature,
+                    service_id,
+                    ..Default::default()
+                };
 
                 pb.proof = Some(proof).into();
-            },
+            }
             Packet::Result(result) => {
                 let accepted = Some(result.accepted());
                 let is_known_contact = *result.is_known_contact();
 
-                let result = protos::AuthHiddenService::Result{accepted, is_known_contact, ..Default::default()};
+                let result = protos::AuthHiddenService::Result {
+                    accepted,
+                    is_known_contact,
+                    ..Default::default()
+                };
 
                 pb.result = Some(result).into();
             }
@@ -57,11 +65,12 @@ impl TryFrom<&[u8]> for Packet {
     type Error = Error;
 
     fn try_from(value: &[u8]) -> std::result::Result<Self, Self::Error> {
-        use protobuf::Message;
         use crate::v3::protos;
+        use protobuf::Message;
 
         // parse bytes into protobuf message
-        let pb = protos::AuthHiddenService::Packet::parse_from_bytes(value).map_err(Self::Error::ProtobufError)?;
+        let pb = protos::AuthHiddenService::Packet::parse_from_bytes(value)
+            .map_err(Self::Error::ProtobufError)?;
 
         let proof = pb.proof.into_option();
         let result = pb.result.into_option();
@@ -75,7 +84,9 @@ impl TryFrom<&[u8]> for Packet {
                     Err(_) => return Err(Self::Error::InvalidProtobufMessage),
                 };
 
-                let service_id = proof.service_id.ok_or(Self::Error::InvalidProtobufMessage)?;
+                let service_id = proof
+                    .service_id
+                    .ok_or(Self::Error::InvalidProtobufMessage)?;
                 use tor_interface::tor_crypto::V3OnionServiceId;
                 let service_id = match V3OnionServiceId::from_string(service_id.as_str()) {
                     Ok(service_id) => service_id,
@@ -84,7 +95,7 @@ impl TryFrom<&[u8]> for Packet {
 
                 let proof = Proof::new(signature, service_id)?;
                 Ok(Packet::Proof(proof))
-            },
+            }
             (None, Some(result)) => {
                 let accepted = result.accepted.ok_or(Self::Error::InvalidProtobufMessage)?;
 
@@ -92,7 +103,7 @@ impl TryFrom<&[u8]> for Packet {
 
                 let result = Result::new(accepted, is_known_contact)?;
                 Ok(Packet::Result(result))
-            },
+            }
             _ => Err(Self::Error::InvalidProtobufMessage),
         }
     }
@@ -124,8 +135,14 @@ pub struct Proof {
 }
 
 impl Proof {
-    pub fn new(signature: [u8; PROOF_SIGNATURE_SIZE], service_id: V3OnionServiceId) -> std::result::Result<Self, Error> {
-        Ok(Self{signature, service_id})
+    pub fn new(
+        signature: [u8; PROOF_SIGNATURE_SIZE],
+        service_id: V3OnionServiceId,
+    ) -> std::result::Result<Self, Error> {
+        Ok(Self {
+            signature,
+            service_id,
+        })
     }
 
     pub fn signature(&self) -> &[u8; PROOF_SIGNATURE_SIZE] {
@@ -140,30 +157,30 @@ impl Proof {
         client_cookie: &[u8; CLIENT_COOKIE_SIZE],
         server_cookie: &[u8; SERVER_COOKIE_SIZE],
         client_service_id: &V3OnionServiceId,
-        server_service_id: &V3OnionServiceId) -> [u8; PROOF_SIZE] {
-
-        let mut key: Vec<u8> = Vec::with_capacity(
-            CLIENT_COOKIE_SIZE +
-            SERVER_COOKIE_SIZE
-        );
+        server_service_id: &V3OnionServiceId,
+    ) -> [u8; PROOF_SIZE] {
+        let mut key: Vec<u8> = Vec::with_capacity(CLIENT_COOKIE_SIZE + SERVER_COOKIE_SIZE);
         key.write_all(client_cookie).expect("key write failed");
         key.write_all(server_cookie).expect("key write failed");
 
         let mut message: Vec<u8> = Vec::with_capacity(
-            V3_ONION_SERVICE_ID_STRING_LENGTH +
-            V3_ONION_SERVICE_ID_STRING_LENGTH
+            V3_ONION_SERVICE_ID_STRING_LENGTH + V3_ONION_SERVICE_ID_STRING_LENGTH,
         );
-        message.write_all(client_service_id.as_bytes()).expect("message write failed");
-        message.write_all(server_service_id.as_bytes()).expect("message write failed");
+        message
+            .write_all(client_service_id.as_bytes())
+            .expect("message write failed");
+        message
+            .write_all(server_service_id.as_bytes())
+            .expect("message write failed");
 
         type HmacSha256 = Hmac<Sha256>;
-        let mut mac = HmacSha256::new_from_slice(key.as_slice()).expect("HMAC-SHA256 creation failed");
+        let mut mac =
+            HmacSha256::new_from_slice(key.as_slice()).expect("HMAC-SHA256 creation failed");
         mac.update(message.as_slice());
 
         let result = mac.finalize().into_bytes();
         result.into()
     }
-
 }
 
 #[derive(Debug, PartialEq)]
@@ -176,9 +193,14 @@ pub struct Result {
 impl Result {
     pub fn new(accepted: bool, is_known_contact: Option<bool>) -> std::result::Result<Self, Error> {
         if accepted && is_known_contact.is_none() {
-            return Err(Error::PacketConstructionFailed("is_known_contact must be present if accepted is true".to_string()));
+            return Err(Error::PacketConstructionFailed(
+                "is_known_contact must be present if accepted is true".to_string(),
+            ));
         }
-        Ok(Self{accepted, is_known_contact})
+        Ok(Self {
+            accepted,
+            is_known_contact,
+        })
     }
 
     pub fn accepted(&self) -> bool {

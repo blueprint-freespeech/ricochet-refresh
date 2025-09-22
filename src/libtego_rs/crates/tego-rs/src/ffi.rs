@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 // extern
-use anyhow::{Result, bail};
+use anyhow::{bail, Result};
 use tor_interface::censorship_circumvention::*;
 use tor_interface::proxy::*;
 use tor_interface::tor_crypto::{Ed25519PrivateKey, V3OnionServiceId};
@@ -14,7 +14,7 @@ use tor_interface::tor_provider::{DomainAddr, TargetAddr};
 
 // internal crates
 use crate::context::Context;
-use crate::error::{Error, translate_failures};
+use crate::error::{translate_failures, Error};
 use crate::file_hash::*;
 use crate::macros::*;
 use crate::object_map::ObjectMap;
@@ -57,7 +57,9 @@ type TegoObjectMap = ObjectMap<TegoObject>;
 static OBJECT_MAP: std::sync::Mutex<TegoObjectMap> = std::sync::Mutex::new(TegoObjectMap::new());
 
 pub(crate) fn get_object_map<'a>() -> std::sync::MutexGuard<'a, TegoObjectMap> {
-    OBJECT_MAP.lock().expect("another thread panicked while holding OBJECT_MAP's mutex")
+    OBJECT_MAP
+        .lock()
+        .expect("another thread panicked while holding OBJECT_MAP's mutex")
 }
 
 /// Get error message form tego_error
@@ -70,16 +72,13 @@ pub(crate) fn get_object_map<'a>() -> std::sync::MutexGuard<'a, TegoObjectMap> {
 ///
 /// All pointers must be properly initialised or NULL
 #[no_mangle]
-pub unsafe extern "C" fn tego_error_get_message(
-    error: *const tego_error) -> *const c_char {
+pub unsafe extern "C" fn tego_error_get_message(error: *const tego_error) -> *const c_char {
     if error.is_null() {
         std::ptr::null()
     } else {
         let key = error as TegoKey;
         match get_object_map().get(&key) {
-            Some(TegoObject::Error(err)) => {
-                err.message().as_ptr()
-            },
+            Some(TegoObject::Error(err)) => err.message().as_ptr(),
             _ => std::ptr::null(),
         }
     }
@@ -93,7 +92,8 @@ pub struct tego_context;
 #[no_mangle]
 pub unsafe extern "C" fn tego_initialize(
     out_context: *mut *mut tego_context,
-    error: *mut *mut tego_error) {
+    error: *mut *mut tego_error,
+) {
     translate_failures((), error, || -> Result<()> {
         bail_if_null!(out_context);
 
@@ -117,7 +117,8 @@ pub unsafe extern "C" fn tego_initialize(
 #[no_mangle]
 pub unsafe extern "C" fn tego_uninitialize(
     context: *mut tego_context,
-    error: *mut *mut tego_error) {
+    error: *mut *mut tego_error,
+) {
     translate_failures((), error, || -> Result<()> {
         bail_if_null!(context);
 
@@ -158,7 +159,8 @@ pub unsafe extern "C" fn tego_ed25519_private_key_from_ed25519_keyblob(
     out_private_key: *mut *mut tego_ed25519_private_key,
     keyblob: *const c_char,
     keyblob_length: usize,
-    error: *mut *mut tego_error) {
+    error: *mut *mut tego_error,
+) {
     translate_failures((), error, || -> Result<()> {
         bail_if_null!(out_private_key);
         bail_if_null!(keyblob);
@@ -203,7 +205,8 @@ pub unsafe extern "C" fn tego_ed25519_keyblob_from_ed25519_private_key(
     out_keyblob: *mut c_char,
     keyblob_size: usize,
     private_key: *const tego_ed25519_private_key,
-    error: *mut *mut tego_error) -> usize {
+    error: *mut *mut tego_error,
+) -> usize {
     translate_failures(0usize, error, || -> Result<usize> {
         bail_if_null!(out_keyblob);
         bail_if!(keyblob_size < TEGO_ED25519_KEYBLOB_SIZE);
@@ -217,20 +220,21 @@ pub unsafe extern "C" fn tego_ed25519_keyblob_from_ed25519_private_key(
                 assert!(keyblob.len() == TEGO_ED25519_KEYBLOB_LENGTH);
 
                 unsafe {
-                    let out_keyblob = std::slice::from_raw_parts_mut(out_keyblob as *mut u8, keyblob_size);
-                    std::ptr::copy(
-                        keyblob.as_ptr(),
-                        out_keyblob.as_mut_ptr(),
-                        keyblob.len());
+                    let out_keyblob =
+                        std::slice::from_raw_parts_mut(out_keyblob as *mut u8, keyblob_size);
+                    std::ptr::copy(keyblob.as_ptr(), out_keyblob.as_mut_ptr(), keyblob.len());
                     out_keyblob[TEGO_ED25519_KEYBLOB_LENGTH] = 0u8;
                 }
                 Ok(TEGO_ED25519_KEYBLOB_SIZE)
-            },
-            Some(_) => bail!("not a tego_ed25519_private_key pointer: {:?}", key as *const c_void),
+            }
+            Some(_) => bail!(
+                "not a tego_ed25519_private_key pointer: {:?}",
+                key as *const c_void
+            ),
             None => bail!("not a valid pointer: {:?}", key as *const c_void),
         }
     })
- }
+}
 
 /// Checks if a service id string is valid per tor rend spec:
 /// https://gitweb.torproject.org/torspec.git/tree/rend-spec-v3.txt
@@ -247,11 +251,14 @@ pub unsafe extern "C" fn tego_ed25519_keyblob_from_ed25519_private_key(
 pub unsafe extern "C" fn tego_v3_onion_service_id_string_is_valid(
     service_id_string: *const c_char,
     service_id_string_length: usize,
-    error: *mut *mut tego_error) -> tego_bool {
+    error: *mut *mut tego_error,
+) -> tego_bool {
     translate_failures(TEGO_FALSE, error, || -> Result<tego_bool> {
         bail_if_null!(service_id_string);
 
-        let service_id_string = unsafe { std::slice::from_raw_parts(service_id_string as *const u8, service_id_string_length) };
+        let service_id_string = unsafe {
+            std::slice::from_raw_parts(service_id_string as *const u8, service_id_string_length)
+        };
         let service_id_string = std::str::from_utf8(service_id_string)?;
 
         if V3OnionServiceId::is_valid(service_id_string) {
@@ -280,12 +287,15 @@ pub unsafe extern "C" fn tego_v3_onion_service_id_from_string(
     out_service_id: *mut *mut tego_v3_onion_service_id,
     service_id_string: *const c_char,
     service_id_string_length: usize,
-    error: *mut *mut tego_error) {
+    error: *mut *mut tego_error,
+) {
     translate_failures((), error, || -> Result<()> {
         bail_if_null!(out_service_id);
         bail_if_null!(service_id_string);
 
-        let service_id_string = unsafe { std::slice::from_raw_parts(service_id_string as *const u8, service_id_string_length) };
+        let service_id_string = unsafe {
+            std::slice::from_raw_parts(service_id_string as *const u8, service_id_string_length)
+        };
         let service_id_string = std::str::from_utf8(service_id_string)?;
 
         let service_id = V3OnionServiceId::from_string(service_id_string)?;
@@ -297,7 +307,7 @@ pub unsafe extern "C" fn tego_v3_onion_service_id_from_string(
         }
         Ok(())
     })
- }
+}
 
 /// Serializes out a service id object as a null-terminated utf8 string
 /// to provided character buffer.
@@ -319,7 +329,8 @@ pub unsafe extern "C" fn tego_v3_onion_service_id_to_string(
     service_id: *const tego_v3_onion_service_id,
     out_service_id_string: *mut c_char,
     service_id_string_size: usize,
-    error: *mut *mut tego_error) -> usize {
+    error: *mut *mut tego_error,
+) -> usize {
     translate_failures(0usize, error, || -> Result<usize> {
         bail_if_null!(service_id);
         bail_if_null!(out_service_id_string);
@@ -333,20 +344,27 @@ pub unsafe extern "C" fn tego_v3_onion_service_id_to_string(
                 assert!(service_id.len() == TEGO_V3_ONION_SERVICE_ID_LENGTH);
 
                 unsafe {
-                    let out_service_id_string = std::slice::from_raw_parts_mut(out_service_id_string as *mut u8, service_id_string_size);
+                    let out_service_id_string = std::slice::from_raw_parts_mut(
+                        out_service_id_string as *mut u8,
+                        service_id_string_size,
+                    );
                     std::ptr::copy(
                         service_id.as_ptr(),
                         out_service_id_string.as_mut_ptr(),
-                        service_id.len());
+                        service_id.len(),
+                    );
                     out_service_id_string[TEGO_V3_ONION_SERVICE_ID_LENGTH] = 0u8;
                 }
                 Ok(TEGO_V3_ONION_SERVICE_ID_SIZE)
-            },
-            Some(_) => bail!("not a tego_v3_onion_service_id pointer: {:?}", key as *const c_void),
+            }
+            Some(_) => bail!(
+                "not a tego_v3_onion_service_id pointer: {:?}",
+                key as *const c_void
+            ),
             None => bail!("not a valid pointer: {:?}", key as *const c_void),
         }
     })
- }
+}
 
 //
 // Chat protocol functionality
@@ -369,7 +387,8 @@ pub struct tego_user_id;
 pub unsafe extern "C" fn tego_user_id_from_v3_onion_service_id(
     out_user_id: *mut *mut tego_user_id,
     service_id: *const tego_v3_onion_service_id,
-    error: *mut *mut tego_error) {
+    error: *mut *mut tego_error,
+) {
     translate_failures((), error, || -> Result<()> {
         bail_if_null!(out_user_id);
         bail_if_null!(service_id);
@@ -377,11 +396,14 @@ pub unsafe extern "C" fn tego_user_id_from_v3_onion_service_id(
         let key = service_id as TegoKey;
         let service_id = match get_object_map().get(&key) {
             Some(TegoObject::V3OnionServiceId(service_id)) => service_id.clone(),
-            Some(_) => bail!("not a tego_v3_onion_service_id pointer: {:?}", key as *const c_void),
+            Some(_) => bail!(
+                "not a tego_v3_onion_service_id pointer: {:?}",
+                key as *const c_void
+            ),
             None => bail!("not a valid pointer: {:?}", key as *const c_void),
         };
 
-        let user_id = get_object_map().insert(TegoObject::UserId(UserId{service_id}));
+        let user_id = get_object_map().insert(TegoObject::UserId(UserId { service_id }));
 
         unsafe { *out_user_id = user_id as *mut tego_user_id };
 
@@ -402,7 +424,8 @@ pub unsafe extern "C" fn tego_user_id_from_v3_onion_service_id(
 pub unsafe extern "C" fn tego_user_id_get_v3_onion_service_id(
     user_id: *const tego_user_id,
     out_service_id: *mut *mut tego_v3_onion_service_id,
-    error: *mut *mut tego_error) {
+    error: *mut *mut tego_error,
+) {
     translate_failures((), error, || -> Result<()> {
         bail_if_null!(user_id);
         bail_if_null!(out_service_id);
@@ -410,13 +433,16 @@ pub unsafe extern "C" fn tego_user_id_get_v3_onion_service_id(
         let key = user_id as TegoKey;
         let service_id = match get_object_map().get(&key) {
             Some(TegoObject::UserId(user_id)) => user_id.service_id.clone(),
-            Some(_) => bail!("not a tego_v3_onion_service_id pointer: {:?}", key as *const c_void),
+            Some(_) => bail!(
+                "not a tego_v3_onion_service_id pointer: {:?}",
+                key as *const c_void
+            ),
             None => bail!("not a valid pointer: {:?}", key as *const c_void),
         };
 
         let service_id = get_object_map().insert(TegoObject::V3OnionServiceId(service_id));
 
-        unsafe {*out_service_id = service_id as *mut tego_v3_onion_service_id};
+        unsafe { *out_service_id = service_id as *mut tego_v3_onion_service_id };
 
         Ok(())
     })
@@ -437,7 +463,8 @@ pub unsafe extern "C" fn tego_user_id_get_v3_onion_service_id(
 pub unsafe extern "C" fn tego_context_get_host_user_id(
     context: *const tego_context,
     out_host_user: *mut *mut tego_user_id,
-    error: *mut *mut tego_error) {
+    error: *mut *mut tego_error,
+) {
     translate_failures((), error, || -> Result<()> {
         bail_if_null!(context);
         bail_if_null!(out_host_user);
@@ -455,7 +482,7 @@ pub unsafe extern "C" fn tego_context_get_host_user_id(
             None => bail!("not a valid pointer: {:?}", key as *const c_void),
         };
 
-        let host_user = get_object_map().insert(TegoObject::UserId(UserId{service_id}));
+        let host_user = get_object_map().insert(TegoObject::UserId(UserId { service_id }));
 
         unsafe { *out_host_user = host_user as *mut tego_user_id };
         Ok(())
@@ -513,7 +540,8 @@ pub struct tego_tor_launch_config;
 #[no_mangle]
 pub unsafe extern "C" fn tego_tor_launch_config_initialize(
     out_launch_config: *mut *mut tego_tor_launch_config,
-    error: *mut *mut tego_error) {
+    error: *mut *mut tego_error,
+) {
     translate_failures((), error, || -> Result<()> {
         bail_if_null!(out_launch_config);
 
@@ -542,20 +570,26 @@ pub unsafe extern "C" fn tego_tor_launch_config_set_data_directory(
     launch_config: *mut tego_tor_launch_config,
     data_directory: *const c_char,
     data_directory_length: usize,
-    error: *mut *mut tego_error) {
+    error: *mut *mut tego_error,
+) {
     translate_failures((), error, || -> Result<()> {
         bail_if_null!(launch_config);
         bail_if_null!(data_directory);
         bail_if_equal!(data_directory_length, 0usize);
 
-        let data_directory = unsafe { std::slice::from_raw_parts(data_directory as *const u8, data_directory_length) };
+        let data_directory = unsafe {
+            std::slice::from_raw_parts(data_directory as *const u8, data_directory_length)
+        };
         let data_directory = std::str::from_utf8(data_directory)?;
 
         let mut object_map = get_object_map();
         let key = launch_config as TegoKey;
         let launch_config: &mut TorLaunchConfig = match object_map.get_mut(&key) {
             Some(TegoObject::TorLaunchConfig(launch_config)) => launch_config,
-            Some(_) => bail!("not a tego_tor_launch_config pointer: {:?}", key as *const c_void),
+            Some(_) => bail!(
+                "not a tego_tor_launch_config pointer: {:?}",
+                key as *const c_void
+            ),
             None => bail!("not a valid pointer: {:?}", key as *const c_void),
         };
 
@@ -565,7 +599,7 @@ pub unsafe extern "C" fn tego_tor_launch_config_set_data_directory(
 
         Ok(())
     })
- }
+}
 
 /// Start an instance of the tor daemon and associate it with the given context
 ///
@@ -580,7 +614,8 @@ pub unsafe extern "C" fn tego_tor_launch_config_set_data_directory(
 pub unsafe extern "C" fn tego_context_start_tor(
     context: *mut tego_context,
     tor_config: *const tego_tor_launch_config,
-    error: *mut *mut tego_error) {
+    error: *mut *mut tego_error,
+) {
     translate_failures((), error, || -> Result<()> {
         bail_if_null!(context);
         bail_if_null!(tor_config);
@@ -591,7 +626,10 @@ pub unsafe extern "C" fn tego_context_start_tor(
             let tor_config_key = tor_config as TegoKey;
             let tor_config = match object_map.get(&tor_config_key) {
                 Some(TegoObject::TorLaunchConfig(tor_config)) => tor_config,
-                Some(_) => bail!("not a tego_tor_launch_config pointer: {:?}", tor_config_key as *const c_void),
+                Some(_) => bail!(
+                    "not a tego_tor_launch_config pointer: {:?}",
+                    tor_config_key as *const c_void
+                ),
                 None => bail!("not a valid pointer: {:?}", tor_config_key as *const c_void),
             };
             tor_config.data_directory.clone()
@@ -601,22 +639,34 @@ pub unsafe extern "C" fn tego_context_start_tor(
         let context_key = context_ptr as TegoKey;
         let context = match object_map.get_mut(&context_key) {
             Some(TegoObject::Context(context)) => context,
-            Some(_) => bail!("not a tego_context pointer: {:?}", context_key as *const c_void),
+            Some(_) => bail!(
+                "not a tego_context pointer: {:?}",
+                context_key as *const c_void
+            ),
             None => bail!("not a valid pointer: {:?}", context_key as *const c_void),
         };
 
         context.set_tor_data_directory(tor_data_directory);
 
-        let callbacks = context.callbacks.lock().expect("another thread panicked while holding callback's mutex");
+        let callbacks = context
+            .callbacks
+            .lock()
+            .expect("another thread panicked while holding callback's mutex");
 
         // TODO: these callbacks are required to enable the 'connect' button
         // in the network configuraiton screen
         if let Some(callback) = callbacks.on_tor_control_status_changed {
-            callback(context_ptr, tego_tor_control_status::tego_tor_control_status_connected);
+            callback(
+                context_ptr,
+                tego_tor_control_status::tego_tor_control_status_connected,
+            );
         }
 
         if let Some(callback) = callbacks.on_tor_process_status_changed {
-            callback(context_ptr, tego_tor_process_status::tego_tor_process_status_running);
+            callback(
+                context_ptr,
+                tego_tor_process_status::tego_tor_process_status_running,
+            );
         }
 
         // we defer tor daemonn launch until after tego_context_update_tor_daemon_config
@@ -637,7 +687,8 @@ pub struct tego_tor_daemon_config;
 #[no_mangle]
 pub unsafe extern "C" fn tego_tor_daemon_config_initialize(
     out_config: *mut *mut tego_tor_daemon_config,
-    error: *mut *mut tego_error) {
+    error: *mut *mut tego_error,
+) {
     translate_failures((), error, || -> Result<()> {
         bail_if_null!(out_config);
 
@@ -669,7 +720,8 @@ pub unsafe extern "C" fn tego_tor_daemon_config_set_proxy_socks4(
     address: *const c_char,
     address_length: usize,
     port: u16,
-    error: *mut *mut tego_error) {
+    error: *mut *mut tego_error,
+) {
     translate_failures((), error, || -> Result<()> {
         bail_if_null!(config);
         bail_if_null!(address);
@@ -699,8 +751,11 @@ pub unsafe extern "C" fn tego_tor_daemon_config_set_proxy_socks4(
         match get_object_map().get_mut(&key) {
             Some(TegoObject::TorDaemonConfig(config)) => {
                 config.proxy_settings = Some(proxy_config);
-            },
-            Some(_) => bail!("not a tego_tor_daemon_config pointer: {:?}", key as *const c_void),
+            }
+            Some(_) => bail!(
+                "not a tego_tor_daemon_config pointer: {:?}",
+                key as *const c_void
+            ),
             None => bail!("not a valid pointer: {:?}", key as *const c_void),
         };
 
@@ -739,7 +794,8 @@ pub unsafe extern "C" fn tego_tor_daemon_config_set_proxy_socks5(
     username_length: usize,
     password: *const c_char,
     password_length: usize,
-    error: *mut *mut tego_error) {
+    error: *mut *mut tego_error,
+) {
     translate_failures((), error, || -> Result<()> {
         bail_if_null!(config);
         bail_if_null!(address);
@@ -769,7 +825,8 @@ pub unsafe extern "C" fn tego_tor_daemon_config_set_proxy_socks5(
         let username = if username.is_null() {
             None
         } else {
-            let username = unsafe { std::slice::from_raw_parts(username as *const u8, username_length) };
+            let username =
+                unsafe { std::slice::from_raw_parts(username as *const u8, username_length) };
             let username = std::str::from_utf8(username)?;
             Some(username.to_string())
         };
@@ -777,20 +834,25 @@ pub unsafe extern "C" fn tego_tor_daemon_config_set_proxy_socks5(
         let password = if password.is_null() {
             None
         } else {
-            let password = unsafe { std::slice::from_raw_parts(password as *const u8, password_length) };
+            let password =
+                unsafe { std::slice::from_raw_parts(password as *const u8, password_length) };
             let password = std::str::from_utf8(password)?;
             Some(password.to_string())
         };
 
-        let proxy_config = ProxyConfig::Socks5(Socks5ProxyConfig::new(proxy_address, username, password)?);
+        let proxy_config =
+            ProxyConfig::Socks5(Socks5ProxyConfig::new(proxy_address, username, password)?);
 
         // update the config
         let key = config as TegoKey;
         match get_object_map().get_mut(&key) {
             Some(TegoObject::TorDaemonConfig(config)) => {
                 config.proxy_settings = Some(proxy_config);
-            },
-            Some(_) => bail!("not a tego_tor_daemon_config pointer: {:?}", key as *const c_void),
+            }
+            Some(_) => bail!(
+                "not a tego_tor_daemon_config pointer: {:?}",
+                key as *const c_void
+            ),
             None => bail!("not a valid pointer: {:?}", key as *const c_void),
         };
 
@@ -829,7 +891,8 @@ pub unsafe extern "C" fn tego_tor_daemon_config_set_proxy_https(
     username_length: usize,
     password: *const c_char,
     password_length: usize,
-    error: *mut *mut tego_error) {
+    error: *mut *mut tego_error,
+) {
     translate_failures((), error, || -> Result<()> {
         bail_if_null!(config);
         bail_if_null!(address);
@@ -859,7 +922,8 @@ pub unsafe extern "C" fn tego_tor_daemon_config_set_proxy_https(
         let username = if username.is_null() {
             None
         } else {
-            let username = unsafe { std::slice::from_raw_parts(username as *const u8, username_length) };
+            let username =
+                unsafe { std::slice::from_raw_parts(username as *const u8, username_length) };
             let username = std::str::from_utf8(username)?;
             Some(username.to_string())
         };
@@ -867,20 +931,25 @@ pub unsafe extern "C" fn tego_tor_daemon_config_set_proxy_https(
         let password = if password.is_null() {
             None
         } else {
-            let password = unsafe { std::slice::from_raw_parts(password as *const u8, password_length) };
+            let password =
+                unsafe { std::slice::from_raw_parts(password as *const u8, password_length) };
             let password = std::str::from_utf8(password)?;
             Some(password.to_string())
         };
 
-        let proxy_config = ProxyConfig::Https(HttpsProxyConfig::new(proxy_address, username, password)?);
+        let proxy_config =
+            ProxyConfig::Https(HttpsProxyConfig::new(proxy_address, username, password)?);
 
         // update the config
         let key = config as TegoKey;
         match get_object_map().get_mut(&key) {
             Some(TegoObject::TorDaemonConfig(config)) => {
                 config.proxy_settings = Some(proxy_config);
-            },
-            Some(_) => bail!("not a tego_tor_daemon_config pointer: {:?}", key as *const c_void),
+            }
+            Some(_) => bail!(
+                "not a tego_tor_daemon_config pointer: {:?}",
+                key as *const c_void
+            ),
             None => bail!("not a valid pointer: {:?}", key as *const c_void),
         };
 
@@ -903,9 +972,9 @@ pub unsafe extern "C" fn tego_tor_daemon_config_set_allowed_ports(
     config: *mut tego_tor_daemon_config,
     ports: *const u16,
     ports_count: usize,
-    error: *mut *mut tego_error) {
-        translate_failures((), error, || -> Result<()> {
-
+    error: *mut *mut tego_error,
+) {
+    translate_failures((), error, || -> Result<()> {
         bail_if_null!(config);
 
         let ports: Option<Vec<u16>> = if ports.is_null() {
@@ -920,8 +989,11 @@ pub unsafe extern "C" fn tego_tor_daemon_config_set_allowed_ports(
         match get_object_map().get_mut(&key) {
             Some(TegoObject::TorDaemonConfig(config)) => {
                 config.allowed_ports = ports;
-            },
-            Some(_) => bail!("not a tego_tor_daemon_config pointer: {:?}", key as *const c_void),
+            }
+            Some(_) => bail!(
+                "not a tego_tor_daemon_config pointer: {:?}",
+                key as *const c_void
+            ),
             None => bail!("not a valid pointer: {:?}", key as *const c_void),
         };
 
@@ -948,7 +1020,8 @@ pub unsafe extern "C" fn tego_tor_daemon_config_set_bridges(
     bridge_lines: *const *const c_char,
     bridge_line_lengths: *const usize,
     bridge_count: usize,
-    error: *mut *mut tego_error) {
+    error: *mut *mut tego_error,
+) {
     translate_failures((), error, || -> Result<()> {
         bail_if_null!(config);
 
@@ -957,10 +1030,15 @@ pub unsafe extern "C" fn tego_tor_daemon_config_set_bridges(
         } else {
             let bridge_lines = unsafe { std::slice::from_raw_parts(bridge_lines, bridge_count) };
             bail_if_null!(bridge_line_lengths);
-            let bridge_line_lengths = unsafe { std::slice::from_raw_parts(bridge_line_lengths, bridge_count) };
+            let bridge_line_lengths =
+                unsafe { std::slice::from_raw_parts(bridge_line_lengths, bridge_count) };
             let mut bridge_line_vec: Vec<BridgeLine> = Vec::with_capacity(bridge_count);
-            for (bridge_line, bridge_line_length) in bridge_lines.iter().zip(bridge_line_lengths.iter()) {
-                let bridge_line = unsafe { std::slice::from_raw_parts(*bridge_line as *const u8, *bridge_line_length) };
+            for (bridge_line, bridge_line_length) in
+                bridge_lines.iter().zip(bridge_line_lengths.iter())
+            {
+                let bridge_line = unsafe {
+                    std::slice::from_raw_parts(*bridge_line as *const u8, *bridge_line_length)
+                };
                 let bridge_line = std::str::from_utf8(bridge_line)?;
                 let bridge_line = BridgeLine::from_str(bridge_line)?;
 
@@ -975,8 +1053,11 @@ pub unsafe extern "C" fn tego_tor_daemon_config_set_bridges(
         match get_object_map().get_mut(&key) {
             Some(TegoObject::TorDaemonConfig(config)) => {
                 config.bridge_lines = bridge_lines;
-            },
-            Some(_) => bail!("not a tego_tor_daemon_config pointer: {:?}", key as *const c_void),
+            }
+            Some(_) => bail!(
+                "not a tego_tor_daemon_config pointer: {:?}",
+                key as *const c_void
+            ),
             None => bail!("not a valid pointer: {:?}", key as *const c_void),
         };
 
@@ -998,7 +1079,8 @@ pub unsafe extern "C" fn tego_tor_daemon_config_set_bridges(
 pub unsafe extern "C" fn tego_context_update_tor_daemon_config(
     context: *mut tego_context,
     tor_config: *const tego_tor_daemon_config,
-    error: *mut *mut tego_error) {
+    error: *mut *mut tego_error,
+) {
     translate_failures((), error, || -> Result<()> {
         bail_if_null!(context);
         bail_if_null!(tor_config);
@@ -1013,8 +1095,11 @@ pub unsafe extern "C" fn tego_context_update_tor_daemon_config(
             match object_map.get(&key) {
                 Some(TegoObject::TorDaemonConfig(config)) => {
                     (config.proxy_settings.clone(), config.allowed_ports.clone())
-                },
-                Some(_) => bail!("not a tego_tor_daemon_config pointer: {:?}", key as *const c_void),
+                }
+                Some(_) => bail!(
+                    "not a tego_tor_daemon_config pointer: {:?}",
+                    key as *const c_void
+                ),
                 None => bail!("not a valid pointer: {:?}", key as *const c_void),
             }
         };
@@ -1024,15 +1109,18 @@ pub unsafe extern "C" fn tego_context_update_tor_daemon_config(
             Some(TegoObject::Context(context)) => {
                 context.set_tor_config(proxy_settings, allowed_ports);
 
-                let callbacks = context.callbacks.lock().expect("another thread panicked while holding callback's mutex");
+                let callbacks = context
+                    .callbacks
+                    .lock()
+                    .expect("another thread panicked while holding callback's mutex");
 
                 // TODO: remove need for this callback
                 if let Some(callback) = callbacks.on_update_tor_daemon_config_succeeded {
-                            callback(context_ptr, TEGO_TRUE);
+                    callback(context_ptr, TEGO_TRUE);
                 }
 
                 Ok(())
-            },
+            }
             Some(_) => bail!("not a tego_context pointer: {:?}", key as *const c_void),
             None => bail!("not a valid pointer: {:?}", key as *const c_void),
         }
@@ -1053,7 +1141,8 @@ pub unsafe extern "C" fn tego_context_update_tor_daemon_config(
 pub unsafe extern "C" fn tego_context_update_disable_network_flag(
     context: *mut tego_context,
     disable_network: tego_bool,
-    error: *mut *mut tego_error) {
+    error: *mut *mut tego_error,
+) {
     translate_failures((), error, || -> Result<()> {
         bail_if_null!(context);
         bail_if_not_equal!(disable_network, TEGO_FALSE);
@@ -1065,7 +1154,10 @@ pub unsafe extern "C" fn tego_context_update_disable_network_flag(
             Some(TegoObject::Context(context)) => {
                 context.connect()?;
 
-                let callbacks = context.callbacks.lock().expect("another thread panicked while holding callback's mutex");
+                let callbacks = context
+                    .callbacks
+                    .lock()
+                    .expect("another thread panicked while holding callback's mutex");
 
                 // TODO: this callback invocation is required to move
                 // the network configuration screen forward into the
@@ -1073,8 +1165,7 @@ pub unsafe extern "C" fn tego_context_update_disable_network_flag(
                 if let Some(callback) = callbacks.on_update_tor_daemon_config_succeeded {
                     callback(context_ptr, TEGO_TRUE);
                 }
-
-            },
+            }
             Some(_) => bail!("not a tego_context pointer: {:?}", key as *const c_void),
             None => bail!("not a valid pointer: {:?}", key as *const c_void),
         }
@@ -1102,7 +1193,8 @@ pub unsafe extern "C" fn tego_context_start_service(
     user_buffer: *const *const tego_user_id,
     user_type_buffer: *const tego_user_type,
     user_count: usize,
-    error: *mut *mut tego_error) {
+    error: *mut *mut tego_error,
+) {
     translate_failures((), error, || -> Result<()> {
         // TODO: refactor so this funciton is called *after* bootstrap
         bail_if_null!(context);
@@ -1122,9 +1214,12 @@ pub unsafe extern "C" fn tego_context_start_service(
             // notify caller new identity created
             let on_new_identity_created = match get_object_map().get(&key) {
                 Some(TegoObject::Context(context)) => {
-                    let callbacks = context.callbacks.lock().expect("another thread panicked while holding callback's mutex");
+                    let callbacks = context
+                        .callbacks
+                        .lock()
+                        .expect("another thread panicked while holding callback's mutex");
                     callbacks.on_new_identity_created
-                },
+                }
                 Some(_) => bail!("not a tego_context pointer: {:?}", key as *const c_void),
                 None => bail!("not a valid pointer: {:?}", key as *const c_void),
             };
@@ -1138,7 +1233,10 @@ pub unsafe extern "C" fn tego_context_start_service(
             let key = host_private_key as TegoKey;
             match get_object_map().get(&key) {
                 Some(TegoObject::Ed25519PrivateKey(private_key)) => private_key.clone(),
-                Some(_) => bail!("not a tego_ed25519_private_key pointer: {:?}", key as *const c_void),
+                Some(_) => bail!(
+                    "not a tego_ed25519_private_key pointer: {:?}",
+                    key as *const c_void
+                ),
                 None => bail!("not a valid pointer: {:?}", key as *const c_void),
             }
         };
@@ -1149,12 +1247,13 @@ pub unsafe extern "C" fn tego_context_start_service(
 
         if !user_buffer.is_null() && !user_type_buffer.is_null() {
             let user_buffer = unsafe { std::slice::from_raw_parts(user_buffer, user_count) };
-            let user_type_buffer = unsafe { std::slice::from_raw_parts(user_type_buffer, user_count) };
+            let user_type_buffer =
+                unsafe { std::slice::from_raw_parts(user_type_buffer, user_count) };
 
             for (user_id, user_type) in user_buffer.iter().zip(user_type_buffer.iter()) {
                 let key = *user_id as TegoKey;
                 let service_id = match get_object_map().get(&key) {
-                    Some(TegoObject::UserId(UserId{service_id})) => service_id.clone(),
+                    Some(TegoObject::UserId(UserId { service_id })) => service_id.clone(),
                     Some(_) => bail!("not a tego_user_id pointer: {:?}", key as *const c_void),
                     None => bail!("not a valid pointer: {:?}", key as *const c_void),
                 };
@@ -1177,7 +1276,7 @@ pub unsafe extern "C" fn tego_context_start_service(
             Some(TegoObject::Context(context)) => {
                 context.set_private_key(private_key);
                 context.set_users(users);
-            },
+            }
             Some(_) => bail!("not a tego_context pointer: {:?}", key as *const c_void),
             None => bail!("not a valid pointer: {:?}", key as *const c_void),
         };
@@ -1198,16 +1297,15 @@ pub unsafe extern "C" fn tego_context_start_service(
 #[no_mangle]
 pub unsafe extern "C" fn tego_context_get_tor_logs_size(
     context: *const tego_context,
-    error: *mut *mut tego_error) -> usize {
+    error: *mut *mut tego_error,
+) -> usize {
     translate_failures(0usize, error, || -> Result<usize> {
         bail_if_null!(context);
 
         let context_ptr = context;
         let key = context_ptr as TegoKey;
         match get_object_map().get(&key) {
-            Some(TegoObject::Context(context)) => {
-                Ok(context.tor_logs_size())
-            },
+            Some(TegoObject::Context(context)) => Ok(context.tor_logs_size()),
             Some(_) => bail!("not a tego_context pointer: {:?}", key as *const c_void),
             None => bail!("not a valid pointer: {:?}", key as *const c_void),
         }
@@ -1232,7 +1330,8 @@ pub unsafe extern "C" fn tego_context_get_tor_logs(
     context: *const tego_context,
     out_log_buffer: *mut c_char,
     log_buffer_size: usize,
-    error: *mut *mut tego_error) -> usize {
+    error: *mut *mut tego_error,
+) -> usize {
     translate_failures(0usize, error, || -> Result<usize> {
         bail_if_null!(context);
         bail_if_null!(out_log_buffer);
@@ -1252,17 +1351,13 @@ pub unsafe extern "C" fn tego_context_get_tor_logs(
                 let bytes = std::cmp::min(log_buffer_size - 1, tor_logs.len());
 
                 unsafe {
-                    let out_log_buffer = std::slice::from_raw_parts_mut(
-                        out_log_buffer as *mut u8,
-                        log_buffer_size);
-                    std::ptr::copy(
-                        tor_logs.as_ptr(),
-                        out_log_buffer.as_mut_ptr(),
-                        bytes);
+                    let out_log_buffer =
+                        std::slice::from_raw_parts_mut(out_log_buffer as *mut u8, log_buffer_size);
+                    std::ptr::copy(tor_logs.as_ptr(), out_log_buffer.as_mut_ptr(), bytes);
                     out_log_buffer[bytes] = 0u8;
                 }
                 Ok(bytes)
-            },
+            }
             Some(_) => bail!("not a tego_context pointer: {:?}", key as *const c_void),
             None => bail!("not a valid pointer: {:?}", key as *const c_void),
         }
@@ -1281,7 +1376,8 @@ pub unsafe extern "C" fn tego_context_get_tor_logs(
 #[no_mangle]
 pub unsafe extern "C" fn tego_context_get_tor_version_string(
     context: *const tego_context,
-    error: *mut *mut tego_error) -> *const c_char {
+    error: *mut *mut tego_error,
+) -> *const c_char {
     translate_failures(std::ptr::null(), error, || -> Result<*const c_char> {
         bail_if_null!(context);
 
@@ -1293,7 +1389,7 @@ pub unsafe extern "C" fn tego_context_get_tor_version_string(
                 } else {
                     Ok(std::ptr::null())
                 }
-            },
+            }
             Some(_) => bail!("not a tego_context pointer: {:?}", key as *const c_void),
             None => bail!("not a valid pointer: {:?}", key as *const c_void),
         }
@@ -1323,12 +1419,15 @@ pub enum tego_tor_control_status {
 pub unsafe extern "C" fn tego_context_get_tor_control_status(
     context: *const tego_context,
     out_status: *mut tego_tor_control_status,
-    error: *mut *mut tego_error) {
+    error: *mut *mut tego_error,
+) {
     translate_failures((), error, || -> Result<()> {
         // TODO: remove this function
         bail_if_null!(context);
         bail_if_null!(out_status);
-        unsafe { *out_status = tego_tor_control_status::tego_tor_control_status_connected; }
+        unsafe {
+            *out_status = tego_tor_control_status::tego_tor_control_status_connected;
+        }
         Ok(())
     })
 }
@@ -1364,7 +1463,8 @@ pub enum tego_tor_network_status {
 pub unsafe extern "C" fn tego_context_get_tor_network_status(
     context: *const tego_context,
     out_status: *mut tego_tor_network_status,
-    error: *mut *mut tego_error) {
+    error: *mut *mut tego_error,
+) {
     translate_failures((), error, || -> Result<()> {
         bail_if_null!(context);
         bail_if_null!(out_status);
@@ -1380,7 +1480,7 @@ pub unsafe extern "C" fn tego_context_get_tor_network_status(
                 };
 
                 unsafe { *out_status = status };
-            },
+            }
             Some(_) => bail!("not a tego_context pointer: {:?}", key as *const c_void),
             None => bail!("not a valid pointer: {:?}", key as *const c_void),
         }
@@ -1419,7 +1519,7 @@ pub enum tego_tor_bootstrap_tag {
     tego_tor_bootstrap_tag_circuit_create,
     tego_tor_bootstrap_tag_done,
 
-    tego_tor_bootstrap_tag_count
+    tego_tor_bootstrap_tag_count,
 }
 
 impl From<&str> for tego_tor_bootstrap_tag {
@@ -1457,8 +1557,6 @@ impl From<&str> for tego_tor_bootstrap_tag {
     }
 }
 
-
-
 /// Get the summary string associated with the given bootstrap tag
 ///
 /// @param tag : the tag to get the summary of
@@ -1471,7 +1569,8 @@ impl From<&str> for tego_tor_bootstrap_tag {
 #[no_mangle]
 pub unsafe extern "C" fn tego_tor_bootstrap_tag_to_summary(
     tag: tego_tor_bootstrap_tag,
-    error: *mut *mut tego_error) -> *const c_char {
+    error: *mut *mut tego_error,
+) -> *const c_char {
     translate_failures(std::ptr::null(), error, || -> Result<*const c_char> {
         use tego_tor_bootstrap_tag::*;
         let summary = match tag {
@@ -1484,21 +1583,33 @@ pub unsafe extern "C" fn tego_tor_bootstrap_tag_to_summary(
             tego_tor_bootstrap_tag_conn_done => "Connected to a relay\0",
             tego_tor_bootstrap_tag_handshake => "Handshaking with a relay\0",
             tego_tor_bootstrap_tag_handshake_done => "Handshake with a relay done\0",
-            tego_tor_bootstrap_tag_onehop_create => "Establishing an encrypted directory connection\0",
+            tego_tor_bootstrap_tag_onehop_create => {
+                "Establishing an encrypted directory connection\0"
+            }
             tego_tor_bootstrap_tag_requesting_status => "Asking for networkstatus consensus\0",
             tego_tor_bootstrap_tag_loading_status => "Loading networkstatus consensus\0",
             tego_tor_bootstrap_tag_loading_keys => "Loading authority key certs\0",
             tego_tor_bootstrap_tag_requesting_descriptors => "Asking for relay descriptors\0",
             tego_tor_bootstrap_tag_loading_descriptors => "Loading relay descriptors\0",
-            tego_tor_bootstrap_tag_enough_dirinfo => "Loaded enough directory info to build circuits\0",
-            tego_tor_bootstrap_tag_ap_conn_pt_summary => "Connecting to pluggable transport to build circuits\0",
-            tego_tor_bootstrap_tag_ap_conn_done_pt => "Connected to pluggable transport to build circuits\0",
+            tego_tor_bootstrap_tag_enough_dirinfo => {
+                "Loaded enough directory info to build circuits\0"
+            }
+            tego_tor_bootstrap_tag_ap_conn_pt_summary => {
+                "Connecting to pluggable transport to build circuits\0"
+            }
+            tego_tor_bootstrap_tag_ap_conn_done_pt => {
+                "Connected to pluggable transport to build circuits\0"
+            }
             tego_tor_bootstrap_tag_ap_conn_proxy => "Connecting to proxy to build circuits\0",
             tego_tor_bootstrap_tag_ap_conn_done_proxy => "Connected to proxy to build circuits\0",
             tego_tor_bootstrap_tag_ap_conn => "Connecting to a relay to build circuits\0",
             tego_tor_bootstrap_tag_ap_conn_done => "Connected to a relay to build circuits\0",
-            tego_tor_bootstrap_tag_ap_handshake => "Finishing handshake with a relay to build circuits\0",
-            tego_tor_bootstrap_tag_ap_handshake_done => "Handshake finished with a relay to build circuits\0",
+            tego_tor_bootstrap_tag_ap_handshake => {
+                "Finishing handshake with a relay to build circuits\0"
+            }
+            tego_tor_bootstrap_tag_ap_handshake_done => {
+                "Handshake finished with a relay to build circuits\0"
+            }
             tego_tor_bootstrap_tag_circuit_create => "Establishing a Tor circuit\0",
             tego_tor_bootstrap_tag_done => "Done\0",
             _ => bail!("unknown tego_tor_bootstrap_tag: {}", tag as c_int),
@@ -1536,15 +1647,17 @@ pub type tego_file_size = u64;
 #[no_mangle]
 pub unsafe extern "C" fn tego_file_hash_string_size(
     file_hash: *const tego_file_hash,
-    error: *mut *mut tego_error) -> usize {
+    error: *mut *mut tego_error,
+) -> usize {
     translate_failures(0usize, error, || -> Result<usize> {
         bail_if_null!(file_hash);
         let file_hash = file_hash as TegoKey;
         match get_object_map().get(&file_hash) {
-            Some(TegoObject::FileHash(_file_hash)) => {
-                Ok(FILE_HASH_STRING_SIZE)
-            },
-            Some(_) => bail!("not a tego_file_hash pointer: {:?}", file_hash as *const c_void),
+            Some(TegoObject::FileHash(_file_hash)) => Ok(FILE_HASH_STRING_SIZE),
+            Some(_) => bail!(
+                "not a tego_file_hash pointer: {:?}",
+                file_hash as *const c_void
+            ),
             None => bail!("not a valid pointer: {:?}", file_hash as *const c_void),
         }
     })
@@ -1568,7 +1681,8 @@ pub unsafe extern "C" fn tego_file_hash_to_string(
     file_hash: *const tego_file_hash,
     out_hash_string: *mut c_char,
     hash_string_size: usize,
-    error: *mut *mut tego_error) -> usize {
+    error: *mut *mut tego_error,
+) -> usize {
     translate_failures(0usize, error, || -> Result<usize> {
         bail_if_null!(file_hash);
         bail_if_null!(out_hash_string);
@@ -1579,21 +1693,27 @@ pub unsafe extern "C" fn tego_file_hash_to_string(
             Some(TegoObject::FileHash(file_hash)) => {
                 let hash_string = file_hash.to_string();
                 unsafe {
-                    let out_hash_string = std::slice::from_raw_parts_mut(out_hash_string as *mut u8, hash_string_size);
+                    let out_hash_string = std::slice::from_raw_parts_mut(
+                        out_hash_string as *mut u8,
+                        hash_string_size,
+                    );
                     std::ptr::copy(
                         hash_string.as_bytes().as_ptr(),
                         out_hash_string.as_mut_ptr(),
-                        FILE_HASH_STRING_LENGTH);
+                        FILE_HASH_STRING_LENGTH,
+                    );
                     out_hash_string[FILE_HASH_STRING_LENGTH] = 0u8;
                 }
                 Ok(FILE_HASH_STRING_SIZE)
-            },
-            Some(_) => bail!("not a tego_file_hash pointer: {:?}", file_hash as *const c_void),
+            }
+            Some(_) => bail!(
+                "not a tego_file_hash pointer: {:?}",
+                file_hash as *const c_void
+            ),
             None => bail!("not a valid pointer: {:?}", file_hash as *const c_void),
         }
     })
 }
-
 
 /// Send a text message from the host to the given user
 ///
@@ -1614,7 +1734,8 @@ pub unsafe extern "C" fn tego_context_send_message(
     message: *const c_char,
     message_length: usize,
     out_id: *mut tego_message_id,
-    error: *mut *mut tego_error) {
+    error: *mut *mut tego_error,
+) {
     translate_failures((), error, || -> Result<()> {
         bail_if_null!(context);
         bail_if_null!(user);
@@ -1624,9 +1745,7 @@ pub unsafe extern "C" fn tego_context_send_message(
 
         let user = user as TegoKey;
         let user = match get_object_map().get(&user) {
-            Some(TegoObject::UserId(user)) => {
-                user.service_id.clone()
-            },
+            Some(TegoObject::UserId(user)) => user.service_id.clone(),
             Some(_) => bail!("not a tego_user_id pointer: {:?}", user as *const c_void),
             None => bail!("not a valid pointer: {:?}", user as *const c_void),
         };
@@ -1641,7 +1760,7 @@ pub unsafe extern "C" fn tego_context_send_message(
             Some(TegoObject::Context(context)) => {
                 let message_id = context.send_message(user, message)?;
                 unsafe { *out_id = message_id };
-            },
+            }
             Some(_) => bail!("not a tego_context pointer: {:?}", context as *const c_void),
             None => bail!("not a valid pointer: {:?}", context as *const c_void),
         }
@@ -1673,13 +1792,14 @@ pub unsafe extern "C" fn tego_context_send_file_transfer_request(
     out_id: *mut tego_file_transfer_id,
     out_file_hash: *mut *mut tego_file_hash,
     out_file_size: *mut tego_file_size,
-    error: *mut *mut tego_error) {
+    error: *mut *mut tego_error,
+) {
     translate_failures((), error, || -> Result<()> {
         bail_if_null!(context);
         bail_if_null!(user);
         bail_if_null!(file_path);
         if !out_file_hash.is_null() {
-            let out_file_hash = unsafe {*out_file_hash};
+            let out_file_hash = unsafe { *out_file_hash };
             bail_if_not_null!(out_file_hash);
         }
         bail_if_equal!(file_path_length, 0usize);
@@ -1700,7 +1820,8 @@ pub unsafe extern "C" fn tego_context_send_file_transfer_request(
             None => bail!("not a valid pointer: {:?}", user as *const c_void),
         };
 
-        let file_path = unsafe { std::slice::from_raw_parts(file_path as *const u8, file_path_length) };
+        let file_path =
+            unsafe { std::slice::from_raw_parts(file_path as *const u8, file_path_length) };
         let file_path = std::str::from_utf8(file_path)?.to_string();
         let file_path = PathBuf::from(file_path);
 
@@ -1749,7 +1870,8 @@ pub unsafe extern "C" fn tego_context_respond_file_transfer_request(
     response: tego_file_transfer_response,
     dest_path: *const c_char,
     dest_path_length: usize,
-    error: *mut *mut tego_error) {
+    error: *mut *mut tego_error,
+) {
     translate_failures((), error, || -> Result<()> {
         bail_if_null!(context);
         bail_if_null!(user);
@@ -1774,18 +1896,19 @@ pub unsafe extern "C" fn tego_context_respond_file_transfer_request(
             tego_file_transfer_response::tego_file_transfer_response_accept => {
                 bail_if_null!(dest_path);
                 bail_if_equal!(dest_path_length, 0usize);
-                let dest_path = unsafe { std::slice::from_raw_parts(dest_path as *const u8, dest_path_length) };
+                let dest_path =
+                    unsafe { std::slice::from_raw_parts(dest_path as *const u8, dest_path_length) };
                 let dest_path = std::str::from_utf8(dest_path)?.to_string();
                 let dest_path = PathBuf::from(dest_path);
 
                 context.accept_file_transfer_request(user, id, dest_path)?;
-            },
+            }
             tego_file_transfer_response::tego_file_transfer_response_reject => {
                 bail_if_not_null!(dest_path);
                 bail_if_not_equal!(dest_path_length, 0usize);
 
                 context.reject_file_transfer_request(user, id)?;
-            },
+            }
         }
 
         Ok(())
@@ -1807,7 +1930,8 @@ pub unsafe extern "C" fn tego_context_cancel_file_transfer(
     context: *mut tego_context,
     user: *const tego_user_id,
     id: tego_file_transfer_id,
-    error: *mut *mut tego_error) {
+    error: *mut *mut tego_error,
+) {
     translate_failures((), error, || -> Result<()> {
         bail_if_null!(context);
         bail_if_null!(user);
@@ -1851,13 +1975,12 @@ pub unsafe extern "C" fn tego_context_send_chat_request(
     user: *const tego_user_id,
     message: *const c_char,
     message_length: usize,
-    error: *mut *mut tego_error) {
+    error: *mut *mut tego_error,
+) {
     translate_failures((), error, || -> Result<()> {
         let key = user as TegoKey;
         let service_id = match get_object_map().get(&key) {
-            Some(TegoObject::UserId(user_id)) => {
-                user_id.service_id.clone()
-            },
+            Some(TegoObject::UserId(user_id)) => user_id.service_id.clone(),
             Some(_) => bail!("not a tego_user_id pointer: {:?}", key as *const c_void),
             None => bail!("not a valid pointer: {:?}", key as *const c_void),
         };
@@ -1871,7 +1994,7 @@ pub unsafe extern "C" fn tego_context_send_chat_request(
         match get_object_map().get(&key) {
             Some(TegoObject::Context(context)) => {
                 context.send_contact_request(service_id, message);
-            },
+            }
             Some(_) => bail!("not a tego_context pointer: {:?}", key as *const c_void),
             None => bail!("not a valid pointer: {:?}", key as *const c_void),
         }
@@ -1906,14 +2029,12 @@ pub unsafe extern "C" fn tego_context_acknowledge_chat_request(
     context: *mut tego_context,
     user: *const tego_user_id,
     response: tego_chat_acknowledge,
-    error: *mut *mut tego_error) {
+    error: *mut *mut tego_error,
+) {
     translate_failures((), error, || -> Result<()> {
-
         let key = user as TegoKey;
         let service_id = match get_object_map().get(&key) {
-            Some(TegoObject::UserId(user_id)) => {
-                user_id.service_id.clone()
-            },
+            Some(TegoObject::UserId(user_id)) => user_id.service_id.clone(),
             Some(_) => bail!("not a tego_user_id pointer: {:?}", key as *const c_void),
             None => bail!("not a valid pointer: {:?}", key as *const c_void),
         };
@@ -1922,7 +2043,7 @@ pub unsafe extern "C" fn tego_context_acknowledge_chat_request(
         match get_object_map().get(&key) {
             Some(TegoObject::Context(context)) => {
                 context.acknowledge_contact_request(service_id, response)
-            },
+            }
             Some(_) => bail!("not a tego_context pointer: {:?}", key as *const c_void),
             None => bail!("not a valid pointer: {:?}", key as *const c_void),
         }
@@ -1946,13 +2067,12 @@ pub unsafe extern "C" fn tego_context_acknowledge_chat_request(
 pub unsafe extern "C" fn tego_context_forget_user(
     context: *mut tego_context,
     user: *const tego_user_id,
-    error: *mut *mut tego_error) {
+    error: *mut *mut tego_error,
+) {
     translate_failures((), error, || -> Result<()> {
         let key = user as TegoKey;
         let service_id = match get_object_map().get(&key) {
-            Some(TegoObject::UserId(user_id)) => {
-                user_id.service_id.clone()
-            },
+            Some(TegoObject::UserId(user_id)) => user_id.service_id.clone(),
             Some(_) => bail!("not a tego_user_id pointer: {:?}", key as *const c_void),
             None => bail!("not a valid pointer: {:?}", key as *const c_void),
         };
@@ -1961,7 +2081,7 @@ pub unsafe extern "C" fn tego_context_forget_user(
         match get_object_map().get_mut(&key) {
             Some(TegoObject::Context(context)) => {
                 context.forget_user(service_id)?;
-            },
+            }
             Some(_) => bail!("not a tego_context pointer: {:?}", key as *const c_void),
             None => bail!("not a valid pointer: {:?}", key as *const c_void),
         }
@@ -1996,7 +2116,7 @@ pub type tego_tor_error_occurred_callback = Option<
         context: *mut tego_context,
         origin: tego_tor_error_origin,
         error: *const tego_error,
-    ) -> ()
+    ) -> (),
 >;
 
 /// TODO: this should go away and only exists for the ricochet Qt UI :(
@@ -2005,45 +2125,29 @@ pub type tego_tor_error_occurred_callback = Option<
 ///
 /// @param context : the current tego context
 /// @param out_success : where the result is saved, TEGO_TRUE on success, else TEGO_FALSE
-pub type tego_update_tor_daemon_config_succeeded_callback = Option<
-    extern "C" fn(
-        context: *mut tego_context,
-        success: tego_bool
-    ) -> ()
->;
+pub type tego_update_tor_daemon_config_succeeded_callback =
+    Option<extern "C" fn(context: *mut tego_context, success: tego_bool) -> ()>;
 
 /// Callback fired when the tor control port status has changed
 ///
 /// @param context : the current tego context
 /// @param status : the new control status
-pub type tego_tor_control_status_changed_callback = Option<
-    extern "C" fn (
-        context: *mut tego_context,
-        status: tego_tor_control_status,
-    ) -> ()
->;
+pub type tego_tor_control_status_changed_callback =
+    Option<extern "C" fn(context: *mut tego_context, status: tego_tor_control_status) -> ()>;
 
 /// Callback fired when the tor daemon process' status changes
 ///
 /// @param context : the current tego context
 /// @param status : the new process status
-pub type tego_tor_process_status_changed_callback = Option<
-    extern "C" fn (
-        context: *mut tego_context,
-        status: tego_tor_process_status,
-    ) -> ()
->;
+pub type tego_tor_process_status_changed_callback =
+    Option<extern "C" fn(context: *mut tego_context, status: tego_tor_process_status) -> ()>;
 
 /// Callback fired when the tor daemon's network status changes
 ///
 /// @param context : the current tego context
 /// @param status : the new network status
-pub type tego_tor_network_status_changed_callback = Option<
-    extern "C" fn (
-        context: *mut tego_context,
-        status: tego_tor_network_status,
-    ) -> ()
->;
+pub type tego_tor_network_status_changed_callback =
+    Option<extern "C" fn(context: *mut tego_context, status: tego_tor_network_status) -> ()>;
 
 /// Callback fired when tor's bootstrap status changes
 ///
@@ -2051,11 +2155,7 @@ pub type tego_tor_network_status_changed_callback = Option<
 /// @param progress : the bootstrap progress percent
 /// @param tag : the bootstrap tag
 pub type tego_tor_bootstrap_status_changed_callback = Option<
-    extern "C" fn (
-        context: *mut tego_context,
-        progress: i32,
-        tag: tego_tor_bootstrap_tag,
-    ) -> ()
+    extern "C" fn(context: *mut tego_context, progress: i32, tag: tego_tor_bootstrap_tag) -> (),
 >;
 
 /// Callback fired when a log entry is received from the tor daemon
@@ -2064,23 +2164,15 @@ pub type tego_tor_bootstrap_status_changed_callback = Option<
 /// @param message : a null-terminated log entry string
 /// @param message_length : length of the message not including null-terminator
 pub type tego_tor_log_received_callback = Option<
-    extern "C" fn (
-        context: *mut tego_context,
-        message: *const c_char,
-        message_length: usize
-    ) -> ()
+    extern "C" fn(context: *mut tego_context, message: *const c_char, message_length: usize) -> (),
 >;
 
 /// Callback fired when the host user state changes
 ///
 /// @param context : the current tego context
 /// @param state : the current host user state
-pub type tego_host_onion_service_state_changed_callback = Option<
-    extern "C" fn (
-        context: *mut tego_context,
-        state: tego_host_onion_service_state,
-    ) -> ()
->;
+pub type tego_host_onion_service_state_changed_callback =
+    Option<extern "C" fn(context: *mut tego_context, state: tego_host_onion_service_state) -> ()>;
 
 /// Callback fired when the host receives a chat request from another user
 ///
@@ -2089,12 +2181,12 @@ pub type tego_host_onion_service_state_changed_callback = Option<
 /// @param message : null-terminated message string received from the requesting user
 /// @param message_length : length of the message not including null-terminator
 pub type tego_chat_request_received_callback = Option<
-    extern "C" fn (
+    extern "C" fn(
         context: *mut tego_context,
         sender: *const tego_user_id,
         message: *const c_char,
         message_length: usize,
-    ) -> ()
+    ) -> (),
 >;
 
 /// Callback fired when the host receives a response to their sent chat request
@@ -2103,11 +2195,11 @@ pub type tego_chat_request_received_callback = Option<
 /// @param sender : the user responding to our chat request
 /// @param accepted_request : TEGO_TRUE if request accepted, TEGO_FALSE if rejected
 pub type tego_chat_request_response_received_callback = Option<
-    extern "C" fn (
+    extern "C" fn(
         context: *mut tego_context,
         sender: *const tego_user_id,
         accepted_request: tego_bool,
-    ) -> ()
+    ) -> (),
 >;
 
 /// Callback fired when the host receives a message from another user
@@ -2119,14 +2211,14 @@ pub type tego_chat_request_response_received_callback = Option<
 /// @param message : null-terminated message string
 /// @param message_length : length of the message not including null-terminator
 pub type tego_message_received_callback = Option<
-    extern "C" fn (
+    extern "C" fn(
         context: *mut tego_context,
         sender: *const tego_user_id,
         timestamp: tego_time,
         message_id: tego_message_id,
         message: *const c_char,
         message_length: usize,
-    ) -> ()
+    ) -> (),
 >;
 
 /// Callback fired when a chat message is received and acknowledge
@@ -2137,12 +2229,12 @@ pub type tego_message_received_callback = Option<
 /// @param message_id : id of the message being acknowledged
 /// @param message_acked : TEGO_TRUE if acknowledged, TEGO_FALSE if error
 pub type tego_message_acknowledged_callback = Option<
-    extern "C" fn (
+    extern "C" fn(
         context: *mut tego_context,
         user_id: *const tego_user_id,
         message_id: tego_message_id,
         message_acked: tego_bool,
-    ) -> ()
+    ) -> (),
 >;
 
 /// Callback fired when a user wants to send recipient a file
@@ -2155,7 +2247,7 @@ pub type tego_message_acknowledged_callback = Option<
 /// @param file_size : size of the file in bytes
 /// @param file_hash : hash of the file
 pub type tego_file_transfer_request_received_callback = Option<
-    extern "C" fn (
+    extern "C" fn(
         context: *mut tego_context,
         sender: *const tego_user_id,
         id: tego_file_transfer_id,
@@ -2163,7 +2255,7 @@ pub type tego_file_transfer_request_received_callback = Option<
         file_name_length: usize,
         file_size: tego_file_size,
         file_hash: *const tego_file_hash,
-    ) -> ()
+    ) -> (),
 >;
 
 /// Callback fired when a file transfer request message is received and
@@ -2175,12 +2267,12 @@ pub type tego_file_transfer_request_received_callback = Option<
 /// @param id : the id of the file transfer that is being acknowledged
 /// @param request_acked : TEGO_TRUE if acknowledged, TEGO_FALSE if error
 pub type tego_file_transfer_request_acknowledged_callback = Option<
-    extern "C" fn (
+    extern "C" fn(
         context: *mut tego_context,
         receiver: *const tego_user_id,
         id: tego_file_transfer_id,
         request_acked: tego_bool,
-    ) -> ()
+    ) -> (),
 >;
 
 /// Callback fired when the user responds to an file transfer request
@@ -2191,12 +2283,12 @@ pub type tego_file_transfer_request_acknowledged_callback = Option<
 /// @param response : TEGO_TRUE if the recipients wants to recevie
 ///  our file, TEGO_FALSE otherwise
 pub type tego_file_transfer_request_response_received_callback = Option<
-    extern "C" fn (
+    extern "C" fn(
         context: *mut tego_context,
         receiver: *const tego_user_id,
         id: tego_file_transfer_id,
         response: tego_file_transfer_response,
-    ) -> ()
+    ) -> (),
 >;
 
 #[repr(C)]
@@ -2215,14 +2307,14 @@ pub enum tego_file_transfer_direction {
 /// @param bytes_complete : number of bytes sent/received
 /// @param bytes_total : the total size of the file
 pub type tego_file_transfer_progress_callback = Option<
-    extern "C" fn (
+    extern "C" fn(
         context: *mut tego_context,
         user_id: *const tego_user_id,
         id: tego_file_transfer_id,
         direction: tego_file_transfer_direction,
         bytes_complete: tego_file_size,
         bytes_total: tego_file_size,
-    ) -> ()
+    ) -> (),
 >;
 
 #[repr(C)]
@@ -2252,13 +2344,13 @@ pub enum tego_file_transfer_result {
 /// @param direction : the direction this file was going
 /// @param result : how the transfer completed
 pub type tego_file_transfer_complete_callback = Option<
-    extern "C" fn (
+    extern "C" fn(
         context: *mut tego_context,
         user_id: *const tego_user_id,
         id: tego_file_transfer_id,
         direction: tego_file_transfer_direction,
         result: tego_file_transfer_result,
-    ) -> ()
+    ) -> (),
 >;
 
 /// Callback fired when a user's status changes
@@ -2267,11 +2359,11 @@ pub type tego_file_transfer_complete_callback = Option<
 /// @param user : the user whose status has changed
 /// @param status: the user's new status
 pub type tego_user_status_changed_callback = Option<
-    extern "C" fn (
+    extern "C" fn(
         context: *mut tego_context,
         user: *const tego_user_id,
         status: tego_user_status,
-    ) -> ()
+    ) -> (),
 >;
 
 /// Callback fired when tor creates a new onion service for
@@ -2280,10 +2372,7 @@ pub type tego_user_status_changed_callback = Option<
 /// @param context : the current tego context
 /// @param private_key : the host's private key
 pub type tego_new_identity_created_callback = Option<
-    extern "C" fn (
-        context: *mut tego_context,
-        private_key: *const tego_ed25519_private_key,
-    ) -> ()
+    extern "C" fn(context: *mut tego_context, private_key: *const tego_ed25519_private_key) -> (),
 >;
 
 //
@@ -2296,22 +2385,26 @@ macro_rules! impl_callback_setter {
             let key = $context as TegoKey;
             match get_object_map().get_mut(&key) {
                 Some(TegoObject::Context(context)) => {
-                    let mut callbacks = context.callbacks.lock().expect("another thread panicked while holding callback's mutex");
+                    let mut callbacks = context
+                        .callbacks
+                        .lock()
+                        .expect("another thread panicked while holding callback's mutex");
                     callbacks.$dest = $callback;
-                },
+                }
                 Some(_) => bail!("not a tego_context pointer: {:?}", key as *const c_void),
                 None => bail!("not a valid pointer: {:?}", key as *const c_void),
             };
             Ok(())
         })
-    }
+    };
 }
 
 #[no_mangle]
 pub extern "C" fn tego_context_set_tor_error_occurred_callback(
     context: *mut tego_context,
     callback: tego_tor_error_occurred_callback,
-    error: *mut *mut tego_error) {
+    error: *mut *mut tego_error,
+) {
     impl_callback_setter!(on_tor_error_occurred, context, callback, error);
 }
 
@@ -2319,16 +2412,22 @@ pub extern "C" fn tego_context_set_tor_error_occurred_callback(
 pub extern "C" fn tego_context_set_update_tor_daemon_config_succeeded_callback(
     context: *mut tego_context,
     callback: tego_update_tor_daemon_config_succeeded_callback,
-    error: *mut *mut tego_error) {
-    impl_callback_setter!(on_update_tor_daemon_config_succeeded, context, callback, error);
-
+    error: *mut *mut tego_error,
+) {
+    impl_callback_setter!(
+        on_update_tor_daemon_config_succeeded,
+        context,
+        callback,
+        error
+    );
 }
 
 #[no_mangle]
 pub extern "C" fn tego_context_set_tor_control_status_changed_callback(
     context: *mut tego_context,
     callback: tego_tor_control_status_changed_callback,
-    error: *mut *mut tego_error) {
+    error: *mut *mut tego_error,
+) {
     impl_callback_setter!(on_tor_control_status_changed, context, callback, error);
 }
 
@@ -2336,7 +2435,8 @@ pub extern "C" fn tego_context_set_tor_control_status_changed_callback(
 pub extern "C" fn tego_context_set_tor_process_status_changed_callback(
     context: *mut tego_context,
     callback: tego_tor_process_status_changed_callback,
-    error: *mut *mut tego_error) {
+    error: *mut *mut tego_error,
+) {
     impl_callback_setter!(on_tor_process_status_changed, context, callback, error);
 }
 
@@ -2344,7 +2444,8 @@ pub extern "C" fn tego_context_set_tor_process_status_changed_callback(
 pub extern "C" fn tego_context_set_tor_network_status_changed_callback(
     context: *mut tego_context,
     callback: tego_tor_network_status_changed_callback,
-    error: *mut *mut tego_error) {
+    error: *mut *mut tego_error,
+) {
     impl_callback_setter!(on_tor_network_status_changed, context, callback, error);
 }
 
@@ -2352,7 +2453,8 @@ pub extern "C" fn tego_context_set_tor_network_status_changed_callback(
 pub extern "C" fn tego_context_set_tor_bootstrap_status_changed_callback(
     context: *mut tego_context,
     callback: tego_tor_bootstrap_status_changed_callback,
-    error: *mut *mut tego_error) {
+    error: *mut *mut tego_error,
+) {
     impl_callback_setter!(on_tor_bootstrap_status_changed, context, callback, error);
 }
 
@@ -2360,7 +2462,8 @@ pub extern "C" fn tego_context_set_tor_bootstrap_status_changed_callback(
 pub extern "C" fn tego_context_set_tor_log_received_callback(
     context: *mut tego_context,
     callback: tego_tor_log_received_callback,
-    error: *mut *mut tego_error) {
+    error: *mut *mut tego_error,
+) {
     impl_callback_setter!(on_tor_log_received, context, callback, error);
 }
 
@@ -2368,15 +2471,22 @@ pub extern "C" fn tego_context_set_tor_log_received_callback(
 pub extern "C" fn tego_context_set_host_onion_service_state_changed_callback(
     context: *mut tego_context,
     callback: tego_host_onion_service_state_changed_callback,
-    error: *mut *mut tego_error) {
-    impl_callback_setter!(on_host_onion_service_state_changed, context, callback, error);
+    error: *mut *mut tego_error,
+) {
+    impl_callback_setter!(
+        on_host_onion_service_state_changed,
+        context,
+        callback,
+        error
+    );
 }
 
 #[no_mangle]
 pub extern "C" fn tego_context_set_chat_request_received_callback(
     context: *mut tego_context,
     callback: tego_chat_request_received_callback,
-    error: *mut *mut tego_error) {
+    error: *mut *mut tego_error,
+) {
     impl_callback_setter!(on_chat_request_received, context, callback, error);
 }
 
@@ -2384,7 +2494,8 @@ pub extern "C" fn tego_context_set_chat_request_received_callback(
 pub extern "C" fn tego_context_set_chat_request_response_received_callback(
     context: *mut tego_context,
     callback: tego_chat_request_response_received_callback,
-    error: *mut *mut tego_error) {
+    error: *mut *mut tego_error,
+) {
     impl_callback_setter!(on_chat_request_response_received, context, callback, error);
 }
 
@@ -2392,7 +2503,8 @@ pub extern "C" fn tego_context_set_chat_request_response_received_callback(
 pub extern "C" fn tego_context_set_message_received_callback(
     context: *mut tego_context,
     callback: tego_message_received_callback,
-    error: *mut *mut tego_error) {
+    error: *mut *mut tego_error,
+) {
     impl_callback_setter!(on_message_received, context, callback, error);
 }
 
@@ -2400,7 +2512,8 @@ pub extern "C" fn tego_context_set_message_received_callback(
 pub extern "C" fn tego_context_set_message_acknowledged_callback(
     context: *mut tego_context,
     callback: tego_message_acknowledged_callback,
-    error: *mut *mut tego_error) {
+    error: *mut *mut tego_error,
+) {
     impl_callback_setter!(on_message_acknowledged, context, callback, error);
 }
 
@@ -2408,7 +2521,8 @@ pub extern "C" fn tego_context_set_message_acknowledged_callback(
 pub extern "C" fn tego_context_set_file_transfer_request_received_callback(
     context: *mut tego_context,
     callback: tego_file_transfer_request_received_callback,
-    error: *mut *mut tego_error) {
+    error: *mut *mut tego_error,
+) {
     impl_callback_setter!(on_file_transfer_request_received, context, callback, error);
 }
 
@@ -2416,23 +2530,36 @@ pub extern "C" fn tego_context_set_file_transfer_request_received_callback(
 pub extern "C" fn tego_context_set_file_transfer_request_acknowledged_callback(
     context: *mut tego_context,
     callback: tego_file_transfer_request_acknowledged_callback,
-    error: *mut *mut tego_error) {
-    impl_callback_setter!(on_file_transfer_request_acknowledged, context, callback, error);
+    error: *mut *mut tego_error,
+) {
+    impl_callback_setter!(
+        on_file_transfer_request_acknowledged,
+        context,
+        callback,
+        error
+    );
 }
 
 #[no_mangle]
 pub extern "C" fn tego_context_set_file_transfer_request_response_received_callback(
     context: *mut tego_context,
     callback: tego_file_transfer_request_response_received_callback,
-    error: *mut *mut tego_error) {
-    impl_callback_setter!(on_file_transfer_request_response_received, context, callback, error);
+    error: *mut *mut tego_error,
+) {
+    impl_callback_setter!(
+        on_file_transfer_request_response_received,
+        context,
+        callback,
+        error
+    );
 }
 
 #[no_mangle]
 pub extern "C" fn tego_context_set_file_transfer_progress_callback(
     context: *mut tego_context,
     callback: tego_file_transfer_progress_callback,
-    error: *mut *mut tego_error) {
+    error: *mut *mut tego_error,
+) {
     impl_callback_setter!(on_file_transfer_progress, context, callback, error);
 }
 
@@ -2440,7 +2567,8 @@ pub extern "C" fn tego_context_set_file_transfer_progress_callback(
 pub extern "C" fn tego_context_set_file_transfer_complete_callback(
     context: *mut tego_context,
     callback: tego_file_transfer_complete_callback,
-    error: *mut *mut tego_error) {
+    error: *mut *mut tego_error,
+) {
     impl_callback_setter!(on_file_transfer_complete, context, callback, error);
 }
 
@@ -2448,7 +2576,8 @@ pub extern "C" fn tego_context_set_file_transfer_complete_callback(
 pub extern "C" fn tego_context_set_user_status_changed_callback(
     context: *mut tego_context,
     callback: tego_user_status_changed_callback,
-    error: *mut *mut tego_error) {
+    error: *mut *mut tego_error,
+) {
     impl_callback_setter!(on_user_status_changed, context, callback, error);
 }
 
@@ -2456,7 +2585,8 @@ pub extern "C" fn tego_context_set_user_status_changed_callback(
 pub extern "C" fn tego_context_set_new_identity_created_callback(
     context: *mut tego_context,
     callback: tego_new_identity_created_callback,
-    error: *mut *mut tego_error) {
+    error: *mut *mut tego_error,
+) {
     impl_callback_setter!(on_new_identity_created, context, callback, error);
 }
 
@@ -2471,7 +2601,7 @@ macro_rules! impl_deleter {
         if let Some($tego_object) = object_map.get(&key) {
             object_map.remove(&key);
         }
-    }
+    };
 }
 
 #[no_mangle]

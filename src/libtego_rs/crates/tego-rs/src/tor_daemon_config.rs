@@ -1,6 +1,6 @@
 // extern
 use tor_interface::censorship_circumvention::BridgeLine;
-use tor_interface::proxy::{ProxyConfig};
+use tor_interface::proxy::ProxyConfig;
 
 #[derive(Default)]
 pub(crate) struct TorDaemonConfig {

@@ -2,20 +2,31 @@ use rico_protocol::v3::message::*;
 
 #[test]
 fn test_round_trip() -> anyhow::Result<()> {
-
     // OpenChannel ContactRequestChannel
     {
         println!("---");
         let nickname: contact_request_channel::Nickname = "alice".to_string().try_into()?;
-        let message_text: contact_request_channel::MessageText = "hello world".to_string().try_into()?;
+        let message_text: contact_request_channel::MessageText =
+            "hello world".to_string().try_into()?;
 
         println!("{nickname:?}: {message_text:?}");
 
-        let contact_request = contact_request_channel::ContactRequest{nickname, message_text};
+        let contact_request = contact_request_channel::ContactRequest {
+            nickname,
+            message_text,
+        };
 
         println!("{contact_request:?}");
 
-        let open_channel = control_channel::OpenChannel::new(1, control_channel::ChannelType::ContactRequest, Some(control_channel::OpenChannelExtension::ContactRequestChannel(contact_request_channel::OpenChannel{contact_request})))?;
+        let open_channel = control_channel::OpenChannel::new(
+            1,
+            control_channel::ChannelType::ContactRequest,
+            Some(
+                control_channel::OpenChannelExtension::ContactRequestChannel(
+                    contact_request_channel::OpenChannel { contact_request },
+                ),
+            ),
+        )?;
 
         println!("{open_channel:?}");
 
@@ -37,14 +48,19 @@ fn test_round_trip() -> anyhow::Result<()> {
         println!("{bytes:?}");
 
         assert_eq!(packet_src, packet_dest);
-
     }
 
     // OpenChannel AuthHiddenService
     {
         println!("---");
         let client_cookie: [u8; 16] = Default::default();
-        let open_channel = control_channel::OpenChannel::new(1i32, control_channel::ChannelType::AuthHiddenService, Some(control_channel::OpenChannelExtension::AuthHiddenService(auth_hidden_service::OpenChannel{client_cookie})))?;
+        let open_channel = control_channel::OpenChannel::new(
+            1i32,
+            control_channel::ChannelType::AuthHiddenService,
+            Some(control_channel::OpenChannelExtension::AuthHiddenService(
+                auth_hidden_service::OpenChannel { client_cookie },
+            )),
+        )?;
 
         println!("{open_channel:?}");
 
@@ -66,15 +82,25 @@ fn test_round_trip() -> anyhow::Result<()> {
         println!("{bytes:?}");
 
         assert_eq!(packet_src, packet_dest);
-
     }
     // ChannelResult ContactRequestChanel
     {
         println!("---");
 
-        let response = contact_request_channel::Response{status: contact_request_channel::Status::Pending};
+        let response = contact_request_channel::Response {
+            status: contact_request_channel::Status::Pending,
+        };
 
-        let channel_result = control_channel::ChannelResult::new(1i32, false, Some(control_channel::CommonError::GenericError), Some(control_channel::ChannelResultExtension::ContactRequestChannel(contact_request_channel::ChannelResult{response})))?;
+        let channel_result = control_channel::ChannelResult::new(
+            1i32,
+            false,
+            Some(control_channel::CommonError::GenericError),
+            Some(
+                control_channel::ChannelResultExtension::ContactRequestChannel(
+                    contact_request_channel::ChannelResult { response },
+                ),
+            ),
+        )?;
 
         println!("{channel_result:?}");
 
@@ -104,7 +130,14 @@ fn test_round_trip() -> anyhow::Result<()> {
 
         let server_cookie: [u8; 16] = Default::default();
 
-        let channel_result = control_channel::ChannelResult::new(1i32, false, Some(control_channel::CommonError::GenericError), Some(control_channel::ChannelResultExtension::AuthHiddenService(auth_hidden_service::ChannelResult{server_cookie})))?;
+        let channel_result = control_channel::ChannelResult::new(
+            1i32,
+            false,
+            Some(control_channel::CommonError::GenericError),
+            Some(control_channel::ChannelResultExtension::AuthHiddenService(
+                auth_hidden_service::ChannelResult { server_cookie },
+            )),
+        )?;
 
         println!("{channel_result:?}");
 
@@ -127,7 +160,6 @@ fn test_round_trip() -> anyhow::Result<()> {
 
         assert_eq!(packet_src, packet_dest);
     }
-
 
     // ChatChannel ChatMessage
     {
@@ -198,7 +230,8 @@ fn test_round_trip() -> anyhow::Result<()> {
 
         let signature = [0u8; 64];
         let private_key = tor_interface::tor_crypto::Ed25519PrivateKey::generate();
-        let service_id = tor_interface::tor_crypto::V3OnionServiceId::from_private_key(&private_key);
+        let service_id =
+            tor_interface::tor_crypto::V3OnionServiceId::from_private_key(&private_key);
 
         let proof = auth_hidden_service::Proof::new(signature, service_id)?;
 
@@ -263,7 +296,6 @@ fn test_round_trip() -> anyhow::Result<()> {
         let file_size = 128u64;
         let name = "file.txt".to_string();
         let file_hash = [0u8; file_channel::FILE_HASH_SIZE];
-
 
         let file_header = file_channel::FileHeader::new(file_id, file_size, name, file_hash)?;
 
@@ -420,11 +452,14 @@ fn test_round_trip() -> anyhow::Result<()> {
         let file_id = 12u32;
         let result = file_channel::FileTransferResult::Failure;
 
-        let file_transfer_complete_notification = file_channel::FileTransferCompleteNotification::new(file_id, result)?;
+        let file_transfer_complete_notification =
+            file_channel::FileTransferCompleteNotification::new(file_id, result)?;
 
         println!("{file_transfer_complete_notification:?}");
 
-        let packet_src = file_channel::Packet::FileTransferCompleteNotification(file_transfer_complete_notification);
+        let packet_src = file_channel::Packet::FileTransferCompleteNotification(
+            file_transfer_complete_notification,
+        );
 
         println!("{packet_src:?}");
 

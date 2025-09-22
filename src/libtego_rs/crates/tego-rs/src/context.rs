@@ -4,24 +4,27 @@ use std::ffi::{CString, OsString};
 use std::fs::File;
 use std::io::{ErrorKind, Read, Seek, Write};
 use std::path::PathBuf;
-use std::sync::{atomic::{AtomicBool, Ordering}, Arc, Mutex, Weak};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc, Mutex, Weak,
+};
 use std::time::{Duration, Instant};
 
 // extern
 use anyhow::{Context as AnyhowContext, Result};
-use rico_protocol::v3::Error;
 use rico_protocol::v3::file_hasher::*;
 use rico_protocol::v3::packet_handler::*;
-use tor_interface::proxy::{ProxyConfig};
+use rico_protocol::v3::Error;
 use tor_interface::legacy_tor_client::*;
 use tor_interface::legacy_tor_version::LegacyTorVersion;
+use tor_interface::proxy::ProxyConfig;
 use tor_interface::tor_crypto::{Ed25519PrivateKey, V3OnionServiceId};
 use tor_interface::tor_provider::{OnionListener, OnionStream, TorEvent, TorProvider};
 
 // internal crates
 use crate::command_queue::*;
 use crate::ffi::*;
-use crate::file_hash::{FILE_HASH_SIZE, FileHash};
+use crate::file_hash::{FileHash, FILE_HASH_SIZE};
 use crate::macros::*;
 use crate::promise::Promise;
 use crate::user_id::UserId;
@@ -60,17 +63,11 @@ pub(crate) struct Context {
 }
 
 impl Context {
-    pub fn set_tego_key(
-        &mut self,
-        tego_key: TegoKey,
-    ) {
+    pub fn set_tego_key(&mut self, tego_key: TegoKey) {
         self.tego_key = tego_key;
     }
 
-    pub fn set_tor_data_directory(
-        &mut self,
-        tor_data_directory: PathBuf,
-    ) {
+    pub fn set_tor_data_directory(&mut self, tor_data_directory: PathBuf) {
         self.tor_data_directory = tor_data_directory;
     }
 
@@ -105,10 +102,7 @@ impl Context {
         tor_logs.clone()
     }
 
-    pub fn set_private_key(
-        &mut self,
-        private_key: Ed25519PrivateKey,
-    ) {
+    pub fn set_private_key(&mut self, private_key: Ed25519PrivateKey) {
         self.private_key = Some(private_key);
     }
 
@@ -116,25 +110,23 @@ impl Context {
         self.private_key.as_ref()
     }
 
-    pub fn set_users(
-        &mut self,
-        users: BTreeMap<V3OnionServiceId, tego_user_type>
-    ) {
+    pub fn set_users(&mut self, users: BTreeMap<V3OnionServiceId, tego_user_type>) {
         self.users = users;
     }
 
     pub fn host_service_id(&self) -> Option<V3OnionServiceId> {
-        self.private_key.as_ref().map(V3OnionServiceId::from_private_key)
+        self.private_key
+            .as_ref()
+            .map(V3OnionServiceId::from_private_key)
     }
 
     // todo: should take a tor config as an argument
     pub fn connect(&mut self) -> Result<()> {
-
         let tego_key = self.tego_key;
         let callbacks = Arc::downgrade(&self.callbacks);
 
         // todo: should read proxy, firewall, bridge and pt settings too
-        let tor_config = LegacyTorClientConfig::BundledTor{
+        let tor_config = LegacyTorClientConfig::BundledTor {
             tor_bin_path: Self::tor_bin_path()?,
             data_directory: self.tor_data_directory.clone(),
             proxy_settings: None,
@@ -185,21 +177,15 @@ impl Context {
         self.push_command_ex(data, Duration::ZERO);
     }
 
-    fn push_command_ex(
-        &self,
-        data: CommandData,
-        delay: Duration) {
+    fn push_command_ex(&self, data: CommandData, delay: Duration) {
         self.command_queue.push(data, delay);
     }
 
-    pub fn forget_user(
-        &mut self,
-        service_id: V3OnionServiceId,
-    ) -> Result<()> {
+    pub fn forget_user(&mut self, service_id: V3OnionServiceId) -> Result<()> {
         self.users.remove(&service_id);
         let result: Promise<Result<()>> = Default::default();
         let result_future = result.get_future();
-        self.push_command(CommandData::ForgetUser{service_id, result});
+        self.push_command(CommandData::ForgetUser { service_id, result });
 
         result_future.wait()
     }
@@ -207,26 +193,39 @@ impl Context {
     pub fn send_contact_request(
         &self,
         service_id: V3OnionServiceId,
-        message: rico_protocol::v3::message::contact_request_channel::MessageText) {
+        message: rico_protocol::v3::message::contact_request_channel::MessageText,
+    ) {
         let contact_request_message = Some(message);
-        self.push_command(CommandData::ConnectContact{service_id, failure_count: 0usize, contact_request_message});
+        self.push_command(CommandData::ConnectContact {
+            service_id,
+            failure_count: 0usize,
+            contact_request_message,
+        });
     }
 
     pub fn acknowledge_contact_request(
         &self,
         service_id: V3OnionServiceId,
-        response: tego_chat_acknowledge) {
-        self.push_command(CommandData::AcknowledgeContactRequest{service_id, response});
+        response: tego_chat_acknowledge,
+    ) {
+        self.push_command(CommandData::AcknowledgeContactRequest {
+            service_id,
+            response,
+        });
     }
 
     pub fn send_message(
         &self,
         service_id: V3OnionServiceId,
-        message_text: rico_protocol::v3::message::chat_channel::MessageText) -> Result<tego_message_id> {
-
+        message_text: rico_protocol::v3::message::chat_channel::MessageText,
+    ) -> Result<tego_message_id> {
         let message_id: Promise<Result<tego_message_id>> = Default::default();
         let message_id_future = message_id.get_future();
-        let cmd = CommandData::SendMessage{service_id, message_text, message_id};
+        let cmd = CommandData::SendMessage {
+            service_id,
+            message_text,
+            message_id,
+        };
         self.push_command(cmd);
 
         message_id_future.wait()
@@ -235,11 +234,15 @@ impl Context {
     pub fn send_file_transfer_request(
         &self,
         service_id: V3OnionServiceId,
-        file_path: PathBuf) -> Result<(tego_file_transfer_id, tego_file_size)> {
-
+        file_path: PathBuf,
+    ) -> Result<(tego_file_transfer_id, tego_file_size)> {
         let result: Promise<Result<(tego_file_transfer_id, tego_file_size)>> = Default::default();
         let result_future = result.get_future();
-        let cmd = CommandData::SendFileTransferRequest{service_id, file_path, result};
+        let cmd = CommandData::SendFileTransferRequest {
+            service_id,
+            file_path,
+            result,
+        };
         self.push_command(cmd);
 
         result_future.wait()
@@ -249,8 +252,8 @@ impl Context {
         &self,
         service_id: V3OnionServiceId,
         file_transfer_id: tego_file_transfer_id,
-        dest_path: PathBuf) -> Result<()> {
-
+        dest_path: PathBuf,
+    ) -> Result<()> {
         println!("--- called accept_file_transfer_requesst");
 
         // verify absolute path
@@ -266,7 +269,12 @@ impl Context {
         let result: Promise<Result<()>> = Default::default();
         let result_future = result.get_future();
 
-        let cmd = CommandData::AcceptFileTransferRequest{service_id, file_transfer_id, dest_path, result};
+        let cmd = CommandData::AcceptFileTransferRequest {
+            service_id,
+            file_transfer_id,
+            dest_path,
+            result,
+        };
         self.push_command(cmd);
 
         result_future.wait()
@@ -275,14 +283,18 @@ impl Context {
     pub fn reject_file_transfer_request(
         &self,
         service_id: V3OnionServiceId,
-        file_transfer_id: tego_file_transfer_id) -> Result<()> {
-
+        file_transfer_id: tego_file_transfer_id,
+    ) -> Result<()> {
         println!("--- called reject_file_transfer_requesst");
 
         let result: Promise<Result<()>> = Default::default();
         let result_future = result.get_future();
 
-        let cmd = CommandData::RejectFileTransferRequest{service_id, file_transfer_id, result};
+        let cmd = CommandData::RejectFileTransferRequest {
+            service_id,
+            file_transfer_id,
+            result,
+        };
         self.push_command(cmd);
 
         result_future.wait()
@@ -291,14 +303,18 @@ impl Context {
     pub fn cancel_file_transfer(
         &self,
         service_id: V3OnionServiceId,
-        file_transfer_id: tego_file_transfer_id) -> Result<()> {
-
+        file_transfer_id: tego_file_transfer_id,
+    ) -> Result<()> {
         println!("--- called cancel_file_transfer_requesst");
 
         let result: Promise<Result<()>> = Default::default();
         let result_future = result.get_future();
 
-        let cmd = CommandData::CancelFileTransfer{service_id, file_transfer_id, result};
+        let cmd = CommandData::CancelFileTransfer {
+            service_id,
+            file_transfer_id,
+            result,
+        };
         self.push_command(cmd);
 
         result_future.wait()
@@ -362,20 +378,20 @@ struct EventLoopTask {
 }
 
 impl EventLoopTask {
-    const READ_BUFFER_SIZE: usize = 64*1024;
+    const READ_BUFFER_SIZE: usize = 64 * 1024;
     const FILE_READ_BUFFER_SIZE: usize = rico_protocol::v3::MAX_FILE_CHUNK_SIZE;
 
     fn new(
-    context: TegoKey,
-    callbacks: Weak<Mutex<Callbacks>>,
-    tor_client: LegacyTorClient,
-    tor_version: Weak<Mutex<Option<LegacyTorVersion>>>,
-    tor_logs: Weak<Mutex<String>>,
-    connect_complete: Weak<AtomicBool>,
-    private_key: Ed25519PrivateKey,
-    users: BTreeMap<V3OnionServiceId, tego_user_type>,
-    command_queue: CommandQueue,
-    event_loop_complete: Promise<()>,
+        context: TegoKey,
+        callbacks: Weak<Mutex<Callbacks>>,
+        tor_client: LegacyTorClient,
+        tor_version: Weak<Mutex<Option<LegacyTorVersion>>>,
+        tor_logs: Weak<Mutex<String>>,
+        connect_complete: Weak<AtomicBool>,
+        private_key: Ed25519PrivateKey,
+        users: BTreeMap<V3OnionServiceId, tego_user_type>,
+        command_queue: CommandQueue,
+        event_loop_complete: Promise<()>,
     ) -> Self {
         // create our list of known contacts from our users
         // and our UserData structs
@@ -387,15 +403,17 @@ impl EventLoopTask {
             match user_type {
                 tego_user_type_allowed | tego_user_type_pending => {
                     known_contacts.insert(user_id.clone());
-                },
+                }
                 _ => (),
             }
-            user_data.insert(user_id.clone(),
-                UserData{
+            user_data.insert(
+                user_id.clone(),
+                UserData {
                     user_type: *user_type,
                     pending_connection_handle: None,
                     connection_handle: None,
-                });
+                },
+            );
         }
 
         Self {
@@ -422,7 +440,7 @@ impl EventLoopTask {
     fn run(mut self) -> Result<()> {
         // save off the tor daemon version
         {
-            let tor_version =  self.tor_version.upgrade().context("tor_version dropped")?;
+            let tor_version = self.tor_version.upgrade().context("tor_version dropped")?;
             let mut tor_version = tor_version.lock().expect("tor_version mutex poisoned");
             *tor_version = Some(self.tor_client.version());
         }
@@ -454,49 +472,63 @@ impl EventLoopTask {
         // handle tor events
         for e in self.tor_client.update()? {
             match e {
-                TorEvent::BootstrapStatus{progress, tag, summary: _} => {
-                    self.callback_queue.push(
-                        CallbackData::TorBootstrapStatusChanged{progress, tag});
-                },
+                TorEvent::BootstrapStatus {
+                    progress,
+                    tag,
+                    summary: _,
+                } => {
+                    self.callback_queue
+                        .push(CallbackData::TorBootstrapStatusChanged { progress, tag });
+                }
                 TorEvent::BootstrapComplete => {
                     if let Some(connect_complete) = self.connect_complete.upgrade() {
                         connect_complete.store(true, Ordering::Relaxed);
                     }
 
-                    self.callback_queue.push(
-                        CallbackData::TorNetworkStatusChanged{status: tego_tor_network_status::tego_tor_network_status_ready});
+                    self.callback_queue
+                        .push(CallbackData::TorNetworkStatusChanged {
+                            status: tego_tor_network_status::tego_tor_network_status_ready,
+                        });
 
                     self.callback_queue.push(
                         CallbackData::HostOnionServiceStateChanged{state: tego_host_onion_service_state::tego_host_onion_service_state_service_added});
 
                     // start onion service
-                    let listener = self.tor_client.listener(&self.private_key, RICOCHET_PORT, None)?;
+                    let listener =
+                        self.tor_client
+                            .listener(&self.private_key, RICOCHET_PORT, None)?;
                     std::thread::Builder::new()
                         .name("listener-loop".to_string())
                         .spawn({
                             let command_queue = self.command_queue.downgrade();
                             move || {
-                                let task = ListenerTask{
+                                let task = ListenerTask {
                                     listener,
-                                    command_queue
+                                    command_queue,
                                 };
                                 let _ = task.run();
-                        }})?;
+                            }
+                        })?;
 
                     // try to connect to contacts
                     for (user_id, user_data) in self.users.iter() {
                         use tego_user_type::*;
                         match user_data.user_type {
-                            tego_user_type_allowed |
-                            tego_user_type_pending => {
+                            tego_user_type_allowed | tego_user_type_pending => {
                                 self.command_queue.push(
-                                    CommandData::ConnectContact{service_id: user_id.clone(), failure_count: 0usize, contact_request_message: None}, Duration::ZERO);
-                            },
+                                    CommandData::ConnectContact {
+                                        service_id: user_id.clone(),
+                                        failure_count: 0usize,
+                                        contact_request_message: None,
+                                    },
+                                    Duration::ZERO,
+                                );
+                            }
                             _ => (),
                         }
                     }
-                },
-                TorEvent::LogReceived{line} => {
+                }
+                TorEvent::LogReceived { line } => {
                     if let Some(tor_logs) = self.tor_logs.upgrade() {
                         let mut tor_logs = tor_logs.lock().expect("tor_logs mutex poisoned");
                         if !tor_logs.is_empty() {
@@ -504,14 +536,14 @@ impl EventLoopTask {
                         }
                         tor_logs.push_str(line.as_str());
                     }
-                    self.callback_queue.push(
-                        CallbackData::TorLogReceived{line});
-                },
-                TorEvent::OnionServicePublished{service_id : _} => {
+                    self.callback_queue
+                        .push(CallbackData::TorLogReceived { line });
+                }
+                TorEvent::OnionServicePublished { service_id: _ } => {
                     self.callback_queue.push(
                         CallbackData::HostOnionServiceStateChanged{state: tego_host_onion_service_state::tego_host_onion_service_state_service_published});
-                },
-                TorEvent::ConnectComplete{handle, stream} => {
+                }
+                TorEvent::ConnectComplete { handle, stream } => {
                     let handle_connect_complete = || -> Result<()> {
                         if let Some(pending_connection) = self.pending_connections.remove(&handle) {
                             stream.set_nonblocking(true).unwrap();
@@ -522,9 +554,13 @@ impl EventLoopTask {
                             if !self.packet_handler.has_verified_connection(&service_id) {
                                 println!("--- connected to {service_id:?}");
                                 let mut replies: Vec<Packet> = Default::default();
-                                let handle = self.packet_handler.new_outgoing_connection(service_id.clone(), message_text, &mut replies)?;
+                                let handle = self.packet_handler.new_outgoing_connection(
+                                    service_id.clone(),
+                                    message_text,
+                                    &mut replies,
+                                )?;
 
-                                let connection = Connection{
+                                let connection = Connection {
                                     service_id: Some(service_id),
                                     stream,
                                     read_bytes: Default::default(),
@@ -543,8 +579,8 @@ impl EventLoopTask {
                         Ok(())
                     };
                     let _ = handle_connect_complete();
-                },
-                TorEvent::ConnectFailed{handle, error: _} => {
+                }
+                TorEvent::ConnectFailed { handle, error: _ } => {
                     if let Some(pending_connection) = self.pending_connections.remove(&handle) {
                         let service_id = pending_connection.service_id;
                         let failure_count = pending_connection.failure_count + 1;
@@ -560,11 +596,16 @@ impl EventLoopTask {
                         println!("--- connect attempt {failure_count} to {service_id:?} failed; try again in {delay} seconds");
 
                         let contact_request_message = pending_connection.message_text;
-                        let command_data = CommandData::ConnectContact{service_id, failure_count, contact_request_message};
+                        let command_data = CommandData::ConnectContact {
+                            service_id,
+                            failure_count,
+                            contact_request_message,
+                        };
 
-                        self.command_queue.push(command_data, Duration::from_secs(delay));
+                        self.command_queue
+                            .push(command_data, Duration::from_secs(delay));
                     }
-                },
+                }
             }
         }
 
@@ -582,12 +623,14 @@ impl EventLoopTask {
             let cmd = command_queue.pop().unwrap();
             match cmd.data() {
                 CommandData::EndEventLoop => self.task_complete = true,
-                CommandData::ForgetUser{service_id, result} => {
+                CommandData::ForgetUser { service_id, result } => {
                     let mut handle_forget_user = || -> Result<()> {
                         // remove from our set of users
                         if let Some(user_data) = self.users.remove(&service_id) {
                             // ignore any pending connection
-                            if let Some(pending_connection_handle) = user_data.pending_connection_handle {
+                            if let Some(pending_connection_handle) =
+                                user_data.pending_connection_handle
+                            {
                                 self.pending_connections.remove(&pending_connection_handle);
                             }
 
@@ -602,12 +645,12 @@ impl EventLoopTask {
                         Ok(())
                     };
                     result.resolve(handle_forget_user());
-                },
-                CommandData::BeginServerHandshake{stream} => {
+                }
+                CommandData::BeginServerHandshake { stream } => {
                     let handle_begin_server_handshake = || -> Result<()> {
                         let handle = self.packet_handler.new_incoming_connection()?;
 
-                        let connection = Connection{
+                        let connection = Connection {
                             service_id: None,
                             stream,
                             read_bytes: Default::default(),
@@ -624,14 +667,25 @@ impl EventLoopTask {
                         Ok(())
                     };
                     let _ = handle_begin_server_handshake();
-                },
-                CommandData::AcknowledgeContactRequest{service_id, response} => {
+                }
+                CommandData::AcknowledgeContactRequest {
+                    service_id,
+                    response,
+                } => {
                     let mut replies: Vec<Packet> = Default::default();
                     use tego_chat_acknowledge::*;
                     let (result, remove) = match response {
-                        tego_chat_acknowledge_accept => (self.packet_handler.accept_contact_request(service_id, &mut replies), false),
+                        tego_chat_acknowledge_accept => (
+                            self.packet_handler
+                                .accept_contact_request(service_id, &mut replies),
+                            false,
+                        ),
                         // todo: add user to our user_data list
-                        tego_chat_acknowledge_reject => (self.packet_handler.reject_contact_request(service_id, &mut replies), true),
+                        tego_chat_acknowledge_reject => (
+                            self.packet_handler
+                                .reject_contact_request(service_id, &mut replies),
+                            true,
+                        ),
                         tego_chat_acknowledge_block => todo!(),
                     };
 
@@ -641,87 +695,139 @@ impl EventLoopTask {
                                 connection.write_packets.append(&mut replies);
                                 connection.remove = remove;
                             }
-                        },
+                        }
                         Err(_err) => todo!(),
                     }
-                },
-                CommandData::ConnectContact{service_id, failure_count, contact_request_message: message_text} => {
+                }
+                CommandData::ConnectContact {
+                    service_id,
+                    failure_count,
+                    contact_request_message: message_text,
+                } => {
                     // only open new connection if there is no existing verified
                     // connection already
                     if !self.packet_handler.has_verified_connection(&service_id) {
                         println!("--- connecting to {service_id}");
-                        let target_addr: tor_interface::tor_provider::TargetAddr = (service_id.clone(), RICOCHET_PORT).into();
+                        let target_addr: tor_interface::tor_provider::TargetAddr =
+                            (service_id.clone(), RICOCHET_PORT).into();
 
-                        let connect_handle = self.tor_client.connect_async(target_addr, None).unwrap();
+                        let connect_handle =
+                            self.tor_client.connect_async(target_addr, None).unwrap();
 
-                        let pending_connection = PendingConnection {service_id, failure_count,message_text};
-                        self.pending_connections.insert(connect_handle, pending_connection);
+                        let pending_connection = PendingConnection {
+                            service_id,
+                            failure_count,
+                            message_text,
+                        };
+                        self.pending_connections
+                            .insert(connect_handle, pending_connection);
                     } else {
                         println!("--- skipping connection attempt, verified connection already exists to {service_id}");
                     }
-                },
-                CommandData::SendMessage{service_id, message_text, message_id} => {
+                }
+                CommandData::SendMessage {
+                    service_id,
+                    message_text,
+                    message_id,
+                } => {
                     let mut replies: Vec<Packet> = Default::default();
-                    let result = match self.packet_handler.send_message(service_id, message_text, &mut replies) {
+                    let result = match self.packet_handler.send_message(
+                        service_id,
+                        message_text,
+                        &mut replies,
+                    ) {
                         Ok((connection_handle, message_handle)) => {
                             if let Some(connection) = self.connections.get_mut(&connection_handle) {
                                 connection.write_packets.append(&mut replies);
                             }
                             Ok(message_handle.into())
-                        },
+                        }
                         Err(err) => Err(err.into()),
                     };
                     message_id.resolve(result);
-                },
-                CommandData::SendFileTransferRequest{service_id, file_path, result} => {
-                    let handle_send_file_transfer_request = || -> Result<(tego_file_transfer_id, tego_file_size)> {
+                }
+                CommandData::SendFileTransferRequest {
+                    service_id,
+                    file_path,
+                    result,
+                } => {
+                    let handle_send_file_transfer_request =
+                        || -> Result<(tego_file_transfer_id, tego_file_size)> {
+                            // we only deal in absolute paths
+                            bail_if!(!file_path.is_absolute());
 
-                        // we only deal in absolute paths
-                        bail_if!(!file_path.is_absolute());
+                            // get our filename
+                            let file_name: String = file_path
+                                .file_name()
+                                .context("path contains no file name")?
+                                .to_str()
+                                .context("file name not valid utf8")?
+                                .to_string();
 
-                        // get our filename
-                        let file_name: String = file_path
-                            .file_name().context("path contains no file name")?
-                            .to_str().context("file name not valid utf8")?
-                            .to_string();
+                            let file_upload = FileUpload::new(file_path)?;
+                            let file_size = file_upload.size();
 
-                        let file_upload = FileUpload::new(file_path)?;
-                        let file_size = file_upload.size();
+                            let file_hash = file_upload.hash();
 
-                        let file_hash = file_upload.hash();
+                            //construct reply packets
+                            let mut replies: Vec<Packet> = Vec::with_capacity(1);
+                            let (connection_handle, file_transfer_handle) =
+                                self.packet_handler.send_file_transfer_request(
+                                    service_id,
+                                    file_name,
+                                    file_size,
+                                    file_hash,
+                                    &mut replies,
+                                )?;
 
-                        //construct reply packets
-                        let mut replies: Vec<Packet> = Vec::with_capacity(1);
-                        let (connection_handle, file_transfer_handle) = self.packet_handler.send_file_transfer_request(service_id, file_name, file_size, file_hash, &mut replies)?;
+                            let connection = self
+                                .connections
+                                .get_mut(&connection_handle)
+                                .context("missing Connection struct")?;
 
-                        let connection = self.connections.get_mut(&connection_handle).context("missing Connection struct")?;
+                            // save of file upload record
+                            connection
+                                .file_uploads
+                                .insert(file_transfer_handle, file_upload);
 
-                        // save of file upload record
-                        connection.file_uploads.insert(file_transfer_handle, file_upload);
+                            // queue packets for writing
+                            connection.write_packets.append(&mut replies);
 
-                        // queue packets for writing
-                        connection.write_packets.append(&mut replies);
+                            let file_transfer_id: tego_file_transfer_id =
+                                file_transfer_handle.into();
 
-                        let file_transfer_id: tego_file_transfer_id = file_transfer_handle.into();
-
-                        Ok((file_transfer_id, file_size))
-                    };
+                            Ok((file_transfer_id, file_size))
+                        };
 
                     result.resolve(handle_send_file_transfer_request());
-                },
-                CommandData::AcceptFileTransferRequest{service_id, file_transfer_id, dest_path, result} => {
+                }
+                CommandData::AcceptFileTransferRequest {
+                    service_id,
+                    file_transfer_id,
+                    dest_path,
+                    result,
+                } => {
                     let handle_accept_file_transfer_request = || -> Result<()> {
-
                         let file_transfer_handle: FileTransferHandle = file_transfer_id.into();
 
                         // construct reply packets
                         let mut replies: Vec<Packet> = Vec::with_capacity(1);
-                        let connection_handle = self.packet_handler.accept_file_transfer_request(&service_id, file_transfer_handle, &mut replies)?;
+                        let connection_handle = self.packet_handler.accept_file_transfer_request(
+                            &service_id,
+                            file_transfer_handle,
+                            &mut replies,
+                        )?;
 
                         // setup file download
-                        let connection = self.connections.get_mut(&connection_handle).context("missing Connection struct")?;
+                        let connection = self
+                            .connections
+                            .get_mut(&connection_handle)
+                            .context("missing Connection struct")?;
 
-                        let file_download = connection.file_downloads.get_mut(&file_transfer_handle).context("missing FileDownload struct")?;
+                        let file_download = connection
+                            .file_downloads
+                            .get_mut(&file_transfer_handle)
+                            .context("missing FileDownload struct")?;
                         file_download.start(dest_path)?;
 
                         // queue packets for writing
@@ -731,52 +837,86 @@ impl EventLoopTask {
                     };
 
                     result.resolve(handle_accept_file_transfer_request());
-                },
-                CommandData::RejectFileTransferRequest{service_id, file_transfer_id, result} => {
+                }
+                CommandData::RejectFileTransferRequest {
+                    service_id,
+                    file_transfer_id,
+                    result,
+                } => {
                     let handle_reject_file_transfer_request = || -> Result<()> {
-
                         let file_transfer_handle: FileTransferHandle = file_transfer_id.into();
 
                         // construct reply packets
                         let mut replies: Vec<Packet> = Vec::with_capacity(1);
-                        let connection_handle = self.packet_handler.reject_file_transfer_request(&service_id, file_transfer_handle, &mut replies)?;
+                        let connection_handle = self.packet_handler.reject_file_transfer_request(
+                            &service_id,
+                            file_transfer_handle,
+                            &mut replies,
+                        )?;
 
                         // remove our file download struct
-                        let connection = self.connections.get_mut(&connection_handle).context("missing Connection struct")?;
-                        connection.file_downloads.remove(&file_transfer_handle).context("missing FileDownload struct")?;
+                        let connection = self
+                            .connections
+                            .get_mut(&connection_handle)
+                            .context("missing Connection struct")?;
+                        connection
+                            .file_downloads
+                            .remove(&file_transfer_handle)
+                            .context("missing FileDownload struct")?;
 
                         // queue packets for writing
                         connection.write_packets.append(&mut replies);
 
                         // fire callback
-                        let direction = tego_file_transfer_direction::tego_file_transfer_direction_receiving;
-                        self.callback_queue.push(CallbackData::FileTransferComplete{
-                            user_id: service_id,
-                            file_transfer_id,
-                            direction,
-                            result: tego_file_transfer_result::tego_file_transfer_result_rejected
-                        });
+                        let direction =
+                            tego_file_transfer_direction::tego_file_transfer_direction_receiving;
+                        self.callback_queue
+                            .push(CallbackData::FileTransferComplete {
+                                user_id: service_id,
+                                file_transfer_id,
+                                direction,
+                                result:
+                                    tego_file_transfer_result::tego_file_transfer_result_rejected,
+                            });
 
                         Ok(())
                     };
 
                     result.resolve(handle_reject_file_transfer_request());
-                },
-                CommandData::CancelFileTransfer{service_id, file_transfer_id, result} => {
+                }
+                CommandData::CancelFileTransfer {
+                    service_id,
+                    file_transfer_id,
+                    result,
+                } => {
                     let handle_cancel_file_transfer = || -> Result<()> {
                         let file_transfer_handle: FileTransferHandle = file_transfer_id.into();
 
                         // construct reply packets
                         let mut replies: Vec<Packet> = Vec::with_capacity(1);
-                        let connection_handle = self.packet_handler.cancel_file_transfer(&service_id, file_transfer_handle, &mut replies)?;
+                        let connection_handle = self.packet_handler.cancel_file_transfer(
+                            &service_id,
+                            file_transfer_handle,
+                            &mut replies,
+                        )?;
 
                         // remove our file download/upload struct
-                        let connection = self.connections.get_mut(&connection_handle).context("missing Connection struct")?;
+                        let connection = self
+                            .connections
+                            .get_mut(&connection_handle)
+                            .context("missing Connection struct")?;
 
-                        let direction = if connection.file_downloads.remove(&file_transfer_handle).is_some() {
+                        let direction = if connection
+                            .file_downloads
+                            .remove(&file_transfer_handle)
+                            .is_some()
+                        {
                             tego_file_transfer_direction::tego_file_transfer_direction_receiving
                         } else {
-                            connection.file_uploads.remove(&file_transfer_handle).context("missing FileDownload or FileUpload struct")?;
+                            connection
+                                .file_uploads
+                                .remove(&file_transfer_handle)
+                                .context("missing FileDownload or FileUpload struct")?;
                             tego_file_transfer_direction::tego_file_transfer_direction_sending
                         };
 
@@ -784,12 +924,14 @@ impl EventLoopTask {
                         connection.write_packets.append(&mut replies);
 
                         // fire callback
-                        self.callback_queue.push(CallbackData::FileTransferComplete{
-                            user_id: service_id,
-                            file_transfer_id,
-                            direction,
-                            result: tego_file_transfer_result::tego_file_transfer_result_cancelled
-                        });
+                        self.callback_queue
+                            .push(CallbackData::FileTransferComplete {
+                                user_id: service_id,
+                                file_transfer_id,
+                                direction,
+                                result:
+                                    tego_file_transfer_result::tego_file_transfer_result_cancelled,
+                            });
 
                         Ok(())
                     };
@@ -808,7 +950,6 @@ impl EventLoopTask {
     }
 
     fn handle_connections(&mut self) -> Result<()> {
-
         // connections to be removed
         let mut to_remove: BTreeSet<ConnectionHandle> = Default::default();
         // TODO: we need some kind of exponential backoff for repeated failures to connect+authenticate
@@ -831,21 +972,24 @@ impl EventLoopTask {
                         if let Some(_service_id) = &connection.service_id {
                             // to_retry.insert(service_id.clone());
                         }
-                    },
+                    }
                 },
                 Ok(0) => {
-                   // end of stream
+                    // end of stream
                     println!("stream read err: end of stream");
                     connection.remove = true;
                     // todo: we should only retry allowed or pending contacts
                     if let Some(_service_id) = &connection.service_id {
                         // to_retry.insert(service_id.clone());
                     }
-                },
+                }
                 Ok(size) => {
                     let read_buffer = &self.read_buffer[..size];
-                    connection.read_bytes.write_all(read_buffer).expect("read_bytes write failed");
-                },
+                    connection
+                        .read_bytes
+                        .write_all(read_buffer)
+                        .expect("read_bytes write failed");
+                }
             }
 
             // handle reading packets
@@ -867,10 +1011,10 @@ impl EventLoopTask {
                             trim_count += size;
                             // save off read bytes for handling
                             read_packets.push(packet);
-                        },
+                        }
                         Err(Error::NeedMoreBytes) => {
                             break 'packet_parse;
-                        },
+                        }
                         Err(err) => {
                             // TODO: report error somewhere?
                             println!("parse packet error: {err:?}");
@@ -878,7 +1022,7 @@ impl EventLoopTask {
                             // drop connection
                             connection.remove = true;
                             break 'packet_parse;
-                        },
+                        }
                     }
                 }
 
@@ -887,93 +1031,152 @@ impl EventLoopTask {
 
                 // handle packets and queue responses
                 'packet_handle: for packet in read_packets.drain(..) {
-                    match self.packet_handler.handle_packet(handle, packet, write_packets) {
+                    match self
+                        .packet_handler
+                        .handle_packet(handle, packet, write_packets)
+                    {
                         Ok(Event::IntroductionReceived) => {
                             println!("--- introduction received ---");
-                        },
+                        }
                         Ok(Event::IntroductionResponseReceived) => {
                             println!("--- introduction response received ---");
-                        },
+                        }
                         Ok(Event::OpenChannelAuthHiddenServiceReceived) => {
                             println!("--- open auth hidden service received ---");
-                        },
-                        Ok(Event::ClientAuthenticated{service_id, duplicate_connection}) => {
+                        }
+                        Ok(Event::ClientAuthenticated {
+                            service_id,
+                            duplicate_connection,
+                        }) => {
                             // todo: handle closed connection
                             println!("--- client authenticated: peer: {service_id:?}, duplicate_connection: {duplicate_connection:?} ---");
                             connection.service_id = Some(service_id);
                             if duplicate_connection.is_some() {
                                 connection.remove = true;
                             }
-                        },
-                        Ok(Event::BlockedClientAuthenticationAttempted{service_id}) => {
-                            println!("--- blocked client attempted authentication, peer: {service_id}");
+                        }
+                        Ok(Event::BlockedClientAuthenticationAttempted { service_id }) => {
+                            println!(
+                                "--- blocked client attempted authentication, peer: {service_id}"
+                            );
                             connection.remove = true;
                             break 'packet_handle;
-                        },
-                        Ok(Event::HostAuthenticated{service_id, duplicate_connection}) => {
+                        }
+                        Ok(Event::HostAuthenticated {
+                            service_id,
+                            duplicate_connection,
+                        }) => {
                             // todo: handle closed connection
                             println!("--- host authenticated: peer: {service_id:?}, duplicate_connection: {duplicate_connection:?} ---");
                             if duplicate_connection.is_some() {
                                 connection.remove = true;
                             }
-                        },
-                        Ok(Event::DuplicateConnectionDropped{duplicate_connection}) => {
+                        }
+                        Ok(Event::DuplicateConnectionDropped {
+                            duplicate_connection,
+                        }) => {
                             // todo: handle closed connection
                             println!("--- duplicate connection dropped: {duplicate_connection}");
                             connection.remove = true;
                         }
-                        Ok(Event::ContactRequestReceived{service_id, nickname: _, message_text}) => {
+                        Ok(Event::ContactRequestReceived {
+                            service_id,
+                            nickname: _,
+                            message_text,
+                        }) => {
                             println!("--- contact request received, peer: {service_id:?}, message_text: \"{message_text}\"");
-                            self.callback_queue.push(CallbackData::ChatRequestReceived{service_id, message: message_text});
-                        },
-                        Ok(Event::ContactRequestResultPending{service_id}) => {
+                            self.callback_queue.push(CallbackData::ChatRequestReceived {
+                                service_id,
+                                message: message_text,
+                            });
+                        }
+                        Ok(Event::ContactRequestResultPending { service_id }) => {
                             println!("--- contact request result pending, peer: {service_id:?}");
-                        },
-                        Ok(Event::ContactRequestResultAccepted{service_id}) => {
+                        }
+                        Ok(Event::ContactRequestResultAccepted { service_id }) => {
                             println!("--- contact request result accepted, peer: {service_id:?}");
-                            self.callback_queue.push(CallbackData::ChatRequestResponseReceived{service_id, accepted_request: true});
-                        },
-                        Ok(Event::ContactRequestResultRejected{service_id}) => {
+                            self.callback_queue
+                                .push(CallbackData::ChatRequestResponseReceived {
+                                    service_id,
+                                    accepted_request: true,
+                                });
+                        }
+                        Ok(Event::ContactRequestResultRejected { service_id }) => {
                             println!("--- contact request result rejected, peer: {service_id:?}");
                             connection.remove = true;
-                            self.callback_queue.push(CallbackData::ChatRequestResponseReceived{service_id, accepted_request: false});
-                        },
-                        Ok(Event::IncomingChatChannelOpened{service_id}) => {
+                            self.callback_queue
+                                .push(CallbackData::ChatRequestResponseReceived {
+                                    service_id,
+                                    accepted_request: false,
+                                });
+                        }
+                        Ok(Event::IncomingChatChannelOpened { service_id }) => {
                             println!("--- incoming chat channel opened, peer: {service_id:?} ---");
-                        },
-                        Ok(Event::IncomingFileTransferChannelOpened{service_id}) => {
+                        }
+                        Ok(Event::IncomingFileTransferChannelOpened { service_id }) => {
                             println!("--- incoming file transfer channel opened, peer: {service_id:?} ---");
-                        },
-                        Ok(Event::OutgoingAuthHiddenServiceChannelOpened{service_id}) => {
+                        }
+                        Ok(Event::OutgoingAuthHiddenServiceChannelOpened { service_id }) => {
                             println!("--- outgoing auth hidden service channel opened, peer: {service_id:?} ---");
-                        },
-                        Ok(Event::OutgoingChatChannelOpened{service_id}) => {
+                        }
+                        Ok(Event::OutgoingChatChannelOpened { service_id }) => {
                             println!("--- outgoing chat channel opened, peer: {service_id:?} ---");
-                            self.callback_queue.push(CallbackData::UserStatusChanged{service_id, status: tego_user_status::tego_user_status_online});
-                        },
-                        Ok(Event::OutgoingFileTransferChannelOpened{service_id}) => {
+                            self.callback_queue.push(CallbackData::UserStatusChanged {
+                                service_id,
+                                status: tego_user_status::tego_user_status_online,
+                            });
+                        }
+                        Ok(Event::OutgoingFileTransferChannelOpened { service_id }) => {
                             println!("--- outgoing file transfer channel opened, peer: {service_id:?} ---");
-                        },
-                        Ok(Event::ChatMessageReceived{service_id, message_text, message_handle, time_delta}) => {
+                        }
+                        Ok(Event::ChatMessageReceived {
+                            service_id,
+                            message_text,
+                            message_handle,
+                            time_delta,
+                        }) => {
                             println!("--- chat message receved, peer: {service_id:?}, message: \"{message_text}, message_handle: {message_handle:?}, time_delta: {time_delta:?}");
                             let now = std::time::SystemTime::now();
                             let timestamp = now.checked_sub(time_delta).unwrap();
                             let message_id: tego_message_id = message_handle.into();
                             let message = message_text;
-                            self.callback_queue.push(CallbackData::MessageReceived{service_id, timestamp, message_id, message});
-                        },
-                        Ok(Event::ChatAcknowledgeReceived{service_id, message_handle, accepted}) => {
+                            self.callback_queue.push(CallbackData::MessageReceived {
+                                service_id,
+                                timestamp,
+                                message_id,
+                                message,
+                            });
+                        }
+                        Ok(Event::ChatAcknowledgeReceived {
+                            service_id,
+                            message_handle,
+                            accepted,
+                        }) => {
                             println!("--- chat ack received, peer: {service_id:?}, message_handle: {message_handle:?}, accepted: {accepted}");
                             let message_id: tego_message_id = message_handle.into();
-                            self.callback_queue.push(CallbackData::MessageAcknowledged{service_id, message_id, accepted});
-                        },
-                        Ok(Event::FileTransferRequestReceived{service_id, file_transfer_handle, file_name, file_size, file_hash}) => {
+                            self.callback_queue.push(CallbackData::MessageAcknowledged {
+                                service_id,
+                                message_id,
+                                accepted,
+                            });
+                        }
+                        Ok(Event::FileTransferRequestReceived {
+                            service_id,
+                            file_transfer_handle,
+                            file_name,
+                            file_size,
+                            file_hash,
+                        }) => {
                             println!("--- file transfer request received, peer: {service_id:?}, file_transfer_handle: {file_transfer_handle:?}, file_name: {file_name}, file_size: {file_size}");
 
                             // the protocol handler *shouldn't* be returning duplicate handles but we get them
                             // from the other party so really we have no control here :(
-                            let file_transfer_id: tego_file_transfer_id = file_transfer_handle.into();
-                            if connection.file_downloads.contains_key(&file_transfer_handle) {
+                            let file_transfer_id: tego_file_transfer_id =
+                                file_transfer_handle.into();
+                            if connection
+                                .file_downloads
+                                .contains_key(&file_transfer_handle)
+                            {
                                 // if we have a collision, just cancel the old one
                                 self.callback_queue.push(CallbackData::FileTransferComplete{
                                     user_id: service_id.clone(),
@@ -984,24 +1187,46 @@ impl EventLoopTask {
                             }
 
                             let file_download: FileDownload = FileDownload::new(file_size);
-                            connection.file_downloads.insert(file_transfer_handle, file_download);
+                            connection
+                                .file_downloads
+                                .insert(file_transfer_handle, file_download);
 
-                            self.callback_queue.push(CallbackData::FileTransferRequestReceived{sender: service_id, file_transfer_id, file_name, file_size, file_hash});
-                        },
-                        Ok(Event::FileTransferRequestAcknowledgeReceived{service_id, file_transfer_handle, accepted}) => {
+                            self.callback_queue
+                                .push(CallbackData::FileTransferRequestReceived {
+                                    sender: service_id,
+                                    file_transfer_id,
+                                    file_name,
+                                    file_size,
+                                    file_hash,
+                                });
+                        }
+                        Ok(Event::FileTransferRequestAcknowledgeReceived {
+                            service_id,
+                            file_transfer_handle,
+                            accepted,
+                        }) => {
                             println!("--- file transfer request ack received, peer: {service_id:?}, file_transfer_handle: {file_transfer_handle:?}, accepted: {accepted}");
-                            self.callback_queue.push(CallbackData::FileTransferRequestAcknowledged{
-                                service_id,
-                                file_transfer_id: file_transfer_handle.into(),
-                                accepted
-                            });
-                        },
-                        Ok(Event::FileTransferRequestAccepted{service_id, file_transfer_handle}) => {
+                            self.callback_queue.push(
+                                CallbackData::FileTransferRequestAcknowledged {
+                                    service_id,
+                                    file_transfer_id: file_transfer_handle.into(),
+                                    accepted,
+                                },
+                            );
+                        }
+                        Ok(Event::FileTransferRequestAccepted {
+                            service_id,
+                            file_transfer_handle,
+                        }) => {
                             println!("--- file transfer request accepted, peer: {service_id:?}, file_transfer_handle: {file_transfer_handle:?}");
 
-                            let file_transfer_id: tego_file_transfer_id = file_transfer_handle.into();
+                            let file_transfer_id: tego_file_transfer_id =
+                                file_transfer_handle.into();
 
-                            let file_upload = connection.file_uploads.get_mut(&file_transfer_handle).unwrap();
+                            let file_upload = connection
+                                .file_uploads
+                                .get_mut(&file_transfer_handle)
+                                .unwrap();
 
                             // begin sending chunks
                             let bytes_read = match file_upload.read(&mut self.file_read_buffer) {
@@ -1010,17 +1235,22 @@ impl EventLoopTask {
                             };
                             let chunk_data: Vec<u8> = self.file_read_buffer[..bytes_read].to_vec();
 
-                            self.packet_handler.send_file_chunk(
-                                &service_id,
-                                file_transfer_handle,
-                                chunk_data,
-                                write_packets).unwrap();
+                            self.packet_handler
+                                .send_file_chunk(
+                                    &service_id,
+                                    file_transfer_handle,
+                                    chunk_data,
+                                    write_packets,
+                                )
+                                .unwrap();
 
                             // trigger callbacks
-                            self.callback_queue.push(CallbackData::FileTransferRequestResponseReceived{
+                            self.callback_queue
+                                .push(CallbackData::FileTransferRequestResponseReceived {
                                 service_id: service_id.clone(),
                                 file_transfer_id,
-                                response: tego_file_transfer_response::tego_file_transfer_response_accept
+                                response:
+                                    tego_file_transfer_response::tego_file_transfer_response_accept,
                             });
                             self.callback_queue.push(CallbackData::FileTransferProgress{
                                 user_id: service_id,
@@ -1031,22 +1261,34 @@ impl EventLoopTask {
                             });
 
                             file_upload.bytes_sent += bytes_read as u64;
-                        },
-                        Ok(Event::FileTransferRequestRejected{service_id, file_transfer_handle}) => {
+                        }
+                        Ok(Event::FileTransferRequestRejected {
+                            service_id,
+                            file_transfer_handle,
+                        }) => {
                             println!("--- file transfer request rejected, peer: {service_id:?}, file_transfer_handle: {file_transfer_handle:?}");
 
-                            let file_transfer_id: tego_file_transfer_id = file_transfer_handle.into();
-                            self.callback_queue.push(CallbackData::FileTransferRequestResponseReceived{
+                            let file_transfer_id: tego_file_transfer_id =
+                                file_transfer_handle.into();
+                            self.callback_queue
+                                .push(CallbackData::FileTransferRequestResponseReceived {
                                 service_id,
                                 file_transfer_id,
-                                response: tego_file_transfer_response::tego_file_transfer_response_reject
+                                response:
+                                    tego_file_transfer_response::tego_file_transfer_response_reject,
                             });
-                        },
-                        Ok(Event::FileChunkReceived{service_id, file_transfer_handle, data, last_chunk, hash_matches}) => {
-
+                        }
+                        Ok(Event::FileChunkReceived {
+                            service_id,
+                            file_transfer_handle,
+                            data,
+                            last_chunk,
+                            hash_matches,
+                        }) => {
                             println!("--- file chunk received, peer: {service_id:?}, file_transfer_handle: {file_transfer_handle:?}, data: [u8; {}], last_chunk: {last_chunk}, hash_matches: {hash_matches:?}", data.len());
 
-                            let file_transfer_id: tego_file_transfer_id = file_transfer_handle.into();
+                            let file_transfer_id: tego_file_transfer_id =
+                                file_transfer_handle.into();
 
                             // these two last_chunk checks get us a Option<FileDownload&>
                             // in both cases where we need to remove it and where we need to modify
@@ -1073,7 +1315,7 @@ impl EventLoopTask {
                                         bytes_complete: file_download.bytes_written,
                                         bytes_total: file_download.expected_size,
                                     });
-                                },
+                                }
                                 Err(_) => {
                                     self.callback_queue.push(CallbackData::FileTransferComplete{
                                         user_id: service_id,
@@ -1089,7 +1331,6 @@ impl EventLoopTask {
                             match (last_chunk, hash_matches) {
                                 // download complete, hashes match
                                 (true, Some(true)) => {
-
                                     let result = match file_download.finalize() {
                                         Ok(()) => tego_file_transfer_result::tego_file_transfer_result_success,
                                         Err(_) => tego_file_transfer_result::tego_file_transfer_result_filesystem_error,
@@ -1101,8 +1342,7 @@ impl EventLoopTask {
                                         direction: tego_file_transfer_direction::tego_file_transfer_direction_receiving,
                                         result,
                                     });
-
-                                },
+                                }
                                 // download complete, hashes do not match
                                 (true, Some(false)) => {
                                     self.callback_queue.push(CallbackData::FileTransferComplete{
@@ -1111,18 +1351,26 @@ impl EventLoopTask {
                                         direction: tego_file_transfer_direction::tego_file_transfer_direction_receiving,
                                         result: tego_file_transfer_result::tego_file_transfer_result_bad_hash,
                                     });
-                                },
+                                }
                                 // download not complete, no hash to check
                                 (false, None) => (),
                                 // remaining states are not possible
                                 _ => unreachable!(),
                             }
-                        },
-                        Ok(Event::FileChunkAckReceived{service_id, file_transfer_handle, offset}) => {
+                        }
+                        Ok(Event::FileChunkAckReceived {
+                            service_id,
+                            file_transfer_handle,
+                            offset,
+                        }) => {
                             println!("--- file chunk ack received, peer: {service_id:?}, file_transfer_handle: {file_transfer_handle:?}, offset: {offset}");
 
-                            let file_transfer_id: tego_file_transfer_id = file_transfer_handle.into();
-                            let file_upload = connection.file_uploads.get_mut(&file_transfer_handle).unwrap();
+                            let file_transfer_id: tego_file_transfer_id =
+                                file_transfer_handle.into();
+                            let file_upload = connection
+                                .file_uploads
+                                .get_mut(&file_transfer_handle)
+                                .unwrap();
 
                             self.callback_queue.push(CallbackData::FileTransferProgress{
                                 user_id: service_id.clone(),
@@ -1137,59 +1385,76 @@ impl EventLoopTask {
 
                             if file_upload.bytes_sent < file_upload.size {
                                 // send next chunk if there is more data to sesnd
-                                let bytes_read = match file_upload.read(&mut self.file_read_buffer) {
+                                let bytes_read = match file_upload.read(&mut self.file_read_buffer)
+                                {
                                     Ok(bytes_read) => bytes_read,
                                     Err(_) => todo!(),
                                 };
-                                let chunk_data: Vec<u8> = self.file_read_buffer[..bytes_read].to_vec();
+                                let chunk_data: Vec<u8> =
+                                    self.file_read_buffer[..bytes_read].to_vec();
 
-                                self.packet_handler.send_file_chunk(
-                                    &service_id,
-                                    file_transfer_handle,
-                                    chunk_data,
-                                    write_packets).unwrap();
+                                self.packet_handler
+                                    .send_file_chunk(
+                                        &service_id,
+                                        file_transfer_handle,
+                                        chunk_data,
+                                        write_packets,
+                                    )
+                                    .unwrap();
 
-                                file_upload.bytes_sent += bytes_read as u64 ;
+                                file_upload.bytes_sent += bytes_read as u64;
                             }
-                        },
-                        Ok(Event::FileTransferSucceeded{service_id, file_transfer_handle}) => {
+                        }
+                        Ok(Event::FileTransferSucceeded {
+                            service_id,
+                            file_transfer_handle,
+                        }) => {
                             println!("--- file transfer succeeded, peer: {service_id}, file_transfer_handle: {file_transfer_handle:?}");
 
-                            let file_transfer_id: tego_file_transfer_id = file_transfer_handle.into();
+                            let file_transfer_id: tego_file_transfer_id =
+                                file_transfer_handle.into();
                             self.callback_queue.push(CallbackData::FileTransferComplete{
                                 user_id: service_id,
                                 file_transfer_id,
                                 direction: tego_file_transfer_direction::tego_file_transfer_direction_sending,
                                 result: tego_file_transfer_result::tego_file_transfer_result_success
                             });
-                        },
-                        Ok(Event::FileTransferFailed{service_id, file_transfer_handle}) => {
+                        }
+                        Ok(Event::FileTransferFailed {
+                            service_id,
+                            file_transfer_handle,
+                        }) => {
                             println!("--- file transfer failed, peer: {service_id}, file_transfer_handle: {file_transfer_handle:?}");
 
-                            let file_transfer_id: tego_file_transfer_id = file_transfer_handle.into();
+                            let file_transfer_id: tego_file_transfer_id =
+                                file_transfer_handle.into();
                             self.callback_queue.push(CallbackData::FileTransferComplete{
                                 user_id: service_id,
                                 file_transfer_id,
                                 direction: tego_file_transfer_direction::tego_file_transfer_direction_sending,
                                 result: tego_file_transfer_result::tego_file_transfer_result_failure
                             });
-                        },
-                        Ok(Event::FileTransferCancelled{service_id, file_transfer_handle}) => {
+                        }
+                        Ok(Event::FileTransferCancelled {
+                            service_id,
+                            file_transfer_handle,
+                        }) => {
                             println!("--- file transfer cancelled, peer: {service_id}, file_transfer_handle: {file_transfer_handle:?}");
 
-                            let file_transfer_id: tego_file_transfer_id = file_transfer_handle.into();
+                            let file_transfer_id: tego_file_transfer_id =
+                                file_transfer_handle.into();
                             self.callback_queue.push(CallbackData::FileTransferComplete{
                                 user_id: service_id,
                                 file_transfer_id,
                                 direction: tego_file_transfer_direction::tego_file_transfer_direction_sending,
                                 result: tego_file_transfer_result::tego_file_transfer_result_cancelled
                             });
-                        },
-                        Ok(Event::ChannelClosed{id}) => {
+                        }
+                        Ok(Event::ChannelClosed { id }) => {
                             println!("--- channel closed: {id} ---");
-                        },
+                        }
                         // errors
-                        Ok(Event::ProtocolFailure{message}) => {
+                        Ok(Event::ProtocolFailure { message }) => {
                             println!("--- non-fatal protocol failure: {message} ---");
                         }
                         Ok(Event::FatalProtocolFailure) => {
@@ -1208,7 +1473,9 @@ impl EventLoopTask {
                 let mut write_bytes: Vec<u8> = Default::default();
                 for packet in write_packets.drain(..) {
                     println!(">> write packet: {packet:?}");
-                    packet.write_to_vec(&mut write_bytes).expect("packet write failed");
+                    packet
+                        .write_to_vec(&mut write_bytes)
+                        .expect("packet write failed");
                 }
 
                 // send bytes
@@ -1231,16 +1498,20 @@ impl EventLoopTask {
         // drop our dead connections
         for &handle in to_remove.iter() {
             self.packet_handler.remove_connection(&handle);
-            let connection = self.connections.remove(&handle).expect("removed non-existing connection");
+            let connection = self
+                .connections
+                .remove(&handle)
+                .expect("removed non-existing connection");
             // signal user ofline status to frontend
-            if  let Some(service_id) = connection.service_id {
+            if let Some(service_id) = connection.service_id {
                 println!("--- dropping connection; handle: {handle}, service_id: {service_id}");
                 // signal user offline status if there is not another connection
                 // todo: only signal for allowed users
                 if !self.packet_handler.has_verified_connection(&service_id) {
                     use crate::ffi::tego_user_status::tego_user_status_offline;
                     let status = tego_user_status_offline;
-                    self.callback_queue.push(CallbackData::UserStatusChanged{service_id, status});
+                    self.callback_queue
+                        .push(CallbackData::UserStatusChanged { service_id, status });
                 }
             } else {
                 println!("--- dropping connection; handle: {handle}");
@@ -1252,16 +1523,20 @@ impl EventLoopTask {
             // todo: check if user is allowed or pending or requesting
             let service_id = service_id.clone();
 
-            let command_data = CommandData::ConnectContact{service_id, failure_count: 0, contact_request_message: None};
+            let command_data = CommandData::ConnectContact {
+                service_id,
+                failure_count: 0,
+                contact_request_message: None,
+            };
 
-            self.command_queue.push(command_data, Duration::from_secs(0));
+            self.command_queue
+                .push(command_data, Duration::from_secs(0));
         }
 
         Ok(())
     }
 
     fn handle_callbacks(&mut self) -> Result<()> {
-
         let context = self.context as *mut tego_context;
 
         let callbacks = self.callbacks.upgrade().context("callbacks dropped")?;
@@ -1269,145 +1544,259 @@ impl EventLoopTask {
 
         for cd in self.callback_queue.drain(..) {
             match cd {
-                CallbackData::TorNetworkStatusChanged{status} => {
-                    if let Some(on_tor_network_status_changed) = callbacks.on_tor_network_status_changed {
+                CallbackData::TorNetworkStatusChanged { status } => {
+                    if let Some(on_tor_network_status_changed) =
+                        callbacks.on_tor_network_status_changed
+                    {
                         println!("-- invoke on_tor_network_status_changed");
                         on_tor_network_status_changed(context, status);
                     }
-                },
-                CallbackData::TorBootstrapStatusChanged{progress, tag} => {
-                    if let Some(on_tor_bootstrap_status_changed) = callbacks.on_tor_bootstrap_status_changed {
+                }
+                CallbackData::TorBootstrapStatusChanged { progress, tag } => {
+                    if let Some(on_tor_bootstrap_status_changed) =
+                        callbacks.on_tor_bootstrap_status_changed
+                    {
                         println!("-- invoke on_tor_bootstrap_status_changed");
-                        on_tor_bootstrap_status_changed(context, progress as i32, tag.as_str().into());
+                        on_tor_bootstrap_status_changed(
+                            context,
+                            progress as i32,
+                            tag.as_str().into(),
+                        );
                     }
-                },
-                CallbackData::TorLogReceived{line} => {
+                }
+                CallbackData::TorLogReceived { line } => {
                     if let Some(on_tor_log_received) = callbacks.on_tor_log_received {
                         println!("-- invoke on_tor_log_received");
                         let line = CString::new(line.as_str()).unwrap();
                         let line_len = line.as_bytes().len();
                         on_tor_log_received(context, line.as_c_str().as_ptr(), line_len);
                     }
-                },
-                CallbackData::HostOnionServiceStateChanged{state} => {
-                    if let Some(on_host_onion_service_state_changed) = callbacks.on_host_onion_service_state_changed {
+                }
+                CallbackData::HostOnionServiceStateChanged { state } => {
+                    if let Some(on_host_onion_service_state_changed) =
+                        callbacks.on_host_onion_service_state_changed
+                    {
                         println!("-- invoke on_host_onion_service_state_changed");
                         on_host_onion_service_state_changed(context, state);
                     }
-                },
-                CallbackData::ChatRequestReceived{service_id, message} => {
+                }
+                CallbackData::ChatRequestReceived {
+                    service_id,
+                    message,
+                } => {
                     if let Some(on_chat_request_received) = callbacks.on_chat_request_received {
                         println!("-- invoke on_chat_request_received");
-                        let sender = get_object_map().insert(TegoObject::UserId(UserId{service_id}));
+                        let sender =
+                            get_object_map().insert(TegoObject::UserId(UserId { service_id }));
                         let message = CString::new(message.as_str()).unwrap();
                         let message_len = message.as_bytes().len();
-                        on_chat_request_received(context, sender as *const tego_user_id, message.as_c_str().as_ptr(), message_len);
+                        on_chat_request_received(
+                            context,
+                            sender as *const tego_user_id,
+                            message.as_c_str().as_ptr(),
+                            message_len,
+                        );
                         get_object_map().remove(&sender);
                     }
-                },
-                CallbackData::ChatRequestResponseReceived{service_id, accepted_request} => {
-                    if let Some(on_chat_request_response_received) = callbacks.on_chat_request_response_received {
+                }
+                CallbackData::ChatRequestResponseReceived {
+                    service_id,
+                    accepted_request,
+                } => {
+                    if let Some(on_chat_request_response_received) =
+                        callbacks.on_chat_request_response_received
+                    {
                         println!("-- invoke on_chat_request_response_received");
-                        let sender = get_object_map().insert(TegoObject::UserId(UserId{service_id}));
+                        let sender =
+                            get_object_map().insert(TegoObject::UserId(UserId { service_id }));
                         let accepted_request = if accepted_request {
                             TEGO_TRUE
                         } else {
                             TEGO_FALSE
                         };
-                        on_chat_request_response_received(context, sender as *const tego_user_id, accepted_request);
+                        on_chat_request_response_received(
+                            context,
+                            sender as *const tego_user_id,
+                            accepted_request,
+                        );
                         get_object_map().remove(&sender);
                     }
-                },
-                CallbackData::UserStatusChanged{service_id, status} => {
+                }
+                CallbackData::UserStatusChanged { service_id, status } => {
                     if let Some(on_user_status_changed) = callbacks.on_user_status_changed {
                         println!("-- invoke on_user_status_changed");
-                        let user = get_object_map().insert(TegoObject::UserId(UserId{service_id}));
+                        let user =
+                            get_object_map().insert(TegoObject::UserId(UserId { service_id }));
                         on_user_status_changed(context, user as *const tego_user_id, status);
                         get_object_map().remove(&user);
                     }
-                },
-                CallbackData::MessageReceived{service_id, timestamp, message_id, message} => {
+                }
+                CallbackData::MessageReceived {
+                    service_id,
+                    timestamp,
+                    message_id,
+                    message,
+                } => {
                     if let Some(on_message_received) = callbacks.on_message_received {
                         println!("-- invoke on_message_received");
-                        let user = get_object_map().insert(TegoObject::UserId(UserId{service_id}));
+                        let user =
+                            get_object_map().insert(TegoObject::UserId(UserId { service_id }));
                         let timestamp = timestamp.duration_since(std::time::UNIX_EPOCH).unwrap();
                         let timestamp = timestamp.as_millis() as tego_time;
                         assert!(timestamp > 0);
 
                         let message = CString::new(message.as_str()).unwrap();
                         let message_len = message.as_bytes().len();
-                        on_message_received(context, user as *const tego_user_id, timestamp, message_id, message.as_c_str().as_ptr(), message_len);
+                        on_message_received(
+                            context,
+                            user as *const tego_user_id,
+                            timestamp,
+                            message_id,
+                            message.as_c_str().as_ptr(),
+                            message_len,
+                        );
 
                         get_object_map().remove(&user);
                     }
-                },
-                CallbackData::MessageAcknowledged{service_id, message_id, accepted} => {
+                }
+                CallbackData::MessageAcknowledged {
+                    service_id,
+                    message_id,
+                    accepted,
+                } => {
                     if let Some(on_message_acknowledged) = callbacks.on_message_acknowledged {
                         println!("-- invoke on_message_acknowledged");
-                        let user = get_object_map().insert(TegoObject::UserId(UserId{service_id}));
-                        let accepted = if accepted {
-                            TEGO_TRUE
-                        } else {
-                            TEGO_FALSE
-                        };
-                        on_message_acknowledged(context, user as *const tego_user_id, message_id, accepted);
+                        let user =
+                            get_object_map().insert(TegoObject::UserId(UserId { service_id }));
+                        let accepted = if accepted { TEGO_TRUE } else { TEGO_FALSE };
+                        on_message_acknowledged(
+                            context,
+                            user as *const tego_user_id,
+                            message_id,
+                            accepted,
+                        );
                         get_object_map().remove(&user);
                     }
-                },
-                CallbackData::FileTransferRequestReceived{sender, file_transfer_id, file_name, file_size, file_hash} => {
-                    if let Some(on_file_transfer_request_received) = callbacks.on_file_transfer_request_received {
+                }
+                CallbackData::FileTransferRequestReceived {
+                    sender,
+                    file_transfer_id,
+                    file_name,
+                    file_size,
+                    file_hash,
+                } => {
+                    if let Some(on_file_transfer_request_received) =
+                        callbacks.on_file_transfer_request_received
+                    {
                         println!("-- invoke on_file_transfer_request_received");
 
-                        let sender = get_object_map().insert(TegoObject::UserId(UserId{service_id: sender}));
+                        let sender = get_object_map()
+                            .insert(TegoObject::UserId(UserId { service_id: sender }));
                         let file_name = CString::new(file_name.as_str()).unwrap();
                         let file_name_length = file_name.as_bytes().len();
-                        let file_hash = get_object_map().insert(TegoObject::FileHash(FileHash{data: file_hash}));
+                        let file_hash = get_object_map()
+                            .insert(TegoObject::FileHash(FileHash { data: file_hash }));
 
-
-                        on_file_transfer_request_received(context, sender as *const tego_user_id, file_transfer_id, file_name.as_c_str().as_ptr(), file_name_length, file_size, file_hash as *const tego_file_hash);
+                        on_file_transfer_request_received(
+                            context,
+                            sender as *const tego_user_id,
+                            file_transfer_id,
+                            file_name.as_c_str().as_ptr(),
+                            file_name_length,
+                            file_size,
+                            file_hash as *const tego_file_hash,
+                        );
 
                         get_object_map().remove(&sender);
                         get_object_map().remove(&file_hash);
                     }
-                },
-                CallbackData::FileTransferRequestAcknowledged{service_id, file_transfer_id, accepted} => {
-                    if let Some(on_file_transfer_request_acknowledged) = callbacks.on_file_transfer_request_acknowledged {
+                }
+                CallbackData::FileTransferRequestAcknowledged {
+                    service_id,
+                    file_transfer_id,
+                    accepted,
+                } => {
+                    if let Some(on_file_transfer_request_acknowledged) =
+                        callbacks.on_file_transfer_request_acknowledged
+                    {
                         println!("-- invoke on_file_transfer_request_acknowledged");
-                        let user = get_object_map().insert(TegoObject::UserId(UserId{service_id}));
-                        let accepted = if accepted {
-                            TEGO_TRUE
-                        } else {
-                            TEGO_FALSE
-                        };
-                        on_file_transfer_request_acknowledged(context, user as *const tego_user_id, file_transfer_id, accepted);
+                        let user =
+                            get_object_map().insert(TegoObject::UserId(UserId { service_id }));
+                        let accepted = if accepted { TEGO_TRUE } else { TEGO_FALSE };
+                        on_file_transfer_request_acknowledged(
+                            context,
+                            user as *const tego_user_id,
+                            file_transfer_id,
+                            accepted,
+                        );
                         get_object_map().remove(&user);
                     }
-                },
-                CallbackData::FileTransferRequestResponseReceived{service_id, file_transfer_id, response} => {
-                    if let Some(on_file_transfer_request_response_received) = callbacks.on_file_transfer_request_response_received {
+                }
+                CallbackData::FileTransferRequestResponseReceived {
+                    service_id,
+                    file_transfer_id,
+                    response,
+                } => {
+                    if let Some(on_file_transfer_request_response_received) =
+                        callbacks.on_file_transfer_request_response_received
+                    {
                         println!("-- invoke on_file_transfer_request_response_received");
-                        let user = get_object_map().insert(TegoObject::UserId(UserId{service_id}));
+                        let user =
+                            get_object_map().insert(TegoObject::UserId(UserId { service_id }));
 
-                        on_file_transfer_request_response_received(context, user as *const tego_user_id, file_transfer_id, response);
+                        on_file_transfer_request_response_received(
+                            context,
+                            user as *const tego_user_id,
+                            file_transfer_id,
+                            response,
+                        );
                         get_object_map().remove(&user);
                     }
-                },
-                CallbackData::FileTransferProgress{user_id, file_transfer_id, direction, bytes_complete, bytes_total} => {
+                }
+                CallbackData::FileTransferProgress {
+                    user_id,
+                    file_transfer_id,
+                    direction,
+                    bytes_complete,
+                    bytes_total,
+                } => {
                     if let Some(on_file_transfer_progress) = callbacks.on_file_transfer_progress {
                         println!("-- invoke on_file_transfer_progress");
-                        let user_id = get_object_map().insert(TegoObject::UserId(UserId{service_id: user_id}));
+                        let user_id = get_object_map().insert(TegoObject::UserId(UserId {
+                            service_id: user_id,
+                        }));
 
-                        on_file_transfer_progress(context, user_id as *const tego_user_id, file_transfer_id, direction, bytes_complete, bytes_total);
+                        on_file_transfer_progress(
+                            context,
+                            user_id as *const tego_user_id,
+                            file_transfer_id,
+                            direction,
+                            bytes_complete,
+                            bytes_total,
+                        );
 
                         get_object_map().remove(&user_id);
                     }
-                },
-                CallbackData::FileTransferComplete{user_id, file_transfer_id, direction, result} => {
+                }
+                CallbackData::FileTransferComplete {
+                    user_id,
+                    file_transfer_id,
+                    direction,
+                    result,
+                } => {
                     if let Some(on_file_transfer_complete) = callbacks.on_file_transfer_complete {
                         println!("-- invoke on_file_transfer_complete");
-                        let user_id = get_object_map().insert(TegoObject::UserId(UserId{service_id: user_id}));
+                        let user_id = get_object_map().insert(TegoObject::UserId(UserId {
+                            service_id: user_id,
+                        }));
 
-                        on_file_transfer_complete(context, user_id as *const tego_user_id, file_transfer_id, direction, result);
+                        on_file_transfer_complete(
+                            context,
+                            user_id as *const tego_user_id,
+                            file_transfer_id,
+                            direction,
+                            result,
+                        );
 
                         get_object_map().remove(&user_id);
                     }
@@ -1435,7 +1824,7 @@ impl ListenerTask {
             if let Some(stream) = stream {
                 stream.set_nonblocking(true)?;
                 println!("stream: {stream:?}");
-                command_queue.push(CommandData::BeginServerHandshake{stream}, Duration::ZERO);
+                command_queue.push(CommandData::BeginServerHandshake { stream }, Duration::ZERO);
             }
         }
 
@@ -1462,7 +1851,8 @@ struct Connection {
     pub write_packets: Vec<Packet>,
     // todo: maybe these should also just be a single FileTransfer
     // pending and in-progress file downloads
-    pub file_downloads: BTreeMap<rico_protocol::v3::packet_handler::FileTransferHandle, FileDownload>,
+    pub file_downloads:
+        BTreeMap<rico_protocol::v3::packet_handler::FileTransferHandle, FileDownload>,
     // pending and in-process file uploads
     pub file_uploads: BTreeMap<rico_protocol::v3::packet_handler::FileTransferHandle, FileUpload>,
     // whether this connection should be removed after sending queued packets
@@ -1485,7 +1875,7 @@ struct FileDownload {
 
 impl FileDownload {
     pub fn new(expected_size: u64) -> Self {
-        Self{
+        Self {
             bytes_written: 0u64,
             expected_size,
             final_destination: Default::default(),
@@ -1500,7 +1890,11 @@ impl FileDownload {
 
         // create a temporary file location of the form ".filename.part"
         let mut temp_destination_filename = OsString::from(".");
-        temp_destination_filename.push(final_destination.file_name().context("final_destination has no filename")?);
+        temp_destination_filename.push(
+            final_destination
+                .file_name()
+                .context("final_destination has no filename")?,
+        );
         temp_destination_filename.push(".part");
 
         let mut temp_destination = final_destination.clone();
@@ -1560,7 +1954,7 @@ impl FileUpload {
 
         // calculate the file's hash
         let mut hasher: FileHasher = Default::default();
-        const HASH_BUFFER_SIZE: usize = 64usize*1024usize;
+        const HASH_BUFFER_SIZE: usize = 64usize * 1024usize;
         let mut buffer = [0u8; HASH_BUFFER_SIZE];
 
         let mut bytes_read = 0u64;
@@ -1574,7 +1968,12 @@ impl FileUpload {
         // reset the file read stream to beginning
         file.rewind()?;
 
-        Ok(Self{file, bytes_sent, size, hash})
+        Ok(Self {
+            file,
+            bytes_sent,
+            size,
+            hash,
+        })
     }
 
     pub fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
@@ -1597,20 +1996,72 @@ enum CallbackData {
     UpdateTorDaemonConfigSucceeded,
     TorControlStatusChanged,
     TorProcessStatusChanged,
-    TorNetworkStatusChanged{status: tego_tor_network_status},
-    TorBootstrapStatusChanged{progress: u32, tag: String},
-    TorLogReceived{line: String},
-    HostOnionServiceStateChanged{state: tego_host_onion_service_state},
-    ChatRequestReceived{service_id: V3OnionServiceId, message: String},
-    ChatRequestResponseReceived{service_id: V3OnionServiceId, accepted_request: bool},
-    MessageReceived{service_id: V3OnionServiceId, timestamp: std::time::SystemTime, message_id: tego_message_id, message: String},
-    MessageAcknowledged{service_id: V3OnionServiceId, message_id: tego_message_id, accepted: bool},
-    FileTransferRequestReceived{sender: V3OnionServiceId, file_transfer_id: tego_file_transfer_id, file_name: String, file_size: u64, file_hash: [u8; FILE_HASH_SIZE]},
-    FileTransferRequestAcknowledged{service_id: V3OnionServiceId, file_transfer_id: tego_file_transfer_id, accepted: bool},
-    FileTransferRequestResponseReceived{service_id: V3OnionServiceId, file_transfer_id: tego_file_transfer_id, response: tego_file_transfer_response},
-    FileTransferProgress{user_id: V3OnionServiceId, file_transfer_id: tego_file_transfer_id, direction: tego_file_transfer_direction, bytes_complete: u64, bytes_total: u64},
-    FileTransferComplete{user_id: V3OnionServiceId, file_transfer_id: tego_file_transfer_id, direction: tego_file_transfer_direction, result: tego_file_transfer_result},
-    UserStatusChanged{service_id: V3OnionServiceId, status: tego_user_status},
+    TorNetworkStatusChanged {
+        status: tego_tor_network_status,
+    },
+    TorBootstrapStatusChanged {
+        progress: u32,
+        tag: String,
+    },
+    TorLogReceived {
+        line: String,
+    },
+    HostOnionServiceStateChanged {
+        state: tego_host_onion_service_state,
+    },
+    ChatRequestReceived {
+        service_id: V3OnionServiceId,
+        message: String,
+    },
+    ChatRequestResponseReceived {
+        service_id: V3OnionServiceId,
+        accepted_request: bool,
+    },
+    MessageReceived {
+        service_id: V3OnionServiceId,
+        timestamp: std::time::SystemTime,
+        message_id: tego_message_id,
+        message: String,
+    },
+    MessageAcknowledged {
+        service_id: V3OnionServiceId,
+        message_id: tego_message_id,
+        accepted: bool,
+    },
+    FileTransferRequestReceived {
+        sender: V3OnionServiceId,
+        file_transfer_id: tego_file_transfer_id,
+        file_name: String,
+        file_size: u64,
+        file_hash: [u8; FILE_HASH_SIZE],
+    },
+    FileTransferRequestAcknowledged {
+        service_id: V3OnionServiceId,
+        file_transfer_id: tego_file_transfer_id,
+        accepted: bool,
+    },
+    FileTransferRequestResponseReceived {
+        service_id: V3OnionServiceId,
+        file_transfer_id: tego_file_transfer_id,
+        response: tego_file_transfer_response,
+    },
+    FileTransferProgress {
+        user_id: V3OnionServiceId,
+        file_transfer_id: tego_file_transfer_id,
+        direction: tego_file_transfer_direction,
+        bytes_complete: u64,
+        bytes_total: u64,
+    },
+    FileTransferComplete {
+        user_id: V3OnionServiceId,
+        file_transfer_id: tego_file_transfer_id,
+        direction: tego_file_transfer_direction,
+        result: tego_file_transfer_result,
+    },
+    UserStatusChanged {
+        service_id: V3OnionServiceId,
+        status: tego_user_status,
+    },
     NewIdentityCreated,
 }
 
@@ -1630,7 +2081,8 @@ pub(crate) struct Callbacks {
     pub on_message_acknowledged: tego_message_acknowledged_callback,
     pub on_file_transfer_request_received: tego_file_transfer_request_received_callback,
     pub on_file_transfer_request_acknowledged: tego_file_transfer_request_acknowledged_callback,
-    pub on_file_transfer_request_response_received: tego_file_transfer_request_response_received_callback,
+    pub on_file_transfer_request_response_received:
+        tego_file_transfer_request_response_received_callback,
     pub on_file_transfer_progress: tego_file_transfer_progress_callback,
     pub on_file_transfer_complete: tego_file_transfer_complete_callback,
     pub on_user_status_changed: tego_user_status_changed_callback,

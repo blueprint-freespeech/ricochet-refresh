@@ -7,7 +7,7 @@ pub struct ObjectMap<T> {
 
 impl<T> ObjectMap<T> {
     pub const fn new() -> Self {
-        Self{
+        Self {
             map: None,
             counter: 1usize,
         }
@@ -22,15 +22,17 @@ impl<T> ObjectMap<T> {
     pub fn remove(&mut self, key: &usize) -> Option<T> {
         match &mut self.map {
             Some(map) => map.remove(key),
-            None => None
+            None => None,
         }
     }
 
     pub fn insert(&mut self, val: T) -> usize {
         let key = self.next_key();
         match &mut self.map {
-            Some(map) => if map.insert(key, val).is_some() {
-                panic!()
+            Some(map) => {
+                if map.insert(key, val).is_some() {
+                    panic!()
+                }
             }
             None => {
                 let mut map = BTreeMap::new();

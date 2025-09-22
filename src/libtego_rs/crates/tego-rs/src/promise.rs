@@ -23,7 +23,9 @@ pub struct Promise<T> {
 
 impl<T> Default for Promise<T> {
     fn default() -> Self {
-        Self{data: Arc::new((Mutex::new(None), Default::default()))}
+        Self {
+            data: Arc::new((Mutex::new(None), Default::default())),
+        }
     }
 }
 
@@ -36,6 +38,8 @@ impl<T> Promise<T> {
     }
 
     pub fn get_future(&self) -> Future<T> {
-        Future{data: self.data.clone()}
+        Future {
+            data: self.data.clone(),
+        }
     }
 }

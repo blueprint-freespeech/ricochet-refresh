@@ -2,8 +2,7 @@
 use std::ffi::CString;
 
 // internal crates
-use crate::ffi::{TegoObject, tego_error, get_object_map};
-
+use crate::ffi::{get_object_map, tego_error, TegoObject};
 
 pub(crate) struct Error {
     message: CString,
@@ -12,7 +11,7 @@ pub(crate) struct Error {
 impl Error {
     pub fn new(message: &str) -> Self {
         let message = CString::new(message).unwrap_or_default();
-        Self{message}
+        Self { message }
     }
 
     pub fn message(&self) -> &CString {
@@ -27,11 +26,7 @@ impl Error {
 /// @param out_error: A pointer to pointer to Error 'struct' for the C FFI
 /// @param closure: The functionality we need to encapsulate behind the error handling logic
 /// @return The result of closure() on success, or the value of default on failure.
-pub(crate) fn translate_failures<R, F>(
-    default: R,
-    out_error: *mut *mut tego_error,
-    closure: F,
-) -> R
+pub(crate) fn translate_failures<R, F>(default: R, out_error: *mut *mut tego_error, closure: F) -> R
 where
     F: FnOnce() -> anyhow::Result<R> + std::panic::UnwindSafe,
 {
@@ -56,7 +51,7 @@ where
             if !out_error.is_null() {
                 // populate error with panic message
                 let error = Error::new("panic occurred");
-                let object  = TegoObject::Error(error);
+                let object = TegoObject::Error(error);
                 let key = get_object_map().insert(object);
                 unsafe {
                     *out_error = key as *mut tego_error;
