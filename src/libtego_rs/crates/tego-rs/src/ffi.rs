@@ -1,5 +1,5 @@
 // standard
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use std::ffi::{c_char, c_int, c_void};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use std::path::PathBuf;
@@ -43,7 +43,7 @@ pub struct tego_error;
 pub(crate) type TegoKey = usize;
 pub(crate) enum TegoObject {
     Error(Error),
-    Context(Context),
+    Context(Box<Context>),
     Ed25519PrivateKey(Ed25519PrivateKey),
     V3OnionServiceId(V3OnionServiceId),
     UserId(UserId),
@@ -65,8 +65,12 @@ pub(crate) fn get_object_map<'a>() -> std::sync::MutexGuard<'a, TegoObjectMap> {
 /// @param error : the error object to get the message from
 /// @return : null terminated string with error message whose
 ///  lifetime is tied to the source tego_error_t; null pointer on failure
+///
+/// # Safety
+///
+/// All pointers must be properly initialised or NULL
 #[no_mangle]
-pub extern "C" fn tego_error_get_message(
+pub unsafe extern "C" fn tego_error_get_message(
     error: *const tego_error) -> *const c_char {
     if error.is_null() {
         std::ptr::null()
@@ -83,10 +87,13 @@ pub extern "C" fn tego_error_get_message(
 
 pub struct tego_context;
 
+/// # Safety
+///
+/// All pointers must be properly initialised or NULL
 #[no_mangle]
-pub extern "C" fn tego_initialize(
+pub unsafe extern "C" fn tego_initialize(
     out_context: *mut *mut tego_context,
-    error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) {
     translate_failures((), error, || -> Result<()> {
         bail_if_null!(out_context);
 
@@ -104,10 +111,13 @@ pub extern "C" fn tego_initialize(
     })
 }
 
+/// # Safety
+///
+/// All pointers must be properly initialised or NULL
 #[no_mangle]
-pub extern "C" fn tego_uninitialize(
+pub unsafe extern "C" fn tego_uninitialize(
     context: *mut tego_context,
-    error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) {
     translate_failures((), error, || -> Result<()> {
         bail_if_null!(context);
 
@@ -139,13 +149,16 @@ pub struct tego_v3_onion_service_id;
 /// @param keyblob_length : number of characters in keyblob not
 ///  counting the null terminator
 /// @param error : filled on error
-
+///
+/// # Safety
+///
+/// All pointers must be properly initialised or NULL
 #[no_mangle]
-pub extern "C" fn tego_ed25519_private_key_from_ed25519_keyblob(
+pub unsafe extern "C" fn tego_ed25519_private_key_from_ed25519_keyblob(
     out_private_key: *mut *mut tego_ed25519_private_key,
     keyblob: *const c_char,
     keyblob_length: usize,
-    error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) {
     translate_failures((), error, || -> Result<()> {
         bail_if_null!(out_private_key);
         bail_if_null!(keyblob);
@@ -181,8 +194,12 @@ pub extern "C" fn tego_ed25519_private_key_from_ed25519_keyblob(
 /// @param error : filled on error
 /// @return : the number of characters written (including null terminator)
 ///  to out_keyblob
- #[no_mangle]
- pub extern "C" fn tego_ed25519_keyblob_from_ed25519_private_key(
+///
+/// # Safety
+///
+/// All pointers must be properly initialised or NULL
+#[no_mangle]
+pub unsafe extern "C" fn tego_ed25519_keyblob_from_ed25519_private_key(
     out_keyblob: *mut c_char,
     keyblob_size: usize,
     private_key: *const tego_ed25519_private_key,
@@ -222,9 +239,12 @@ pub extern "C" fn tego_ed25519_private_key_from_ed25519_keyblob(
 /// @param service_id_string_length : length of service_id_string not counting the
 ///  null terminator
 /// @param error : filled on error
-
+///
+/// # Safety
+///
+/// All pointers must be properly initialised or NULL
 #[no_mangle]
-pub extern "C" fn tego_v3_onion_service_id_string_is_valid(
+pub unsafe extern "C" fn tego_v3_onion_service_id_string_is_valid(
     service_id_string: *const c_char,
     service_id_string_length: usize,
     error: *mut *mut tego_error) -> tego_bool {
@@ -251,12 +271,16 @@ pub extern "C" fn tego_v3_onion_service_id_string_is_valid(
 /// @param service_id_string_length : length of the service id string not
 ///  counting the null terminator
 /// @param error : filled on error
- #[no_mangle]
- pub extern "C" fn tego_v3_onion_service_id_from_string(
+///
+/// # Safety
+///
+/// All pointers must be properly initialised or NULL
+#[no_mangle]
+pub unsafe extern "C" fn tego_v3_onion_service_id_from_string(
     out_service_id: *mut *mut tego_v3_onion_service_id,
     service_id_string: *const c_char,
     service_id_string_length: usize,
-    error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) {
     translate_failures((), error, || -> Result<()> {
         bail_if_null!(out_service_id);
         bail_if_null!(service_id_string);
@@ -286,8 +310,12 @@ pub extern "C" fn tego_v3_onion_service_id_string_is_valid(
 /// @param error : filled on error
 /// @return : number of bytes written including null terminator;
 ///  TEGO_V3_ONION_SERVICE_ID_SIZE (57) on success, 0 on failure
- #[no_mangle]
- pub extern "C" fn tego_v3_onion_service_id_to_string(
+///
+/// # Safety
+///
+/// All pointers must be properly initialised or NULL
+#[no_mangle]
+pub unsafe extern "C" fn tego_v3_onion_service_id_to_string(
     service_id: *const tego_v3_onion_service_id,
     out_service_id_string: *mut c_char,
     service_id_string_size: usize,
@@ -333,11 +361,15 @@ pub struct tego_user_id;
 /// @param out_user_id : returned user id
 /// @param service_id : input v3 onion service id
 /// @param error : filled on error
- #[no_mangle]
-pub extern "C" fn tego_user_id_from_v3_onion_service_id(
+///
+/// # Safety
+///
+/// All pointers must be properly initialised or NULL
+#[no_mangle]
+pub unsafe extern "C" fn tego_user_id_from_v3_onion_service_id(
     out_user_id: *mut *mut tego_user_id,
     service_id: *const tego_v3_onion_service_id,
-    error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) {
     translate_failures((), error, || -> Result<()> {
         bail_if_null!(out_user_id);
         bail_if_null!(service_id);
@@ -362,11 +394,15 @@ pub extern "C" fn tego_user_id_from_v3_onion_service_id(
 /// @param user_id : input user id
 /// @param out_service_id : returned v3 onion service id
 /// @param error : filled on error
+///
+/// # Safety
+///
+/// All pointers must be properly initialised or NULL
 #[no_mangle]
-pub extern "C" fn tego_user_id_get_v3_onion_service_id(
+pub unsafe extern "C" fn tego_user_id_get_v3_onion_service_id(
     user_id: *const tego_user_id,
     out_service_id: *mut *mut tego_v3_onion_service_id,
-    error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) {
     translate_failures((), error, || -> Result<()> {
         bail_if_null!(user_id);
         bail_if_null!(out_service_id);
@@ -393,11 +429,15 @@ pub extern "C" fn tego_user_id_get_v3_onion_service_id(
 /// @param context : the current tego context
 /// @param out_host_user : returned user id
 /// @param error : filled on error
+///
+/// # Safety
+///
+/// All pointers must be properly initialised or NULL
 #[no_mangle]
-pub extern "C" fn tego_context_get_host_user_id(
+pub unsafe extern "C" fn tego_context_get_host_user_id(
     context: *const tego_context,
     out_host_user: *mut *mut tego_user_id,
-    error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) {
     translate_failures((), error, || -> Result<()> {
         bail_if_null!(context);
         bail_if_null!(out_host_user);
@@ -466,10 +506,14 @@ pub struct tego_tor_launch_config;
 ///
 /// @param out_launch_config : destination to write pointer to empty tor configuration
 /// @apram error : filled on error
- #[no_mangle]
-pub extern "C" fn tego_tor_launch_config_initialize(
+///
+/// # Safety
+///
+/// All pointers must be properly initialised or NULL
+#[no_mangle]
+pub unsafe extern "C" fn tego_tor_launch_config_initialize(
     out_launch_config: *mut *mut tego_tor_launch_config,
-    error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) {
     translate_failures((), error, || -> Result<()> {
         bail_if_null!(out_launch_config);
 
@@ -489,12 +533,16 @@ pub extern "C" fn tego_tor_launch_config_initialize(
 /// @param data_directory_length : length of data_directory string not counting the
 ///  null termiantor
 /// @param error : filled on error
- #[no_mangle]
- pub extern "C" fn tego_tor_launch_config_set_data_directory(
+///
+/// # Safety
+///
+/// All pointers must be properly initialised or NULL
+#[no_mangle]
+pub unsafe extern "C" fn tego_tor_launch_config_set_data_directory(
     launch_config: *mut tego_tor_launch_config,
     data_directory: *const c_char,
     data_directory_length: usize,
-    error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) {
     translate_failures((), error, || -> Result<()> {
         bail_if_null!(launch_config);
         bail_if_null!(data_directory);
@@ -524,11 +572,15 @@ pub extern "C" fn tego_tor_launch_config_initialize(
 /// @param context : the current tego context
 /// @param tor_config : tor configuration params
 /// @param error : filled on error
+///
+/// # Safety
+///
+/// All pointers must be properly initialised or NULL
 #[no_mangle]
-pub extern "C" fn tego_context_start_tor(
+pub unsafe extern "C" fn tego_context_start_tor(
     context: *mut tego_context,
     tor_config: *const tego_tor_launch_config,
-    error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) {
     translate_failures((), error, || -> Result<()> {
         bail_if_null!(context);
         bail_if_null!(tor_config);
@@ -578,10 +630,14 @@ pub struct tego_tor_daemon_config;
 ///
 /// @param out_config : destination for config
 /// @param error : filled on error
+///
+/// # Safety
+///
+/// All pointers must be properly initialised or NULL
 #[no_mangle]
-pub extern "C" fn tego_tor_daemon_config_initialize(
+pub unsafe extern "C" fn tego_tor_daemon_config_initialize(
     out_config: *mut *mut tego_tor_daemon_config,
-    error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) {
     translate_failures((), error, || -> Result<()> {
         bail_if_null!(out_config);
 
@@ -603,13 +659,17 @@ pub extern "C" fn tego_tor_daemon_config_initialize(
 ///  the null terminator
 /// @param port : proxy port, 0 not allowed
 /// @param error : filled on error
+///
+/// # Safety
+///
+/// All pointers must be properly initialised or NULL
 #[no_mangle]
-pub extern "C" fn tego_tor_daemon_config_set_proxy_socks4(
+pub unsafe extern "C" fn tego_tor_daemon_config_set_proxy_socks4(
     config: *mut tego_tor_daemon_config,
     address: *const c_char,
     address_length: usize,
     port: u16,
-    error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) {
     translate_failures((), error, || -> Result<()> {
         bail_if_null!(config);
         bail_if_null!(address);
@@ -665,8 +725,12 @@ pub extern "C" fn tego_tor_daemon_config_set_proxy_socks4(
 /// @param password_length : lenght of the password string not
 ///  counting any NULL terminator
 /// @param error : filled on error
+///
+/// # Safety
+///
+/// All pointers must be properly initialised or NULL
 #[no_mangle]
-pub extern "C" fn tego_tor_daemon_config_set_proxy_socks5(
+pub unsafe extern "C" fn tego_tor_daemon_config_set_proxy_socks5(
     config: *mut tego_tor_daemon_config,
     address: *const c_char,
     address_length: usize,
@@ -675,7 +739,7 @@ pub extern "C" fn tego_tor_daemon_config_set_proxy_socks5(
     username_length: usize,
     password: *const c_char,
     password_length: usize,
-    error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) {
     translate_failures((), error, || -> Result<()> {
         bail_if_null!(config);
         bail_if_null!(address);
@@ -751,8 +815,12 @@ pub extern "C" fn tego_tor_daemon_config_set_proxy_socks5(
 /// @param password_length : lenght of the password string not
 ///  counting any NULL terminator
 /// @param error : filled on error
- #[no_mangle]
- pub extern "C" fn tego_tor_daemon_config_set_proxy_https(
+///
+/// # Safety
+///
+/// All pointers must be properly initialised or NULL
+#[no_mangle]
+pub unsafe extern "C" fn tego_tor_daemon_config_set_proxy_https(
     config: *mut tego_tor_daemon_config,
     address: *const c_char,
     address_length: usize,
@@ -761,7 +829,7 @@ pub extern "C" fn tego_tor_daemon_config_set_proxy_socks5(
     username_length: usize,
     password: *const c_char,
     password_length: usize,
-    error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) {
     translate_failures((), error, || -> Result<()> {
         bail_if_null!(config);
         bail_if_null!(address);
@@ -826,12 +894,16 @@ pub extern "C" fn tego_tor_daemon_config_set_proxy_socks5(
 /// @param ports : array of allowed ports
 /// @param ports_count : the number of ports in list
 /// @param error : filled on error
+///
+/// # Safety
+///
+/// All pointers must be properly initialised or NULL
 #[no_mangle]
-pub extern "C" fn tego_tor_daemon_config_set_allowed_ports(
+pub unsafe extern "C" fn tego_tor_daemon_config_set_allowed_ports(
     config: *mut tego_tor_daemon_config,
     ports: *const u16,
     ports_count: usize,
-    error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) {
         translate_failures((), error, || -> Result<()> {
 
         bail_if_null!(config);
@@ -866,13 +938,17 @@ pub extern "C" fn tego_tor_daemon_config_set_allowed_ports(
 /// @param bridge_count : the number of bridge strings being
 ///  passed in
 /// @param error : filled on error
+///
+/// # Safety
+///
+/// All pointers must be properly initialised or NULL
 #[no_mangle]
-pub extern "C" fn tego_tor_daemon_config_set_bridges(
+pub unsafe extern "C" fn tego_tor_daemon_config_set_bridges(
     config: *mut tego_tor_daemon_config,
     bridge_lines: *const *const c_char,
     bridge_line_lengths: *const usize,
     bridge_count: usize,
-    error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) {
     translate_failures((), error, || -> Result<()> {
         bail_if_null!(config);
 
@@ -914,11 +990,15 @@ pub extern "C" fn tego_tor_daemon_config_set_bridges(
 /// @param context : the current tego context
 /// @param tor_config : tor configuration params
 /// @param error : filled on error
+///
+/// # Safety
+///
+/// All pointers must be properly initialised or NULL
 #[no_mangle]
-pub extern "C" fn tego_context_update_tor_daemon_config(
+pub unsafe extern "C" fn tego_context_update_tor_daemon_config(
     context: *mut tego_context,
     tor_config: *const tego_tor_daemon_config,
-    error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) {
     translate_failures((), error, || -> Result<()> {
         bail_if_null!(context);
         bail_if_null!(tor_config);
@@ -965,11 +1045,15 @@ pub extern "C" fn tego_context_update_tor_daemon_config(
 /// @param context : the current tego context
 /// @param disable_network : TEGO_TRUE or TEGO_FALSE
 /// @param error : filled on error
+///
+/// # Safety
+///
+/// All pointers must be properly initialised or NULL
 #[no_mangle]
-pub extern "C" fn tego_context_update_disable_network_flag(
+pub unsafe extern "C" fn tego_context_update_disable_network_flag(
     context: *mut tego_context,
     disable_network: tego_bool,
-    error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) {
     translate_failures((), error, || -> Result<()> {
         bail_if_null!(context);
         bail_if_not_equal!(disable_network, TEGO_FALSE);
@@ -1007,14 +1091,18 @@ pub extern "C" fn tego_context_update_disable_network_flag(
 /// @param user_type_buffer : the types associated with all of our users
 /// @param user_count : the length of the user and user type buffers
 /// @param error : filled on error
+///
+/// # Safety
+///
+/// All pointers must be properly initialised or NULL
 #[no_mangle]
-pub extern "C" fn tego_context_start_service(
+pub unsafe extern "C" fn tego_context_start_service(
     context: *mut tego_context,
     host_private_key: *const tego_ed25519_private_key,
     user_buffer: *const *const tego_user_id,
     user_type_buffer: *const tego_user_type,
     user_count: usize,
-    error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) {
     translate_failures((), error, || -> Result<()> {
         // TODO: refactor so this funciton is called *after* bootstrap
         bail_if_null!(context);
@@ -1035,7 +1123,7 @@ pub extern "C" fn tego_context_start_service(
             let on_new_identity_created = match get_object_map().get(&key) {
                 Some(TegoObject::Context(context)) => {
                     let callbacks = context.callbacks.lock().expect("another thread panicked while holding callback's mutex");
-                    callbacks.on_new_identity_created.clone()
+                    callbacks.on_new_identity_created
                 },
                 Some(_) => bail!("not a tego_context pointer: {:?}", key as *const c_void),
                 None => bail!("not a valid pointer: {:?}", key as *const c_void),
@@ -1103,8 +1191,12 @@ pub extern "C" fn tego_context_start_service(
 /// @param context : the current tego context
 /// @param error : filled on error
 /// @return : the number of characters required
+///
+/// # Safety
+///
+/// All pointers must be properly initialised or NULL
 #[no_mangle]
-pub extern "C" fn tego_context_get_tor_logs_size(
+pub unsafe extern "C" fn tego_context_get_tor_logs_size(
     context: *const tego_context,
     error: *mut *mut tego_error) -> usize {
     translate_failures(0usize, error, || -> Result<usize> {
@@ -1131,8 +1223,12 @@ pub extern "C" fn tego_context_get_tor_logs_size(
 /// @param error : filled on error
 /// @return : the nuber of characters written (including null terminator) to
 ///  out_log_buffer
+///
+/// # Safety
+///
+/// All pointers must be properly initialised or NULL
 #[no_mangle]
-pub extern "C" fn tego_context_get_tor_logs(
+pub unsafe extern "C" fn tego_context_get_tor_logs(
     context: *const tego_context,
     out_log_buffer: *mut c_char,
     log_buffer_size: usize,
@@ -1178,8 +1274,12 @@ pub extern "C" fn tego_context_get_tor_logs(
 /// @param context : the curent tego context
 /// @param error : filled on error
 /// @return : the version string for the context's running tor daemon
+///
+/// # Safety
+///
+/// All pointers must be properly initialised or NULL
 #[no_mangle]
-pub extern "C" fn tego_context_get_tor_version_string(
+pub unsafe extern "C" fn tego_context_get_tor_version_string(
     context: *const tego_context,
     error: *mut *mut tego_error) -> *const c_char {
     translate_failures(std::ptr::null(), error, || -> Result<*const c_char> {
@@ -1215,11 +1315,15 @@ pub enum tego_tor_control_status {
 /// @param context : the current tego context
 /// @param out_status : destination to save control status
 /// @param error : filled on error
+///
+/// # Safety
+///
+/// All pointers must be properly initialised or NULL
 #[no_mangle]
-pub extern "C" fn tego_context_get_tor_control_status(
+pub unsafe extern "C" fn tego_context_get_tor_control_status(
     context: *const tego_context,
     out_status: *mut tego_tor_control_status,
-    error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) {
     translate_failures((), error, || -> Result<()> {
         // TODO: remove this function
         bail_if_null!(context);
@@ -1252,11 +1356,15 @@ pub enum tego_tor_network_status {
 /// @param context : the current tego context
 /// @param out_status : destination to save network status
 /// @param error : filled on error
+///
+/// # Safety
+///
+/// All pointers must be properly initialised or NULL
 #[no_mangle]
-pub extern "C" fn tego_context_get_tor_network_status(
+pub unsafe extern "C" fn tego_context_get_tor_network_status(
     context: *const tego_context,
     out_status: *mut tego_tor_network_status,
-    error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) {
     translate_failures((), error, || -> Result<()> {
         bail_if_null!(context);
         bail_if_null!(out_status);
@@ -1356,8 +1464,12 @@ impl From<&str> for tego_tor_bootstrap_tag {
 /// @param tag : the tag to get the summary of
 /// @param error : filled on error
 /// @return : utf8 null-terminated summary string, NULL on error
+///
+/// # Safety
+///
+/// All pointers must be properly initialised or NULL
 #[no_mangle]
-pub extern "C" fn tego_tor_bootstrap_tag_to_summary(
+pub unsafe extern "C" fn tego_tor_bootstrap_tag_to_summary(
     tag: tego_tor_bootstrap_tag,
     error: *mut *mut tego_error) -> *const c_char {
     translate_failures(std::ptr::null(), error, || -> Result<*const c_char> {
@@ -1417,15 +1529,19 @@ pub type tego_file_size = u64;
 /// @param error : filled on error
 /// @return : the number of bytes required to serialize fileHash including
 ///  the null-terinator
+///
+/// # Safety
+///
+/// All pointers must be properly initialised or NULL
 #[no_mangle]
-pub extern "C" fn tego_file_hash_string_size(
+pub unsafe extern "C" fn tego_file_hash_string_size(
     file_hash: *const tego_file_hash,
     error: *mut *mut tego_error) -> usize {
     translate_failures(0usize, error, || -> Result<usize> {
         bail_if_null!(file_hash);
         let file_hash = file_hash as TegoKey;
         match get_object_map().get(&file_hash) {
-            Some(TegoObject::FileHash(file_hash)) => {
+            Some(TegoObject::FileHash(_file_hash)) => {
                 Ok(FILE_HASH_STRING_SIZE)
             },
             Some(_) => bail!("not a tego_file_hash pointer: {:?}", file_hash as *const c_void),
@@ -1443,8 +1559,12 @@ pub extern "C" fn tego_file_hash_string_size(
 /// @param error : filled on error
 /// @return : number of bytes written to out_hash_string including the
 ///  null-terminator
+///
+/// # Safety
+///
+/// All pointers must be properly initialised or NULL
 #[no_mangle]
-pub extern "C" fn tego_file_hash_to_string(
+pub unsafe extern "C" fn tego_file_hash_to_string(
     file_hash: *const tego_file_hash,
     out_hash_string: *mut c_char,
     hash_string_size: usize,
@@ -1483,14 +1603,18 @@ pub extern "C" fn tego_file_hash_to_string(
 /// @param message_length : length of message not including null-terminator
 /// @param out_id : filled with assigned message id for callbacks
 /// @param error : filled on error
+///
+/// # Safety
+///
+/// All pointers must be properly initialised or NULL
 #[no_mangle]
-pub extern "C" fn tego_context_send_message(
+pub unsafe extern "C" fn tego_context_send_message(
     context: *mut tego_context,
     user: *const tego_user_id,
     message: *const c_char,
     message_length: usize,
     out_id: *mut tego_message_id,
-    error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) {
     translate_failures((), error, || -> Result<()> {
         bail_if_null!(context);
         bail_if_null!(user);
@@ -1536,8 +1660,12 @@ pub extern "C" fn tego_context_send_message(
 /// @param out_file_hash : optional, filled with hash of the file to send
 /// @param out_file_size : optional, filled with the size of the file in bytes
 /// @param error : filled on error
+///
+/// # Safety
+///
+/// All pointers must be properly initialised
 #[no_mangle]
-pub extern "C" fn tego_context_send_file_transfer_request(
+pub unsafe extern "C" fn tego_context_send_file_transfer_request(
     context: *mut tego_context,
     user: *const tego_user_id,
     file_path: *const c_char,
@@ -1545,7 +1673,7 @@ pub extern "C" fn tego_context_send_file_transfer_request(
     out_id: *mut tego_file_transfer_id,
     out_file_hash: *mut *mut tego_file_hash,
     out_file_size: *mut tego_file_size,
-    error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) {
     translate_failures((), error, || -> Result<()> {
         bail_if_null!(context);
         bail_if_null!(user);
@@ -1556,7 +1684,7 @@ pub extern "C" fn tego_context_send_file_transfer_request(
         }
         bail_if_equal!(file_path_length, 0usize);
 
-        let mut object_map = get_object_map();
+        let object_map = get_object_map();
 
         let context = context as TegoKey;
         let context = match object_map.get(&context) {
@@ -1609,15 +1737,19 @@ pub enum tego_file_transfer_response {
 /// @param dest_path : optional, destination to save the file
 /// @param dest_path_length : length of dest_path not including the null-terminator
 /// @param error : filled on error
+///
+/// # Safety
+///
+/// All pointers must be properly initialised or NULL
 #[no_mangle]
-pub extern "C" fn tego_context_respond_file_transfer_request(
+pub unsafe extern "C" fn tego_context_respond_file_transfer_request(
     context: *mut tego_context,
     user: *const tego_user_id,
     id: tego_file_transfer_id,
     response: tego_file_transfer_response,
     dest_path: *const c_char,
     dest_path_length: usize,
-    error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) {
     translate_failures((), error, || -> Result<()> {
         bail_if_null!(context);
         bail_if_null!(user);
@@ -1654,7 +1786,6 @@ pub extern "C" fn tego_context_respond_file_transfer_request(
 
                 context.reject_file_transfer_request(user, id)?;
             },
-            _ => bail!("not a valid tego_file_transfer_response: {}", response as c_int),
         }
 
         Ok(())
@@ -1667,12 +1798,16 @@ pub extern "C" fn tego_context_respond_file_transfer_request(
 /// @param user : the user that is sending/receiving the transfer
 /// @param id : the file transfer to cancel
 /// @param error: filled on error
+///
+/// # Safety
+///
+/// All pointers must be properly initialised or NULL
 #[no_mangle]
-pub extern "C" fn tego_context_cancel_file_transfer(
+pub unsafe extern "C" fn tego_context_cancel_file_transfer(
     context: *mut tego_context,
     user: *const tego_user_id,
     id: tego_file_transfer_id,
-    error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) {
     translate_failures((), error, || -> Result<()> {
         bail_if_null!(context);
         bail_if_null!(user);
@@ -1706,13 +1841,17 @@ pub extern "C" fn tego_context_cancel_file_transfer(
 /// @param mesage : utf8 text greeting message to send
 /// @param message_length : length of message not including null-terminator
 /// @param error : filled on error
+///
+/// # Safety
+///
+/// All pointers must be properly initialised or NULL
 #[no_mangle]
-pub extern "C" fn tego_context_send_chat_request(
+pub unsafe extern "C" fn tego_context_send_chat_request(
     context: *mut tego_context,
     user: *const tego_user_id,
     message: *const c_char,
     message_length: usize,
-    error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) {
     translate_failures((), error, || -> Result<()> {
         let key = user as TegoKey;
         let service_id = match get_object_map().get(&key) {
@@ -1758,12 +1897,16 @@ pub enum tego_chat_acknowledge {
 /// @param user : the user that sent the chat request
 /// @param response : how to respond to the request
 /// @param error : filled on error
+///
+/// # Safety
+///
+/// All pointers must be properly initialised or NULL
 #[no_mangle]
-pub extern "C" fn tego_context_acknowledge_chat_request(
+pub unsafe extern "C" fn tego_context_acknowledge_chat_request(
     context: *mut tego_context,
     user: *const tego_user_id,
     response: tego_chat_acknowledge,
-    error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) {
     translate_failures((), error, || -> Result<()> {
 
         let key = user as TegoKey;
@@ -1795,11 +1938,15 @@ pub extern "C" fn tego_context_acknowledge_chat_request(
 /// @param context : the current tego context
 /// @param user : the user to forget
 /// @param error : filled on error
+///
+/// # Safety
+///
+/// All pointers must be properly initialised or NULL
 #[no_mangle]
-pub extern "C" fn tego_context_forget_user(
+pub unsafe extern "C" fn tego_context_forget_user(
     context: *mut tego_context,
     user: *const tego_user_id,
-    error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) {
     translate_failures((), error, || -> Result<()> {
         let key = user as TegoKey;
         let service_id = match get_object_map().get(&key) {
@@ -2027,7 +2174,7 @@ pub type tego_file_transfer_request_received_callback = Option<
 /// @param receiver : the user acknowledging our request
 /// @param id : the id of the file transfer that is being acknowledged
 /// @param request_acked : TEGO_TRUE if acknowledged, TEGO_FALSE if error
- pub type tego_file_transfer_request_acknowledged_callback = Option<
+pub type tego_file_transfer_request_acknowledged_callback = Option<
     extern "C" fn (
         context: *mut tego_context,
         receiver: *const tego_user_id,
@@ -2132,7 +2279,7 @@ pub type tego_user_status_changed_callback = Option<
 ///
 /// @param context : the current tego context
 /// @param private_key : the host's private key
- pub type tego_new_identity_created_callback = Option<
+pub type tego_new_identity_created_callback = Option<
     extern "C" fn (
         context: *mut tego_context,
         private_key: *const tego_ed25519_private_key,
@@ -2164,7 +2311,7 @@ macro_rules! impl_callback_setter {
 pub extern "C" fn tego_context_set_tor_error_occurred_callback(
     context: *mut tego_context,
     callback: tego_tor_error_occurred_callback,
-    error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) {
     impl_callback_setter!(on_tor_error_occurred, context, callback, error);
 }
 
@@ -2172,7 +2319,7 @@ pub extern "C" fn tego_context_set_tor_error_occurred_callback(
 pub extern "C" fn tego_context_set_update_tor_daemon_config_succeeded_callback(
     context: *mut tego_context,
     callback: tego_update_tor_daemon_config_succeeded_callback,
-    error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) {
     impl_callback_setter!(on_update_tor_daemon_config_succeeded, context, callback, error);
 
 }
@@ -2181,7 +2328,7 @@ pub extern "C" fn tego_context_set_update_tor_daemon_config_succeeded_callback(
 pub extern "C" fn tego_context_set_tor_control_status_changed_callback(
     context: *mut tego_context,
     callback: tego_tor_control_status_changed_callback,
-    error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) {
     impl_callback_setter!(on_tor_control_status_changed, context, callback, error);
 }
 
@@ -2189,7 +2336,7 @@ pub extern "C" fn tego_context_set_tor_control_status_changed_callback(
 pub extern "C" fn tego_context_set_tor_process_status_changed_callback(
     context: *mut tego_context,
     callback: tego_tor_process_status_changed_callback,
-    error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) {
     impl_callback_setter!(on_tor_process_status_changed, context, callback, error);
 }
 
@@ -2197,7 +2344,7 @@ pub extern "C" fn tego_context_set_tor_process_status_changed_callback(
 pub extern "C" fn tego_context_set_tor_network_status_changed_callback(
     context: *mut tego_context,
     callback: tego_tor_network_status_changed_callback,
-    error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) {
     impl_callback_setter!(on_tor_network_status_changed, context, callback, error);
 }
 
@@ -2205,7 +2352,7 @@ pub extern "C" fn tego_context_set_tor_network_status_changed_callback(
 pub extern "C" fn tego_context_set_tor_bootstrap_status_changed_callback(
     context: *mut tego_context,
     callback: tego_tor_bootstrap_status_changed_callback,
-    error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) {
     impl_callback_setter!(on_tor_bootstrap_status_changed, context, callback, error);
 }
 
@@ -2213,7 +2360,7 @@ pub extern "C" fn tego_context_set_tor_bootstrap_status_changed_callback(
 pub extern "C" fn tego_context_set_tor_log_received_callback(
     context: *mut tego_context,
     callback: tego_tor_log_received_callback,
-    error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) {
     impl_callback_setter!(on_tor_log_received, context, callback, error);
 }
 
@@ -2221,7 +2368,7 @@ pub extern "C" fn tego_context_set_tor_log_received_callback(
 pub extern "C" fn tego_context_set_host_onion_service_state_changed_callback(
     context: *mut tego_context,
     callback: tego_host_onion_service_state_changed_callback,
-    error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) {
     impl_callback_setter!(on_host_onion_service_state_changed, context, callback, error);
 }
 
@@ -2229,7 +2376,7 @@ pub extern "C" fn tego_context_set_host_onion_service_state_changed_callback(
 pub extern "C" fn tego_context_set_chat_request_received_callback(
     context: *mut tego_context,
     callback: tego_chat_request_received_callback,
-    error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) {
     impl_callback_setter!(on_chat_request_received, context, callback, error);
 }
 
@@ -2237,7 +2384,7 @@ pub extern "C" fn tego_context_set_chat_request_received_callback(
 pub extern "C" fn tego_context_set_chat_request_response_received_callback(
     context: *mut tego_context,
     callback: tego_chat_request_response_received_callback,
-    error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) {
     impl_callback_setter!(on_chat_request_response_received, context, callback, error);
 }
 
@@ -2245,7 +2392,7 @@ pub extern "C" fn tego_context_set_chat_request_response_received_callback(
 pub extern "C" fn tego_context_set_message_received_callback(
     context: *mut tego_context,
     callback: tego_message_received_callback,
-    error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) {
     impl_callback_setter!(on_message_received, context, callback, error);
 }
 
@@ -2253,7 +2400,7 @@ pub extern "C" fn tego_context_set_message_received_callback(
 pub extern "C" fn tego_context_set_message_acknowledged_callback(
     context: *mut tego_context,
     callback: tego_message_acknowledged_callback,
-    error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) {
     impl_callback_setter!(on_message_acknowledged, context, callback, error);
 }
 
@@ -2261,7 +2408,7 @@ pub extern "C" fn tego_context_set_message_acknowledged_callback(
 pub extern "C" fn tego_context_set_file_transfer_request_received_callback(
     context: *mut tego_context,
     callback: tego_file_transfer_request_received_callback,
-    error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) {
     impl_callback_setter!(on_file_transfer_request_received, context, callback, error);
 }
 
@@ -2269,7 +2416,7 @@ pub extern "C" fn tego_context_set_file_transfer_request_received_callback(
 pub extern "C" fn tego_context_set_file_transfer_request_acknowledged_callback(
     context: *mut tego_context,
     callback: tego_file_transfer_request_acknowledged_callback,
-    error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) {
     impl_callback_setter!(on_file_transfer_request_acknowledged, context, callback, error);
 }
 
@@ -2277,7 +2424,7 @@ pub extern "C" fn tego_context_set_file_transfer_request_acknowledged_callback(
 pub extern "C" fn tego_context_set_file_transfer_request_response_received_callback(
     context: *mut tego_context,
     callback: tego_file_transfer_request_response_received_callback,
-    error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) {
     impl_callback_setter!(on_file_transfer_request_response_received, context, callback, error);
 }
 
@@ -2285,7 +2432,7 @@ pub extern "C" fn tego_context_set_file_transfer_request_response_received_callb
 pub extern "C" fn tego_context_set_file_transfer_progress_callback(
     context: *mut tego_context,
     callback: tego_file_transfer_progress_callback,
-    error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) {
     impl_callback_setter!(on_file_transfer_progress, context, callback, error);
 }
 
@@ -2293,7 +2440,7 @@ pub extern "C" fn tego_context_set_file_transfer_progress_callback(
 pub extern "C" fn tego_context_set_file_transfer_complete_callback(
     context: *mut tego_context,
     callback: tego_file_transfer_complete_callback,
-    error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) {
     impl_callback_setter!(on_file_transfer_complete, context, callback, error);
 }
 
@@ -2301,7 +2448,7 @@ pub extern "C" fn tego_context_set_file_transfer_complete_callback(
 pub extern "C" fn tego_context_set_user_status_changed_callback(
     context: *mut tego_context,
     callback: tego_user_status_changed_callback,
-    error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) {
     impl_callback_setter!(on_user_status_changed, context, callback, error);
 }
 
@@ -2309,7 +2456,7 @@ pub extern "C" fn tego_context_set_user_status_changed_callback(
 pub extern "C" fn tego_context_set_new_identity_created_callback(
     context: *mut tego_context,
     callback: tego_new_identity_created_callback,
-    error: *mut *mut tego_error) -> () {
+    error: *mut *mut tego_error) {
     impl_callback_setter!(on_new_identity_created, context, callback, error);
 }
 
@@ -2328,36 +2475,36 @@ macro_rules! impl_deleter {
 }
 
 #[no_mangle]
-pub extern "C" fn tego_error_delete(value: *mut tego_error) -> () {
+pub extern "C" fn tego_error_delete(value: *mut tego_error) {
     impl_deleter!(TegoObject::Error(_), value);
 }
 
 #[no_mangle]
-pub extern "C" fn tego_ed25519_private_key_delete(value: *mut tego_ed25519_private_key) -> () {
+pub extern "C" fn tego_ed25519_private_key_delete(value: *mut tego_ed25519_private_key) {
     impl_deleter!(TegoObject::Ed25519PrivateKey(_), value);
 }
 
 #[no_mangle]
-pub extern "C" fn tego_v3_onion_service_id_delete(value: *mut tego_v3_onion_service_id) -> () {
+pub extern "C" fn tego_v3_onion_service_id_delete(value: *mut tego_v3_onion_service_id) {
     impl_deleter!(TegoObject::V3OnionServiceId(_), value);
 }
 
 #[no_mangle]
-pub extern "C" fn tego_user_id_delete(value: *mut tego_user_id) -> () {
+pub extern "C" fn tego_user_id_delete(value: *mut tego_user_id) {
     impl_deleter!(TegoObject::UserId(_), value);
 }
 
 #[no_mangle]
-pub extern "C" fn tego_tor_launch_config_delete(value: *mut tego_tor_launch_config) -> () {
+pub extern "C" fn tego_tor_launch_config_delete(value: *mut tego_tor_launch_config) {
     impl_deleter!(TegoObject::TorLaunchConfig(_), value);
 }
 
 #[no_mangle]
-pub extern "C" fn tego_tor_daemon_config_delete(value: *mut tego_tor_daemon_config) -> () {
+pub extern "C" fn tego_tor_daemon_config_delete(value: *mut tego_tor_daemon_config) {
     impl_deleter!(TegoObject::TorDaemonConfig(_), value);
 }
 
 #[no_mangle]
-pub extern "C" fn tego_file_hash_delete(value: *mut tego_file_hash) -> () {
+pub extern "C" fn tego_file_hash_delete(value: *mut tego_file_hash) {
     impl_deleter!(TegoObject::FileHash(_), value);
 }

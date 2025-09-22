@@ -5,7 +5,7 @@ fn main() {
         // use pure-rust parser to generate
         .pure()
         // All inputs and imports from the inputs must reside in `includes` directories.
-        .includes(&["src/v3/protos"])
+        .includes(["src/v3/protos"])
         // Inputs must reside in some of include paths.
         .input("src/v3/protos/AuthHiddenService.proto")
         .input("src/v3/protos/ChatChannel.proto")

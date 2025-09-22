@@ -22,9 +22,7 @@ impl Packet {
                 let extension = open_channel.extension();
 
                 // construct OpenChannel packet
-                let mut open_channel = protos::ControlChannel::OpenChannel::default();
-                open_channel.channel_identifier = channel_identifier;
-                open_channel.channel_type = channel_type;
+                let mut open_channel = protos::ControlChannel::OpenChannel{channel_identifier, channel_type, ..Default::default()};
 
                 // set extensions
                 match extension {
@@ -37,9 +35,7 @@ impl Packet {
                         let message_text: String = message_text.into();
                         let message_text = Some(message_text);
 
-                        let mut contact_request = protos::ContactRequestChannel::ContactRequest::default();
-                        contact_request.nickname = nickname;
-                        contact_request.message_text = message_text;
+                        let contact_request = protos::ContactRequestChannel::ContactRequest{nickname, message_text, ..Default::default()};
 
                         let field_number = crate::contact_request_channel::OpenChannel::CONTACT_REQUEST_FIELD_NUMBER;
 
@@ -75,10 +71,7 @@ impl Packet {
                 let extension = channel_result.extension();
 
                 // construct ChannelResult packet
-                let mut channel_result = protos::ControlChannel::ChannelResult::default();
-                channel_result.channel_identifier = channel_identifier;
-                channel_result.opened = opened;
-                channel_result.common_error = common_error;
+                let mut channel_result = protos::ControlChannel::ChannelResult{channel_identifier, opened, common_error, ..Default::default()};
 
                 match extension {
                     Some(ChannelResultExtension::ContactRequestChannel(extension)) => {
@@ -90,9 +83,9 @@ impl Packet {
                             crate::contact_request_channel::Status::Rejected => protos::ContactRequestChannel::response::Status::Rejected,
                             crate::contact_request_channel::Status::Error => protos::ContactRequestChannel::response::Status::Error,
                         };
+                        let status = Some(protobuf::EnumOrUnknown::new(status));
 
-                        let mut response = protos::ContactRequestChannel::Response::default();
-                        response.status = Some(protobuf::EnumOrUnknown::new(status));
+                        let response = protos::ContactRequestChannel::Response{status, ..Default::default()};
 
                         let field_number = crate::contact_request_channel::ChannelResult::RESPONSE_FIELD_NUMBER;
 

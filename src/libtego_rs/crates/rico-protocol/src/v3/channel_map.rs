@@ -1,5 +1,5 @@
 // std
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, btree_map::Entry};
 
 // internal
 use crate::v3::Error;
@@ -23,8 +23,8 @@ pub(crate) enum ChannelData {
     OutgoingFileTransfer,
 }
 
-#[derive(Debug, Eq, Ord, PartialEq, PartialOrd)]
-pub(crate) enum ChannelType {
+#[derive(Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub enum ChannelType {
     Control,
     IncomingChat,
     OutgoingChat,
@@ -70,20 +70,13 @@ impl ChannelMap {
     pub fn channel_type_to_id(
         &self,
         channel_type: &ChannelType) -> Option<u16> {
-        if let Some(id) = self.type_to_id.get(channel_type) {
-            Some(*id)
-        } else {
-            None
-        }
+        self.type_to_id.get(channel_type).copied()
     }
 
     pub fn channel_id_to_type(
         &self,
         channel_id: &u16) -> Option<ChannelType> {
-        match self.id_to_channel.get(channel_id) {
-            Some(channel) => Some(channel.into()),
-            None => None,
-        }
+        self.id_to_channel.get(channel_id).map(|channel| channel.into())
     }
 
     pub fn insert(
@@ -93,14 +86,14 @@ impl ChannelMap {
 
         let channel_type: ChannelType = (&channel_data).into();
 
-        if self.id_to_channel.contains_key(&channel_id) {
-            Err(Error::ChannelAlreadyOpen(channel_id))
-        } else if self.type_to_id.contains_key(&channel_type) {
-            Err(Error::ChannelTypeAlreadyOpen(channel_type))
-        } else {
-            self.type_to_id.insert(channel_type, channel_id);
-            self.id_to_channel.insert(channel_id, channel_data);
-            Ok(())
+        match (self.id_to_channel.entry(channel_id), self.type_to_id.entry(channel_type)) {
+            (Entry::Vacant(data), Entry::Vacant(id)) => {
+                data.insert(channel_data);
+                id.insert(channel_id);
+                Ok(())
+            },
+            (Entry::Occupied(_), _) => Err(Error::ChannelAlreadyOpen(channel_id)),
+            (_, Entry::Occupied(_)) => Err(Error::ChannelTypeAlreadyOpen(channel_type)),
         }
     }
 
@@ -108,34 +101,6 @@ impl ChannelMap {
         &self,
         channel_id: &u16) -> Option<&ChannelData> {
         self.id_to_channel.get(channel_id)
-    }
-
-    pub fn get_by_id_mut(
-        &mut self,
-        channel_id: &u16) -> Option<&mut ChannelData> {
-        self.id_to_channel.get_mut(channel_id)
-    }
-
-    pub fn get_by_type(
-        &self,
-        channel_type: &ChannelType) -> Option<&ChannelData> {
-        if let Some(id)  = self.type_to_id.get(channel_type) {
-            let channel = self.id_to_channel.get(id).expect("ChannelMap corrupted");
-            Some(channel)
-        } else {
-            None
-        }
-    }
-
-    pub fn get_by_type_mut(
-        &mut self,
-        channel_type: &ChannelType) -> Option<&ChannelData> {
-        if let Some(id)  = self.type_to_id.get(channel_type) {
-            let channel = self.id_to_channel.get_mut(id).expect("ChannelMap corrupted");
-            Some(channel)
-        } else {
-            None
-        }
     }
 
     pub fn remove_by_id(

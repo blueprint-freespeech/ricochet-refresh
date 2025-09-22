@@ -9,7 +9,7 @@ use tor_interface::tor_crypto::{V3OnionServiceId, V3_ONION_SERVICE_ID_STRING_LEN
 // internal
 use crate::v3::Error;
 
-pub(crate) const CHANNEL_TYPE: &'static str = "im.ricochet.auth.hidden-service";
+pub(crate) const CHANNEL_TYPE: &str = "im.ricochet.auth.hidden-service";
 pub(crate) const CLIENT_COOKIE_SIZE: usize = 16;
 pub(crate) const SERVER_COOKIE_SIZE: usize = 16;
 pub(crate) const PROOF_SIZE: usize = 32;
@@ -30,22 +30,18 @@ impl Packet {
 
         match self {
             Packet::Proof(proof) => {
-                let signature = proof.signature();
-                let service_id = proof.service_id();
+                let signature: Option<Vec<u8>> = Some(proof.signature().into());
+                let service_id = Some(proof.service_id().to_string());
 
-                let mut proof = protos::AuthHiddenService::Proof::default();
-                proof.signature = Some(signature.into());
-                proof.service_id = Some(service_id.to_string());
+                let proof = protos::AuthHiddenService::Proof{signature, service_id, ..Default::default()};
 
                 pb.proof = Some(proof).into();
             },
             Packet::Result(result) => {
-                let accepted = result.accepted();
-                let is_known_contact = result.is_known_contact().clone();
+                let accepted = Some(result.accepted());
+                let is_known_contact = *result.is_known_contact();
 
-                let mut result = protos::AuthHiddenService::Result::default();
-                result.accepted = Some(accepted);
-                result.is_known_contact = is_known_contact;
+                let result = protos::AuthHiddenService::Result{accepted, is_known_contact, ..Default::default()};
 
                 pb.result = Some(result).into();
             }
@@ -150,22 +146,22 @@ impl Proof {
             CLIENT_COOKIE_SIZE +
             SERVER_COOKIE_SIZE
         );
-        key.write(client_cookie).expect("key write failed");
-        key.write(server_cookie).expect("key write failed");
+        key.write_all(client_cookie).expect("key write failed");
+        key.write_all(server_cookie).expect("key write failed");
 
         let mut message: Vec<u8> = Vec::with_capacity(
             V3_ONION_SERVICE_ID_STRING_LENGTH +
             V3_ONION_SERVICE_ID_STRING_LENGTH
         );
-        message.write(client_service_id.as_bytes()).expect("message write failed");
-        message.write(server_service_id.as_bytes()).expect("message write failed");
+        message.write_all(client_service_id.as_bytes()).expect("message write failed");
+        message.write_all(server_service_id.as_bytes()).expect("message write failed");
 
         type HmacSha256 = Hmac<Sha256>;
         let mut mac = HmacSha256::new_from_slice(key.as_slice()).expect("HMAC-SHA256 creation failed");
         mac.update(message.as_slice());
 
         let result = mac.finalize().into_bytes();
-        result.try_into().expect("message wrong size")
+        result.into()
     }
 
 }

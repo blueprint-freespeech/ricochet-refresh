@@ -1,6 +1,6 @@
 use crate::v3::Error;
 
-pub(crate) const CHANNEL_TYPE: &'static str = "im.ricochet.contact.request";
+pub(crate) const CHANNEL_TYPE: &str = "im.ricochet.contact.request";
 
 #[derive(Debug, PartialEq)]
 pub enum Packet {
@@ -128,11 +128,7 @@ impl TryFrom<String> for Nickname {
             }
 
             // ensure not a non-character
-            let is_non_character = match code_unit {
-                0xFFFEu16..=0xFFFFu16 => true,
-                0xFDD0u16..=0xFDEFu16 => true,
-                _ => false,
-            };
+            let is_non_character = matches!(code_unit, 0xFFFEu16..=0xFFFFu16 | 0xFDD0u16..=0xFDEFu16);
 
             if is_non_character {
                 return Err(Self::Error::InvalidNicknameContainsNonCharacter(code_unit));
@@ -140,13 +136,7 @@ impl TryFrom<String> for Nickname {
 
             if let Some(character) = char::from_u32(code_unit as u32) {
                 // ensure not an html-character
-                let is_html_character = match character {
-                    '\"' => true,
-                    '<' => true,
-                    '>' => true,
-                    '&' => true,
-                    _ => false,
-                };
+                let is_html_character = matches!(character, '\"' | '<' | '>' | '&');
 
                 if is_html_character {
                     return Err(Self::Error::InvalidNicknameContainsHtmlCharacter(character));

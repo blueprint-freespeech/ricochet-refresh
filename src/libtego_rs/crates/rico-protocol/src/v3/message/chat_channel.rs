@@ -1,6 +1,6 @@
 use crate::v3::Error;
 
-pub(crate) const CHANNEL_TYPE: &'static str = "im.ricochet.chat";
+pub(crate) const CHANNEL_TYPE: &str = "im.ricochet.chat";
 
 #[derive(Debug, PartialEq)]
 pub enum Packet {
@@ -20,15 +20,9 @@ impl Packet {
                 let message_text: String = chat_message.message_text().into();
                 let message_text = Some(message_text);
                 let message_id = Some(chat_message.message_id());
-                let time_delta: Option<i64> = match chat_message.time_delta() {
-                    Some(time_delta) => Some(-(time_delta.as_secs() as i64)),
-                    None => None
-                };
+                let time_delta = chat_message.time_delta().as_ref().map(|time_delta| -(time_delta.as_secs() as i64));
 
-                let mut chat_message = protos::ChatChannel::ChatMessage::default();
-                chat_message.message_text = message_text;
-                chat_message.message_id = message_id;
-                chat_message.time_delta = time_delta;
+                let chat_message = protos::ChatChannel::ChatMessage{message_text, message_id, time_delta, ..Default::default()};
 
                 pb.chat_message = Some(chat_message).into();
             }
@@ -36,9 +30,7 @@ impl Packet {
                 let message_id = Some(chat_acknowledge.message_id());
                 let accepted = Some(chat_acknowledge.accepted());
 
-                let mut chat_acknowledge = protos::ChatChannel::ChatAcknowledge::default();
-                chat_acknowledge.message_id = message_id;
-                chat_acknowledge.accepted = accepted;
+                let chat_acknowledge = protos::ChatChannel::ChatAcknowledge{message_id, accepted, ..Default::default()};
 
                 pb.chat_acknowledge = Some(chat_acknowledge).into();
             }

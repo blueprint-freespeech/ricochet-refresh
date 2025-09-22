@@ -2,7 +2,7 @@
 name = "tego-rs"
 authors = ["morgan@blueprintforfreespeech.net"]
 version = "0.1.0"
-rust-version = "1.70"
+rust-version = "1.79"
 edition = "2021"
 license = "BSD-3-Clause"
 description = "Rust re-implementation of the libtego library"

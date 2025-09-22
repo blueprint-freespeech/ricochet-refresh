@@ -3,7 +3,7 @@ use std::cmp::Ord;
 use std::collections::BinaryHeap;
 use std::ops::{Add, DerefMut};
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex, MutexGuard, Weak};
+use std::sync::{Arc, Mutex, Weak};
 use std::time::{Duration, Instant};
 
 // extern
@@ -138,7 +138,7 @@ impl CommandQueue {
     pub fn downgrade(&self) -> Self {
         match &self.queue {
             CommandQueueInner::Arc(queue) => Self {
-                queue: CommandQueueInner::Weak(Arc::downgrade(&queue)),
+                queue: CommandQueueInner::Weak(Arc::downgrade(queue)),
             },
             CommandQueueInner::Weak(queue) => Self {
                 queue: CommandQueueInner::Weak(queue.clone()),
@@ -150,7 +150,7 @@ impl CommandQueue {
         &self,
         data: CommandData,
         delay: Duration,
-    ) -> () {
+    ) {
         if let Some(queue) = self.queue() {
             let mut queue = queue.lock().expect("queue mutex poisoned");
             queue.push(Command::new(data, delay));
@@ -160,7 +160,7 @@ impl CommandQueue {
     pub fn append(
         &self,
         mut commands: BinaryHeap<Command>,
-    ) -> () {
+    ) {
         if let Some(queue) = self.queue() {
             let mut queue = queue.lock().expect("queue mutex poisoned");
             queue.append(&mut commands);

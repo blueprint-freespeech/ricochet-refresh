@@ -1,10 +1,3 @@
-macro_rules! bail_not_implemented {
-    () => {
-        anyhow::bail!("not implemented")
-    }
-}
-pub(crate) use bail_not_implemented;
-
 //
 // Argument validation macros
 //

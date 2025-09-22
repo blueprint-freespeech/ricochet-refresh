@@ -12,9 +12,8 @@ pub(crate) struct FileHash {
     pub data: [u8; FILE_HASH_SIZE],
 }
 
-impl FileHash {
-
-    pub fn to_string(&self) -> String {
-        HEXLOWER.encode(&self.data)
+impl std::fmt::Display for FileHash {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", HEXLOWER.encode_display(&self.data))
     }
 }

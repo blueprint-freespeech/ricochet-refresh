@@ -1,6 +1,6 @@
 use crate::v3::Error;
 
-pub(crate) const CHANNEL_TYPE: &'static str = "im.ricochet.file-transfer";
+pub(crate) const CHANNEL_TYPE: &str = "im.ricochet.file-transfer";
 // TODO: protocol specificaiton does not define what hash is used to verify transferred file contents
 
 // TODO: make FILE_HASH_SIZE also pub(crate)
@@ -26,72 +26,58 @@ impl Packet {
 
         match self {
             Packet::FileHeader(file_header) => {
-                let file_id = file_header.file_id();
-                let file_size = file_header.file_size();
-                let name = file_header.name().to_string();
-                let file_hash = file_header.file_hash().clone();
+                let file_id = Some(file_header.file_id());
+                let file_size = Some(file_header.file_size());
+                let name = Some(file_header.name().to_string());
+                let file_hash: Option<Vec<u8>> = Some(file_header.file_hash().into());
 
-                let mut file_header = protos::FileChannel::FileHeader::default();
-                file_header.file_id = Some(file_id);
-                file_header.file_size = Some(file_size);
-                file_header.name = Some(name);
-                file_header.file_hash = Some(file_hash.into());
+                let file_header = protos::FileChannel::FileHeader{file_id, file_size, name, file_hash, ..Default::default()};
 
                 pb.file_header = Some(file_header).into();
             },
             Packet::FileHeaderAck(file_header_ack) => {
-                let file_id = file_header_ack.file_id();
-                let accepted = file_header_ack.accepted();
+                let file_id = Some(file_header_ack.file_id());
+                let accepted = Some(file_header_ack.accepted());
 
-                let mut file_header_ack = protos::FileChannel::FileHeaderAck::default();
-                file_header_ack.file_id = Some(file_id);
-                file_header_ack.accepted = Some(accepted);
+                let file_header_ack = protos::FileChannel::FileHeaderAck{file_id, accepted, ..Default::default()};
 
                 pb.file_header_ack = Some(file_header_ack).into();
             },
             Packet::FileHeaderResponse(file_header_response) => {
-                let file_id = file_header_response.file_id();
-                let response: i32 = file_header_response.response().into();
+                let file_id = Some(file_header_response.file_id());
+                let response: Option<i32> = Some(file_header_response.response().into());
 
-                let mut file_header_response = protos::FileChannel::FileHeaderResponse::default();
-                file_header_response.file_id = Some(file_id);
-                file_header_response.response = Some(response);
+                let file_header_response = protos::FileChannel::FileHeaderResponse{file_id, response, ..Default::default()};
 
                 pb.file_header_response = Some(file_header_response).into();
             },
             Packet::FileChunk(file_chunk) => {
-                let file_id = file_chunk.file_id();
-                let chunk_data = file_chunk.chunk_data();
+                let file_id = Some(file_chunk.file_id());
+                let chunk_data: Option<Vec<u8>> = Some(file_chunk.chunk_data().into());
 
-                let mut file_chunk = protos::FileChannel::FileChunk::default();
-                file_chunk.file_id = Some(file_id);
-                file_chunk.chunk_data = Some(chunk_data.into());
+                let file_chunk = protos::FileChannel::FileChunk{file_id, chunk_data, ..Default::default()};
 
                 pb.file_chunk = Some(file_chunk).into();
             },
             Packet::FileChunkAck(file_chunk_ack) => {
-                let file_id = file_chunk_ack.file_id();
-                let bytes_received = file_chunk_ack.bytes_received();
+                let file_id = Some(file_chunk_ack.file_id());
+                let bytes_received = Some(file_chunk_ack.bytes_received());
 
-                let mut file_chunk_ack = protos::FileChannel::FileChunkAck::default();
-                file_chunk_ack.file_id = Some(file_id);
-                file_chunk_ack.bytes_received = Some(bytes_received);
+                let file_chunk_ack = protos::FileChannel::FileChunkAck{file_id, bytes_received, ..Default::default()};
 
                 pb.file_chunk_ack = Some(file_chunk_ack).into();
             },
             Packet::FileTransferCompleteNotification(file_transfer_complete_notification) => {
-                let file_id = file_transfer_complete_notification.file_id();
+                let file_id = Some(file_transfer_complete_notification.file_id());
                 let result = file_transfer_complete_notification.result();
                 let result = match result {
                     FileTransferResult::Success => protos::FileChannel::FileTransferResult::Success,
                     FileTransferResult::Failure => protos::FileChannel::FileTransferResult::Failure,
                     FileTransferResult::Cancelled => protos::FileChannel::FileTransferResult::Cancelled,
                 };
-                let result = protobuf::EnumOrUnknown::new(result);
+                let result = Some(protobuf::EnumOrUnknown::new(result));
 
-                let mut file_transfer_complete_notification = protos::FileChannel::FileTransferCompleteNotification::default();
-                file_transfer_complete_notification.file_id = Some(file_id);
-                file_transfer_complete_notification.result = Some(result);
+                let file_transfer_complete_notification = protos::FileChannel::FileTransferCompleteNotification{file_id, result, ..Default::default()};
 
                 pb.file_transfer_complete_notification = Some(file_transfer_complete_notification).into();
             },

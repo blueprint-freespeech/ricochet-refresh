@@ -63,14 +63,14 @@ impl Context {
     pub fn set_tego_key(
         &mut self,
         tego_key: TegoKey,
-    ) -> () {
+    ) {
         self.tego_key = tego_key;
     }
 
     pub fn set_tor_data_directory(
         &mut self,
         tor_data_directory: PathBuf,
-    ) -> () {
+    ) {
         self.tor_data_directory = tor_data_directory;
     }
 
@@ -79,7 +79,7 @@ impl Context {
         &mut self,
         proxy_settings: Option<ProxyConfig>,
         allowed_ports: Option<Vec<u16>>,
-    ) -> () {
+    ) {
         self.proxy_settings = proxy_settings;
         self.allowed_ports = allowed_ports;
     }
@@ -108,7 +108,7 @@ impl Context {
     pub fn set_private_key(
         &mut self,
         private_key: Ed25519PrivateKey,
-    ) -> () {
+    ) {
         self.private_key = Some(private_key);
     }
 
@@ -119,16 +119,12 @@ impl Context {
     pub fn set_users(
         &mut self,
         users: BTreeMap<V3OnionServiceId, tego_user_type>
-    ) -> () {
+    ) {
         self.users = users;
     }
 
     pub fn host_service_id(&self) -> Option<V3OnionServiceId> {
-        if let Some(private_key) = &self.private_key {
-            Some(V3OnionServiceId::from_private_key(private_key))
-        } else {
-            None
-        }
+        self.private_key.as_ref().map(V3OnionServiceId::from_private_key)
     }
 
     // todo: should take a tor config as an argument
@@ -185,14 +181,14 @@ impl Context {
         self.connect_complete.load(Ordering::Relaxed)
     }
 
-    fn push_command(&self, data: CommandData) -> () {
+    fn push_command(&self, data: CommandData) {
         self.push_command_ex(data, Duration::ZERO);
     }
 
     fn push_command_ex(
         &self,
         data: CommandData,
-        delay: Duration) -> () {
+        delay: Duration) {
         self.command_queue.push(data, delay);
     }
 
@@ -211,7 +207,7 @@ impl Context {
     pub fn send_contact_request(
         &self,
         service_id: V3OnionServiceId,
-        message: rico_protocol::v3::message::contact_request_channel::MessageText) -> () {
+        message: rico_protocol::v3::message::contact_request_channel::MessageText) {
         let contact_request_message = Some(message);
         self.push_command(CommandData::ConnectContact{service_id, failure_count: 0usize, contact_request_message});
     }
@@ -219,7 +215,7 @@ impl Context {
     pub fn acknowledge_contact_request(
         &self,
         service_id: V3OnionServiceId,
-        response: tego_chat_acknowledge) -> () {
+        response: tego_chat_acknowledge) {
         self.push_command(CommandData::AcknowledgeContactRequest{service_id, response});
     }
 
@@ -548,7 +544,7 @@ impl EventLoopTask {
                     };
                     let _ = handle_connect_complete();
                 },
-                TorEvent::ConnectFailed{handle, error} => {
+                TorEvent::ConnectFailed{handle, error: _} => {
                     if let Some(pending_connection) = self.pending_connections.remove(&handle) {
                         let service_id = pending_connection.service_id;
                         let failure_count = pending_connection.failure_count + 1;
@@ -569,7 +565,6 @@ impl EventLoopTask {
                         self.command_queue.push(command_data, Duration::from_secs(delay));
                     }
                 },
-                _ => (),
             }
         }
 
@@ -579,33 +574,27 @@ impl EventLoopTask {
     fn handle_commands(&mut self) -> Result<()> {
         let mut command_queue = self.command_queue.take();
 
-        loop {
-            if let Some(cmd) = command_queue.peek() {
-                if *cmd.start_time() > Instant::now() {
-                    break;
-                }
-            } else {
+        while let Some(cmd) = command_queue.peek() {
+            if *cmd.start_time() > Instant::now() {
                 break;
             }
+
             let cmd = command_queue.pop().unwrap();
             match cmd.data() {
                 CommandData::EndEventLoop => self.task_complete = true,
                 CommandData::ForgetUser{service_id, result} => {
                     let mut handle_forget_user = || -> Result<()> {
                         // remove from our set of users
-                        match self.users.remove(&service_id) {
-                            Some(user_data) => {
-                                // ignore any pending connection
-                                if let Some(pending_connection_handle) = user_data.pending_connection_handle {
-                                    self.pending_connections.remove(&pending_connection_handle);
-                                }
+                        if let Some(user_data) = self.users.remove(&service_id) {
+                            // ignore any pending connection
+                            if let Some(pending_connection_handle) = user_data.pending_connection_handle {
+                                self.pending_connections.remove(&pending_connection_handle);
+                            }
 
-                                // kill open connection
-                                if let Some(connection_handle) = user_data.connection_handle {
-                                    self.connections.remove(&connection_handle);
-                                }
-                            },
-                            None => (),
+                            // kill open connection
+                            if let Some(connection_handle) = user_data.connection_handle {
+                                self.connections.remove(&connection_handle);
+                            }
                         }
                         // remove from packet handler
                         self.packet_handler.forget_user(&service_id);
@@ -744,7 +733,7 @@ impl EventLoopTask {
                     result.resolve(handle_accept_file_transfer_request());
                 },
                 CommandData::RejectFileTransferRequest{service_id, file_transfer_id, result} => {
-                    let mut handle_reject_file_transfer_request = || -> Result<()> {
+                    let handle_reject_file_transfer_request = || -> Result<()> {
 
                         let file_transfer_handle: FileTransferHandle = file_transfer_id.into();
 
@@ -774,7 +763,7 @@ impl EventLoopTask {
                     result.resolve(handle_reject_file_transfer_request());
                 },
                 CommandData::CancelFileTransfer{service_id, file_transfer_id, result} => {
-                    let mut handle_cancel_file_transfer = || -> Result<()> {
+                    let handle_cancel_file_transfer = || -> Result<()> {
                         let file_transfer_handle: FileTransferHandle = file_transfer_id.into();
 
                         // construct reply packets
@@ -784,7 +773,7 @@ impl EventLoopTask {
                         // remove our file download/upload struct
                         let connection = self.connections.get_mut(&connection_handle).context("missing Connection struct")?;
 
-                        let direction = if let Some(_) = connection.file_downloads.remove(&file_transfer_handle) {
+                        let direction = if connection.file_downloads.remove(&file_transfer_handle).is_some() {
                             tego_file_transfer_direction::tego_file_transfer_direction_receiving
                         } else {
                             connection.file_uploads.remove(&file_transfer_handle).context("missing FileDownload or FileUpload struct")?;
@@ -824,10 +813,10 @@ impl EventLoopTask {
         let mut to_remove: BTreeSet<ConnectionHandle> = Default::default();
         // TODO: we need some kind of exponential backoff for repeated failures to connect+authenticate
         // blocked users will currently spam over and over again
-        let mut to_retry: BTreeSet<V3OnionServiceId> = Default::default();
+        let to_retry: BTreeSet<V3OnionServiceId> = Default::default();
 
         // read bytes from each connection
-        'outer: for (&handle, connection) in self.connections.iter_mut() {
+        for (&handle, connection) in self.connections.iter_mut() {
             let stream = &mut connection.stream;
 
             // handle reading
@@ -839,7 +828,7 @@ impl EventLoopTask {
                         println!("stream read err: {err:?}");
                         connection.remove = true;
                         // todo: we should only retry allowed or pending contacts
-                        if let Some(service_id) = &connection.service_id {
+                        if let Some(_service_id) = &connection.service_id {
                             // to_retry.insert(service_id.clone());
                         }
                     },
@@ -849,13 +838,13 @@ impl EventLoopTask {
                     println!("stream read err: end of stream");
                     connection.remove = true;
                     // todo: we should only retry allowed or pending contacts
-                    if let Some(service_id) = &connection.service_id {
+                    if let Some(_service_id) = &connection.service_id {
                         // to_retry.insert(service_id.clone());
                     }
                 },
                 Ok(size) => {
                     let read_buffer = &self.read_buffer[..size];
-                    connection.read_bytes.write(read_buffer).expect("read_bytes write failed");
+                    connection.read_bytes.write_all(read_buffer).expect("read_bytes write failed");
                 },
             }
 
@@ -912,7 +901,7 @@ impl EventLoopTask {
                             // todo: handle closed connection
                             println!("--- client authenticated: peer: {service_id:?}, duplicate_connection: {duplicate_connection:?} ---");
                             connection.service_id = Some(service_id);
-                            if let Some(duplicate_connection) = duplicate_connection {
+                            if duplicate_connection.is_some() {
                                 connection.remove = true;
                             }
                         },
@@ -924,7 +913,7 @@ impl EventLoopTask {
                         Ok(Event::HostAuthenticated{service_id, duplicate_connection}) => {
                             // todo: handle closed connection
                             println!("--- host authenticated: peer: {service_id:?}, duplicate_connection: {duplicate_connection:?} ---");
-                            if let Some(duplicate_connection) = duplicate_connection {
+                            if duplicate_connection.is_some() {
                                 connection.remove = true;
                             }
                         },
@@ -1019,7 +1008,7 @@ impl EventLoopTask {
                                 Ok(bytes_read) => bytes_read,
                                 Err(_) => todo!(),
                             };
-                            let mut chunk_data: Vec<u8> = self.file_read_buffer[..bytes_read].to_vec();
+                            let chunk_data: Vec<u8> = self.file_read_buffer[..bytes_read].to_vec();
 
                             self.packet_handler.send_file_chunk(
                                 &service_id,
@@ -1152,7 +1141,7 @@ impl EventLoopTask {
                                     Ok(bytes_read) => bytes_read,
                                     Err(_) => todo!(),
                                 };
-                                let mut chunk_data: Vec<u8> = self.file_read_buffer[..bytes_read].to_vec();
+                                let chunk_data: Vec<u8> = self.file_read_buffer[..bytes_read].to_vec();
 
                                 self.packet_handler.send_file_chunk(
                                     &service_id,
@@ -1209,7 +1198,6 @@ impl EventLoopTask {
                             break 'packet_handle;
                         }
                         Err(err) => panic!("error: {err:?}"),
-                        _ => todo!(),
                     }
                 }
             }
@@ -1225,9 +1213,9 @@ impl EventLoopTask {
 
                 // send bytes
                 let stream = &mut connection.stream;
-                if !stream.write(write_bytes.as_slice()).is_ok() {
+                if stream.write(write_bytes.as_slice()).is_err() {
                     connection.remove = true;
-                    if let Some(service_id) = &connection.service_id {
+                    if let Some(_service_id) = &connection.service_id {
                         // todo: only retry known +  pending contacts
                         // to_retry.insert(service_id.clone());
                     }
@@ -1472,6 +1460,7 @@ struct Connection {
     pub read_packets: Vec<Packet>,
     // buffer of packets to write
     pub write_packets: Vec<Packet>,
+    // todo: maybe these should also just be a single FileTransfer
     // pending and in-progress file downloads
     pub file_downloads: BTreeMap<rico_protocol::v3::packet_handler::FileTransferHandle, FileDownload>,
     // pending and in-process file uploads
@@ -1531,7 +1520,7 @@ impl FileDownload {
     // returns true when we're done writing, false if we need more bytes
     pub fn write(&mut self, bytes: &[u8]) -> Result<()> {
         let file = self.file.as_mut().context("file is None")?;
-        file.write(bytes)?;
+        file.write_all(bytes)?;
         self.bytes_written += bytes.len() as u64;
 
         Ok(())
@@ -1577,7 +1566,7 @@ impl FileUpload {
         let mut bytes_read = 0u64;
         while bytes_read != size {
             let n = file.read(&mut buffer)?;
-            hasher.update(&mut buffer[..n]);
+            hasher.update(&buffer[..n]);
             bytes_read += n as u64;
         }
         let hash = hasher.finalize();
@@ -1597,11 +1586,12 @@ impl FileUpload {
     }
 
     pub fn hash(&self) -> rico_protocol::v3::file_hasher::FileHash {
-        self.hash.clone()
+        self.hash
     }
 }
 
-
+// todo: remove unused callbacks
+#[allow(dead_code)]
 enum CallbackData {
     TorErrorOccurred,
     UpdateTorDaemonConfigSucceeded,

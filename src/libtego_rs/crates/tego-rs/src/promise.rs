@@ -28,7 +28,7 @@ impl<T> Default for Promise<T> {
 }
 
 impl<T> Promise<T> {
-    pub fn resolve(&self, value: T) -> () {
+    pub fn resolve(&self, value: T) {
         let (data, cvar) = &*self.data;
         let mut data = data.lock().expect("promise mutex poisoned");
         *data = Some(value);

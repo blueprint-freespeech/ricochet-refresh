@@ -55,15 +55,19 @@ impl Packet {
             packet => {
                 let packet_begin = v.len();
 
+                const SIZE_HI_OFFSET: usize = 0usize;
+                const SIZE_LO_OFFSET: usize = 1usize;
+                const CHANNEL_HI_OFFSET: usize = 2usize;
+                const CHANNEL_LO_OFFSET: usize = 3usize;
+                const HEADER_SIZE: usize = 4usize;
+
                 let header_begin = packet_begin;
-                let size_hi = header_begin + 0usize;
-                let size_lo = header_begin + 1usize;
-                let channel_hi = header_begin + 2usize;
-                let channel_lo = header_begin + 3usize;
+                let size_hi = header_begin + SIZE_HI_OFFSET;
+                let size_lo = header_begin + SIZE_LO_OFFSET;
+                let channel_hi = header_begin + CHANNEL_HI_OFFSET;
+                let channel_lo = header_begin + CHANNEL_LO_OFFSET;
 
-                let header_size = 4usize;
-
-                v.resize(v.len() + header_size, 0xffu8);
+                v.resize(v.len() + HEADER_SIZE, 0xffu8);
 
                 let data_begin = v.len();
                 let channel = match packet {
@@ -95,7 +99,7 @@ impl Packet {
                 };
                 let data_end = v.len();
                 let data_size = data_end - data_begin;
-                let packet_size = header_size + data_size;
+                let packet_size = HEADER_SIZE + data_size;
                 assert!(packet_size <= u16::MAX as usize);
                 let size = (packet_size & 0xffffusize) as u16;
 
@@ -471,10 +475,6 @@ impl PacketHandler {
         }
     }
 
-    fn known_contacts(&self) -> &BTreeSet<V3OnionServiceId> {
-        &self.known_contacts
-    }
-
     fn connection(
         &self,
         connection_handle: ConnectionHandle) -> Result<&Connection, Error> {
@@ -532,56 +532,56 @@ impl PacketHandler {
             }
 
             return Err(Error::BadDataStream);
-        } else {
-            if bytes.len() >= 4 {
-                // size is encoded as big-endian u16
-                let size: u16 = ((bytes[0] as u16) << 8) | (bytes[1] as u16);
-                let size = size as usize;
-                // channel id is encoded as big-endian u16
-                let channel: u16 = ((bytes[2] as u16) << 8) | (bytes[3] as u16);
+        }
 
-                // size must be at least
-                if size < 4 {
-                    Err(Error::BadDataStream)
-                } else if bytes.len() < size {
-                    Err(Error::NeedMoreBytes)
-                } else if size == 4 {
-                    Ok((Packet::CloseChannelPacket{channel}, 4))
-                } else {
-                    let bytes = &bytes[4..size];
-                    let packet = match channel_map.get_by_id(&channel) {
-                        Some(ChannelData::Control) => {
-                            let packet = control_channel::Packet::try_from(bytes)?;
-                            Packet::ControlChannelPacket(packet)
-                        },
-                        Some(ChannelData::IncomingChat) |
-                        Some(ChannelData::OutgoingChat) => {
-                            let packet = chat_channel::Packet::try_from(bytes)?;
-                            Packet::ChatChannelPacket{channel, packet}
-                        },
-                        // todo: why does IncomingContactRequest rueturn an error?
-                        Some(ChannelData::IncomingContactRequest) => return Err(Error::BadDataStream),
-                        Some(ChannelData::OutgoingContactRequest) => {
-                            let packet = contact_request_channel::Packet::try_from(bytes)?;
-                            Packet::ContactRequestChannelPacket{channel, packet}
-                        },
-                        Some(ChannelData::IncomingAuthHiddenService{..}) |
-                        Some(ChannelData::OutgoingAuthHiddenService{..}) => {
-                            let packet = auth_hidden_service::Packet::try_from(bytes)?;
-                            Packet::AuthHiddenServicePacket{channel, packet}
-                        },
-                        Some(ChannelData::IncomingFileTransfer) |
-                        Some(ChannelData::OutgoingFileTransfer) => {
-                            let packet = file_channel::Packet::try_from(bytes)?;
-                            Packet::FileChannelPacket{channel, packet}
-                        },
-                        None => return Err(Error::TargetChannelDoesNotExist(channel)),
-                    };
-                    Ok((packet, size))
-                }
-            } else {
+        if bytes.len() >= 4 {
+            // size is encoded as big-endian u16
+            let size: u16 = ((bytes[0] as u16) << 8) | (bytes[1] as u16);
+            let size = size as usize;
+            // channel id is encoded as big-endian u16
+            let channel: u16 = ((bytes[2] as u16) << 8) | (bytes[3] as u16);
+
+            // size must be at least
+            if size < 4 {
+                Err(Error::BadDataStream)
+            } else if bytes.len() < size {
                 Err(Error::NeedMoreBytes)
+            } else if size == 4 {
+                Ok((Packet::CloseChannelPacket{channel}, 4))
+            } else {
+                let bytes = &bytes[4..size];
+                let packet = match channel_map.get_by_id(&channel) {
+                    Some(ChannelData::Control) => {
+                        let packet = control_channel::Packet::try_from(bytes)?;
+                        Packet::ControlChannelPacket(packet)
+                    },
+                    Some(ChannelData::IncomingChat) |
+                    Some(ChannelData::OutgoingChat) => {
+                        let packet = chat_channel::Packet::try_from(bytes)?;
+                        Packet::ChatChannelPacket{channel, packet}
+                    },
+                    // todo: why does IncomingContactRequest rueturn an error?
+                    Some(ChannelData::IncomingContactRequest) => return Err(Error::BadDataStream),
+                    Some(ChannelData::OutgoingContactRequest) => {
+                        let packet = contact_request_channel::Packet::try_from(bytes)?;
+                        Packet::ContactRequestChannelPacket{channel, packet}
+                    },
+                    Some(ChannelData::IncomingAuthHiddenService{..}) |
+                    Some(ChannelData::OutgoingAuthHiddenService{..}) => {
+                        let packet = auth_hidden_service::Packet::try_from(bytes)?;
+                        Packet::AuthHiddenServicePacket{channel, packet}
+                    },
+                    Some(ChannelData::IncomingFileTransfer) |
+                    Some(ChannelData::OutgoingFileTransfer) => {
+                        let packet = file_channel::Packet::try_from(bytes)?;
+                        Packet::FileChannelPacket{channel, packet}
+                    },
+                    None => return Err(Error::TargetChannelDoesNotExist(channel)),
+                };
+                Ok((packet, size))
             }
+        } else {
+            Err(Error::NeedMoreBytes)
         }
     }
 
@@ -598,7 +598,7 @@ impl PacketHandler {
             Packet::IntroductionPacket(packet) => self.handle_introduction_packet(connection_handle, packet, replies),
             Packet::IntroductionResponsePacket(packet) => self.handle_introduction_response_packet(connection_handle, packet, replies),
             Packet::ControlChannelPacket(packet) => self.handle_control_channel_packet(connection_handle, packet, replies),
-            Packet::CloseChannelPacket{channel} => self.handle_close_channel_packet(connection_handle, channel, replies),
+            Packet::CloseChannelPacket{channel} => self.handle_close_channel_packet(connection_handle, channel),
             Packet::ContactRequestChannelPacket{channel, packet} => self.handle_contact_request_channel_packet(connection_handle, channel, packet, replies),
             Packet::ChatChannelPacket{channel, packet} => self.handle_chat_channel_packet(connection_handle, channel, packet, replies),
             Packet::AuthHiddenServicePacket{channel, packet} => self.handle_auth_hidden_service_packet(connection_handle, channel, packet, replies),
@@ -662,37 +662,37 @@ impl PacketHandler {
 
         if protocol_failure {
             let _ = self.connections.remove(&connection_handle);
-            Ok(Event::FatalProtocolFailure)
+            return Ok(Event::FatalProtocolFailure);
+        }
+
+        if let Some(Version::RicochetRefresh3) = packet.version {
+            let connection = self.connection_mut(connection_handle)?;
+            let _ = connection.channel_map.insert(0u16, ChannelData::Control);
+
+            // construct AuthHiddenService OpenChannel packet
+            let channel_id = connection.next_channel_id();
+
+            let mut client_cookie: [u8; auth_hidden_service::CLIENT_COOKIE_SIZE] = Default::default();
+            OsRng.try_fill_bytes(&mut client_cookie)
+                .map_err(Error::RandOsError)?;
+
+            use crate::control_channel::{ChannelType, OpenChannel, OpenChannelExtension};
+
+            let open_channel_extension = OpenChannelExtension::AuthHiddenService(auth_hidden_service::OpenChannel{client_cookie});
+
+            let open_channel = OpenChannel::new(channel_id as i32, ChannelType::AuthHiddenService, Some(open_channel_extension))?;
+            let packet = control_channel::Packet::OpenChannel(open_channel);
+            let reply = Packet::ControlChannelPacket(packet);
+            replies.push(reply);
+
+            // save off channel state
+            connection.channel_map.insert(channel_id, ChannelData::OutgoingAuthHiddenService{client_cookie})?;
+
+            Ok(Event::IntroductionResponseReceived)
         } else {
-            if let Some(Version::RicochetRefresh3) = packet.version {
-                let connection = self.connection_mut(connection_handle)?;
-                let _ = connection.channel_map.insert(0u16, ChannelData::Control);
-
-                // construct AuthHiddenService OpenChannel packet
-                let channel_id = connection.next_channel_id();
-
-                let mut client_cookie: [u8; auth_hidden_service::CLIENT_COOKIE_SIZE] = Default::default();
-                OsRng.try_fill_bytes(&mut client_cookie)
-                    .map_err(Error::RandOsError)?;
-
-                use crate::control_channel::{ChannelType, OpenChannel, OpenChannelExtension};
-
-                let open_channel_extension = OpenChannelExtension::AuthHiddenService(auth_hidden_service::OpenChannel{client_cookie: client_cookie.clone()});
-
-                let open_channel = OpenChannel::new(channel_id as i32, ChannelType::AuthHiddenService, Some(open_channel_extension))?;
-                let packet = control_channel::Packet::OpenChannel(open_channel);
-                let reply = Packet::ControlChannelPacket(packet);
-                replies.push(reply);
-
-                // save off channel state
-                connection.channel_map.insert(channel_id, ChannelData::OutgoingAuthHiddenService{client_cookie})?;
-
-                Ok(Event::IntroductionResponseReceived)
-            } else {
-                // version not supported
-                let _ = self.connections.remove(&connection_handle);
-                Ok(Event::FatalProtocolFailure)
-            }
+            // version not supported
+            let _ = self.connections.remove(&connection_handle);
+            Ok(Event::FatalProtocolFailure)
         }
     }
 
@@ -709,11 +709,11 @@ impl PacketHandler {
                     let connection = self.connection(connection_handle)?;
 
                     // client-side may only open odd-numbered connections
-                    (!(channel_identifier % 2u16 == 1u16 &&
-                    connection.direction == Direction::Incoming) &&
+                    !(channel_identifier % 2u16 == 1u16 &&
+                    connection.direction == Direction::Incoming ||
                     // server-side may only open even-numbered connections
-                    !(channel_identifier % 2u16 == 0u16 &&
-                    connection.direction == Direction::Outgoing)) ||
+                    channel_identifier % 2u16 == 0u16 &&
+                    connection.direction == Direction::Outgoing) ||
                     // requested channel already open
                     connection.channel_map.get_by_id(&channel_identifier).is_some()
                 };
@@ -731,7 +731,7 @@ impl PacketHandler {
                         let mut server_cookie: [u8; auth_hidden_service::SERVER_COOKIE_SIZE] = Default::default();
                         OsRng.try_fill_bytes(&mut server_cookie)
                             .map_err(Error::RandOsError)?;
-                        let channel_result_extension = ChannelResultExtension::AuthHiddenService(auth_hidden_service::ChannelResult{server_cookie: server_cookie.clone()});
+                        let channel_result_extension = ChannelResultExtension::AuthHiddenService(auth_hidden_service::ChannelResult{server_cookie});
 
                         // save off channel state
                         let client_cookie = extension.client_cookie;
@@ -896,8 +896,7 @@ impl PacketHandler {
     fn handle_close_channel_packet(
         &mut self,
         connection_handle: ConnectionHandle,
-        channel_id: u16,
-        _replies: &mut Vec<Packet>) -> Result<Event, Error> {
+        channel_id: u16) -> Result<Event, Error> {
         let connection = self.connection_mut(connection_handle)?;
         if connection.close_channel(channel_id, None) {
             Ok(Event::ChannelClosed{id: channel_id})
@@ -1047,10 +1046,7 @@ impl PacketHandler {
                     // only connecting clients should be sending a proof packet
                     connection.direction != Direction::Incoming ||
                     // channel has wrong data
-                    match connection.channel_map.channel_id_to_type(&channel) {
-                        Some(ChannelType::IncomingAuthHiddenService) => false,
-                        _ => true
-                    }
+                    !matches!(connection.channel_map.channel_id_to_type(&channel), Some(ChannelType::IncomingAuthHiddenService))
                 };
                 if protocol_failure {
                     let _ = self.connections.remove(&connection_handle);
@@ -1060,7 +1056,7 @@ impl PacketHandler {
                 let server_service_id = self.service_id.clone();
 
                 let (client_cookie, server_cookie) = if let Some(ChannelData::IncomingAuthHiddenService{client_cookie, server_cookie}) = self.connection_mut(connection_handle)?.channel_map.get_by_id(&channel) {
-                    (client_cookie.clone(), server_cookie.clone())
+                    (*client_cookie, *server_cookie)
                 } else {
                     return Ok(Event::FatalProtocolFailure)
                 };
@@ -1085,8 +1081,7 @@ impl PacketHandler {
 
                     // build reply packets
 
-                    let connection = self.connection(connection_handle)?;
-                    let is_known_contact = self.known_contacts.contains(&client_service_id);
+                    let is_known_contact = self.known_contacts.contains(client_service_id);
                     let result = auth_hidden_service::Result::new(true, Some(is_known_contact))?;
                     let packet = auth_hidden_service::Packet::Result(result);
                     let reply = Packet::AuthHiddenServicePacket{channel, packet};
@@ -1178,17 +1173,12 @@ impl PacketHandler {
                     // only outgoing connections should receive an auth hidden service result
                     connection.direction != Direction::Outgoing ||
                     // channel has wrong data
-                    match connection.channel_map.channel_id_to_type(&channel) {
-                        Some(ChannelType::OutgoingAuthHiddenService) => false,
-                        _ => true
-                    }
+                    !matches!(connection.channel_map.channel_id_to_type(&channel), Some(ChannelType::OutgoingAuthHiddenService))
                 };
                 if protocol_failure {
                     let _ = self.connections.remove(&connection_handle);
                     return Ok(Event::FatalProtocolFailure)
                 }
-
-                let client_service_id = self.service_id.clone();
 
                 let connection = self.connection_mut(connection_handle)?;
                 match (result.accepted(), connection.peer_service_id.clone()) {
@@ -1325,16 +1315,16 @@ impl PacketHandler {
                 let file_transfer_handle = FileTransferHandle{file_id, connection_handle, direction: Direction::Incoming};
                 let file_name = file_header.name().to_string();
                 let file_size = file_header.file_size();
-                let file_hash = file_header.file_hash().clone();
+                let file_hash = *file_header.file_hash();
 
                 // construct our internal state for this download
                 let connection = self.connection_mut(connection_handle)?;
-                if let Some(_) = connection.file_transfers.insert(file_transfer_handle.clone(), FileTransfer::FileDownload(FileDownload{
+                if connection.file_transfers.insert(file_transfer_handle, FileTransfer::FileDownload(FileDownload{
                     expected_bytes: file_size,
                     downloaded_bytes: 0u64,
-                    expected_hash: file_hash.clone(),
+                    expected_hash: file_hash,
                     hasher: Default::default(),
-                })) {
+                })).is_some() {
                     // peer initiated file transfer with duplicate id
                     return Ok(Event::FatalProtocolFailure);
                 }
@@ -1505,9 +1495,9 @@ impl PacketHandler {
 
                 // cleanup file transfer state
                 match (direction, connection.file_transfers.remove(&file_transfer_handle)) {
-                    (Direction::Incoming, Some(FileTransfer::FileDownload(file_download))) => (),
-                    (Direction::Outgoing, Some(FileTransfer::FileUpload(file_upload))) => (),
-                    (_, None) => return Ok(Event::ProtocolFailure{message: "".to_string()}),
+                    (Direction::Incoming, Some(FileTransfer::FileDownload(_))) => (),
+                    (Direction::Outgoing, Some(FileTransfer::FileUpload(_))) => (),
+                    (_, None) => return Ok(Event::ProtocolFailure{message: format!("received file transfer complete notification for file transfer which does not exist: {file_transfer_handle:?}")}),
                     _ => return Ok(Event::FatalProtocolFailure),
                 }
 
@@ -1561,7 +1551,7 @@ impl PacketHandler {
     pub fn remove_connection(
         &mut self,
         handle: &ConnectionHandle,
-    ) -> () {
+    ) {
         // remove this connection
         if let Some(connection) = self.connections.remove(handle) {
             // remove service_id to handle entry only if it is associated with
@@ -1590,7 +1580,7 @@ impl PacketHandler {
     pub fn forget_user(
         &mut self,
         service_id: &V3OnionServiceId,
-    ) -> () {
+    ) {
         if let Ok(connection_handle) = self.service_id_to_connection_handle(service_id) {
             self.remove_connection(&connection_handle);
         }
@@ -1744,7 +1734,7 @@ impl PacketHandler {
             connection.sent_message_counter += 1;
 
             // add a file upload record for this pending transfer
-            connection.file_transfers.insert(file_transfer_handle.clone(), FileTransfer::FileUpload(FileUpload{file_size, uploaded_bytes: 0u64}));
+            connection.file_transfers.insert(file_transfer_handle, FileTransfer::FileUpload(FileUpload{file_size, uploaded_bytes: 0u64}));
 
             let file_header = file_channel::FileHeader::new(file_id, file_size, file_name, file_hash)?;
             let packet = file_channel::Packet::FileHeader(file_header);
