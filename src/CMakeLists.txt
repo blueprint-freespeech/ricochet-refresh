@@ -86,7 +86,20 @@ if (ENABLE_LINTING)
     add_custom_target(linting)
 endif()
 
-if (NOT ENABLE_LIBTEGO_RS)
+option(ENABLE_FORMATTING "Enable format make target" OFF)
+if (ENABLE_FORMATTING)
+    # todo: add C++ support once we ove off of the Qt frontend
+    add_custom_target(format)
+endif()
+
+if (ENABLE_LIBTEGO_RS)
+    find_program(CARGO_FMT_EXECUTABLE NAMES cargo-fmt)
+    if (NOT CARGO_FMT_EXECUTABLE)
+        message(FATAL_ERROR "cargo-fmt not found; required to run format make target")
+    else()
+        message(STATUS "Found cargo-fmt: ${CARGO_FMT_EXECUTABLE}")
+    endif()
+else()
     # openssl configuration. this propogates to all subprojects
     set(OPENSSL_USE_STATIC_LIBS OFF CACHE BOOL "Use statically-linked OpenSSL")
     set(OPENSSL_ROOT_DIR "" CACHE STRING "Path to custom OpenSSL installation")

@@ -52,3 +52,15 @@ if (ENABLE_LINTING)
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
     add_dependencies(linting cargo_clippy_target)
 endif()
+
+if (ENABLE_FORMATTING)
+    #
+    # Run rust formatting
+    #
+    add_custom_target(cargo_fmt_target
+        COMMAND cargo fmt
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+    add_dependencies(format cargo_fmt_target)
+endif()
+
