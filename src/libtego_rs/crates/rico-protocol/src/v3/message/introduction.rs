@@ -13,7 +13,7 @@ impl IntroductionPacket {
             ))
         } else if versions.len() > u8::MAX as usize {
             Err(Error::PacketConstructionFailed(
-                "introduction packet may have no more than 255 supported version".to_string(),
+                "introduction packet may have no more than 255 supported versions".to_string(),
             ))
         } else {
             Ok(Self { versions })
@@ -57,18 +57,18 @@ impl TryFrom<&[u8]> for IntroductionPacket {
                 }
             }
             3 => {
-                if bytes[0] == 0x49 && bytes[1] == 0x4d && bytes[3] >= 1 {
+                if bytes[0] == 0x49 && bytes[1] == 0x4d && bytes[2] >= 1 {
                     Err(Self::Error::NeedMoreBytes)
                 } else {
                     Err(Self::Error::InvalidIntroductionPacket)
                 }
             }
             count => {
-                if bytes[0] == 0x49 && bytes[1] == 0x4d && bytes[3] >= 1 {
-                    if count >= 3usize + bytes[3] as usize {
+                let version_count = bytes[2] as usize;
+                if bytes[0] == 0x49 && bytes[1] == 0x4d && version_count >= 1usize {
+                    if count < 3usize + version_count {
                         Err(Self::Error::NeedMoreBytes)
                     } else {
-                        let version_count = bytes[2] as usize;
                         let mut versions: Vec<Version> = Vec::with_capacity(version_count);
                         for i in 0..version_count {
                             versions.push(bytes[3 + i].try_into()?);
@@ -81,6 +81,16 @@ impl TryFrom<&[u8]> for IntroductionPacket {
                 }
             }
         }
+    }
+}
+
+impl TryFrom<&IntroductionPacket> for Vec<u8> {
+    type Error = crate::v3::Error;
+
+    fn try_from(packet: &IntroductionPacket) -> Result<Self, Self::Error> {
+        let mut buf: Self = Default::default();
+        packet.write_to_vec(&mut buf)?;
+        Ok(buf)
     }
 }
 
@@ -120,7 +130,7 @@ impl TryFrom<&[u8]> for IntroductionResponsePacket {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Version {
     Ricochet1_0,
     Ricochet1_1,
