@@ -322,6 +322,16 @@ impl TryFrom<&[u8]> for Packet {
     }
 }
 
+impl TryFrom<&Packet> for Vec<u8> {
+    type Error = crate::v3::Error;
+
+    fn try_from(packet: &Packet) -> Result<Self, Self::Error> {
+        let mut buf: Self = Default::default();
+        packet.write_to_vec(&mut buf)?;
+        Ok(buf)
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub struct OpenChannel {
     // TODO: spec needs updating, channel_identifier must be positive and non-zero, and less than or equal to u16::MAX
@@ -342,11 +352,32 @@ impl OpenChannel {
             ))
         } else {
             let channel_identifier = channel_identifier as u16;
-            Ok(Self {
-                channel_identifier,
-                channel_type,
-                extension,
-            })
+            if matches!(
+                (&channel_type, &extension),
+                (ChannelType::Chat | ChannelType::FileTransfer, None)
+            ) || matches!(
+                (&channel_type, &extension),
+                (
+                    ChannelType::ContactRequest,
+                    Some(OpenChannelExtension::ContactRequestChannel(_))
+                )
+            ) || matches!(
+                (&channel_type, &extension),
+                (
+                    ChannelType::AuthHiddenService,
+                    Some(OpenChannelExtension::AuthHiddenService(_))
+                )
+            ) {
+                Ok(Self {
+                    channel_identifier,
+                    channel_type,
+                    extension,
+                })
+            } else {
+                Err(Error::PacketConstructionFailed(
+                    "invalid combination of channel type and extension".to_string(),
+                ))
+            }
         }
     }
 

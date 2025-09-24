@@ -122,18 +122,38 @@ impl TryFrom<String> for Nickname {
 
         const MAX_NICKNAME_SIZE: usize = 30;
         let mut count: usize = 0;
-        for code_unit in value.encode_utf16() {
+        for _ in value.encode_utf16() {
             count += 1;
             if count > MAX_NICKNAME_SIZE {
                 return Err(Self::Error::InvalidNicknameTooLong);
             }
+        }
 
+        for code_unit in value.chars() {
             // ensure not a non-character
-            let is_non_character =
-                matches!(code_unit, 0xFFFEu16..=0xFFFFu16 | 0xFDD0u16..=0xFDEFu16);
+            let is_non_character = matches!(code_unit, '\u{FDD0}'..='\u{FDEF}' |
+                    '\u{0FFFE}'..='\u{0FFFF}' |
+                    '\u{1FFFE}'..='\u{1FFFF}' |
+                    '\u{2FFFE}'..='\u{2FFFF}' |
+                    '\u{3FFFE}'..='\u{3FFFF}' |
+                    '\u{4FFFE}'..='\u{4FFFF}' |
+                    '\u{5FFFE}'..='\u{5FFFF}' |
+                    '\u{6FFFE}'..='\u{6FFFF}' |
+                    '\u{7FFFE}'..='\u{7FFFF}' |
+                    '\u{8FFFE}'..='\u{8FFFF}' |
+                    '\u{9FFFE}'..='\u{9FFFF}' |
+                    '\u{AFFFE}'..='\u{AFFFF}' |
+                    '\u{BFFFE}'..='\u{BFFFF}' |
+                    '\u{CFFFE}'..='\u{CFFFF}' |
+                    '\u{DFFFE}'..='\u{DFFFF}' |
+                    '\u{EFFFE}'..='\u{EFFFF}' |
+                    '\u{FFFFE}'..='\u{FFFFF}' |
+                    '\u{10FFFE}'..='\u{10FFFF}');
 
             if is_non_character {
-                return Err(Self::Error::InvalidNicknameContainsNonCharacter(code_unit));
+                return Err(Self::Error::InvalidNicknameContainsNonCharacter(
+                    code_unit as u32,
+                ));
             }
 
             if let Some(character) = char::from_u32(code_unit as u32) {
@@ -149,17 +169,19 @@ impl TryFrom<String> for Nickname {
                     // ensure not a format code unit (Cf)
                     GeneralCategory::Format => {
                         return Err(Self::Error::InvalidNicknameContainsFormatCodeUnit(
-                            code_unit,
+                            code_unit as u32,
                         ));
                     }
                     // ensure not a control code unit (Cc)
                     GeneralCategory::Control => {
                         return Err(Self::Error::InvalidNicknameContainsControlCodeUnit(
-                            code_unit,
+                            code_unit as u32,
                         ));
                     }
                     _ => (),
                 }
+            } else {
+                unreachable!();
             }
         }
 

@@ -22,14 +22,14 @@ pub enum Error {
     InvalidChatMessageEmpty,
     #[error("nickname too long")]
     InvalidNicknameTooLong,
-    #[error("nickname contains non-character: {0:#06x}")]
-    InvalidNicknameContainsNonCharacter(u16),
+    #[error("nickname contains non-character: {0:x}")]
+    InvalidNicknameContainsNonCharacter(u32),
     #[error("nickname contains html character: '{0}'")]
     InvalidNicknameContainsHtmlCharacter(char),
-    #[error("nickname contains format code unit (Cf): {0:#06x}")]
-    InvalidNicknameContainsFormatCodeUnit(u16),
-    #[error("nickname contains control code unit (Cc): {0:#06x}")]
-    InvalidNicknameContainsControlCodeUnit(u16),
+    #[error("nickname contains format code unit (Cf): {0:x}")]
+    InvalidNicknameContainsFormatCodeUnit(u32),
+    #[error("nickname contains control code unit (Cc): {0:x}")]
+    InvalidNicknameContainsControlCodeUnit(u32),
     #[error("contact request message too long")]
     InvalidContactRequestMessageTooLong,
     #[error("chunk_data too large: {0} bytes")]
