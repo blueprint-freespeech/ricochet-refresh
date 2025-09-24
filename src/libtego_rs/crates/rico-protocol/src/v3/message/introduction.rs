@@ -130,6 +130,16 @@ impl TryFrom<&[u8]> for IntroductionResponsePacket {
     }
 }
 
+impl TryFrom<&IntroductionResponsePacket> for Vec<u8> {
+    type Error = crate::v3::Error;
+
+    fn try_from(packet: &IntroductionResponsePacket) -> Result<Self, Self::Error> {
+        let mut buf: Self = Default::default();
+        packet.write_to_vec(&mut buf)?;
+        Ok(buf)
+    }
+}
+
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Version {
     Ricochet1_0,
