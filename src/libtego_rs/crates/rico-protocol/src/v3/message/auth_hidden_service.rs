@@ -109,6 +109,16 @@ impl TryFrom<&[u8]> for Packet {
     }
 }
 
+impl TryFrom<&Packet> for Vec<u8> {
+    type Error = crate::v3::Error;
+
+    fn try_from(packet: &Packet) -> std::result::Result<Self, Self::Error> {
+        let mut buf: Self = Default::default();
+        packet.write_to_vec(&mut buf)?;
+        Ok(buf)
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub struct OpenChannel {
     pub client_cookie: [u8; CLIENT_COOKIE_SIZE],
@@ -153,6 +163,7 @@ impl Proof {
         &self.service_id
     }
 
+    // todo: Maybe this function should be up a layer in the packet_handler itself
     pub fn message(
         client_cookie: &[u8; CLIENT_COOKIE_SIZE],
         server_cookie: &[u8; SERVER_COOKIE_SIZE],
