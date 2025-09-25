@@ -4,7 +4,9 @@ use anyhow::*;
 // internal
 use rico_protocol::v3::message::auth_hidden_service;
 use rico_protocol::v3::message::contact_request_channel;
-use rico_protocol::v3::message::contact_request_channel::{ContactRequest, MessageText, Nickname};
+use rico_protocol::v3::message::contact_request_channel::{
+    ContactRequest, MessageText, Nickname, Response, Status,
+};
 use rico_protocol::v3::message::control_channel::*;
 
 #[test]
@@ -138,6 +140,175 @@ fn test_open_channel_serialization() -> Result<()> {
                 105, 108, 101, 45, 116, 114, 97, 110, 115, 102, 101, 114,
             ],
             Packet::OpenChannel(OpenChannel::new(1i32, ChannelType::FileTransfer, None)?),
+        ),
+    ];
+
+    // ensure serialisation round trip
+    for (bytes, expected_packet) in valid_packets.iter() {
+        // verify raw bytes can be serialised to a packet
+        let packet: Packet = bytes.as_slice().try_into()?;
+        // verify the serialised packet equals our expected packet
+        assert_eq!(packet, *expected_packet);
+        // convert packet back into bytes
+        let packet_bytes: Vec<u8> = (&packet).try_into()?;
+        // verify the bytes -> packet -> bytes round-trips
+        assert_eq!(packet_bytes.as_slice(), bytes);
+
+        // ensure equivalent packets serialise to equivalent bytes
+        let expected_packet_bytes: Vec<u8> = expected_packet.try_into()?;
+        assert_eq!(packet_bytes, expected_packet_bytes);
+    }
+    Ok(())
+}
+
+#[test]
+fn test_channel_result_serialization() -> Result<()> {
+    // verify failure cases
+    assert!(ChannelResult::new(0i32, true, None, None).is_err());
+    assert!(ChannelResult::new(u16::MAX as i32 + 1i32, true, None, None).is_err());
+    assert!(ChannelResult::new(-1i32, true, None, None).is_err());
+
+    // ensure serialisation round trip
+    let valid_packets: [(Vec<u8>, Packet); 12] = [
+        (
+            vec![18, 4, 8, 1, 16, 0],
+            Packet::ChannelResult(ChannelResult::new(1i32, false, None, None)?),
+        ),
+        (
+            vec![18, 8, 8, 255, 255, 3, 16, 1, 24, 0],
+            Packet::ChannelResult(ChannelResult::new(
+                u16::MAX as i32,
+                true,
+                Some(CommonError::GenericError),
+                None,
+            )?),
+        ),
+        (
+            vec![18, 6, 8, 1, 16, 1, 24, 1],
+            Packet::ChannelResult(ChannelResult::new(
+                1i32,
+                true,
+                Some(CommonError::UnknownTypeError),
+                None,
+            )?),
+        ),
+        (
+            vec![18, 6, 8, 2, 16, 1, 24, 2],
+            Packet::ChannelResult(ChannelResult::new(
+                2i32,
+                true,
+                Some(CommonError::UnauthorizedError),
+                None,
+            )?),
+        ),
+        (
+            vec![18, 6, 8, 3, 16, 1, 24, 3],
+            Packet::ChannelResult(ChannelResult::new(
+                3i32,
+                true,
+                Some(CommonError::BadUsageError),
+                None,
+            )?),
+        ),
+        (
+            vec![18, 6, 8, 4, 16, 1, 24, 4],
+            Packet::ChannelResult(ChannelResult::new(
+                4i32,
+                true,
+                Some(CommonError::FailedError),
+                None,
+            )?),
+        ),
+        (
+            vec![18, 9, 8, 5, 16, 1, 202, 12, 2, 8, 0],
+            Packet::ChannelResult(ChannelResult::new(
+                5i32,
+                true,
+                None,
+                Some(ChannelResultExtension::ContactRequestChannel(
+                    contact_request_channel::ChannelResult {
+                        response: Response {
+                            status: Status::Undefined,
+                        },
+                    },
+                )),
+            )?),
+        ),
+        (
+            vec![18, 9, 8, 6, 16, 1, 202, 12, 2, 8, 1],
+            Packet::ChannelResult(ChannelResult::new(
+                6i32,
+                true,
+                None,
+                Some(ChannelResultExtension::ContactRequestChannel(
+                    contact_request_channel::ChannelResult {
+                        response: Response {
+                            status: Status::Pending,
+                        },
+                    },
+                )),
+            )?),
+        ),
+        (
+            vec![18, 9, 8, 7, 16, 1, 202, 12, 2, 8, 2],
+            Packet::ChannelResult(ChannelResult::new(
+                7i32,
+                true,
+                None,
+                Some(ChannelResultExtension::ContactRequestChannel(
+                    contact_request_channel::ChannelResult {
+                        response: Response {
+                            status: Status::Accepted,
+                        },
+                    },
+                )),
+            )?),
+        ),
+        (
+            vec![18, 9, 8, 8, 16, 1, 202, 12, 2, 8, 3],
+            Packet::ChannelResult(ChannelResult::new(
+                8i32,
+                true,
+                None,
+                Some(ChannelResultExtension::ContactRequestChannel(
+                    contact_request_channel::ChannelResult {
+                        response: Response {
+                            status: Status::Rejected,
+                        },
+                    },
+                )),
+            )?),
+        ),
+        (
+            vec![18, 9, 8, 9, 16, 1, 202, 12, 2, 8, 4],
+            Packet::ChannelResult(ChannelResult::new(
+                9i32,
+                true,
+                None,
+                Some(ChannelResultExtension::ContactRequestChannel(
+                    contact_request_channel::ChannelResult {
+                        response: Response {
+                            status: Status::Error,
+                        },
+                    },
+                )),
+            )?),
+        ),
+        (
+            vec![
+                18, 24, 8, 10, 16, 1, 130, 194, 3, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0,
+            ],
+            Packet::ChannelResult(ChannelResult::new(
+                10i32,
+                true,
+                None,
+                Some(ChannelResultExtension::AuthHiddenService(
+                    auth_hidden_service::ChannelResult {
+                        server_cookie: Default::default(),
+                    },
+                )),
+            )?),
         ),
     ];
 

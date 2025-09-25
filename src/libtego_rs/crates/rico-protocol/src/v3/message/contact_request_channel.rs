@@ -203,6 +203,7 @@ pub struct Response {
     pub status: Status,
 }
 
+// TODO: spec says 'Undefined' is "Not valid in transmitted messages" and we should clarify what that actually means
 #[derive(Debug, PartialEq)]
 pub enum Status {
     Undefined,
