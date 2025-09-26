@@ -92,11 +92,16 @@ static bool isAcceptableNickname(const QString &input)
     QVector<uint> chars = input.toUcs4();
     foreach (uint value, chars) {
         QChar c(value);
-        if (c.category() == QChar::Other_Format ||
-            c.category() == QChar::Other_Control ||
-            c.isNonCharacter() ||
-            blacklist.contains(value))
+        switch(QChar::category(value)) {
+        case QChar::Other_Format:
+        case QChar::Other_Control:
             return false;
+        default:
+            if (QChar::isNonCharacter(value) ||
+                blacklist.contains(value)) {
+                return false;
+            }
+        }
     }
 
     return true;
