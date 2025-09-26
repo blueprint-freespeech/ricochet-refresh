@@ -114,3 +114,34 @@ fn test_file_header_response_serialization() -> Result<()> {
     }
     Ok(())
 }
+
+#[test]
+fn test_file_chunk_serialization() -> Result<()> {
+    // ensure serialisation round trip
+    let valid_packets: [(Vec<u8>, Packet); 1] = [(
+        vec![
+            34, 133, 1, 8, 0, 18, 128, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        ],
+        Packet::FileChunk(FileChunk::new(0u32, ChunkData::new(vec![0u8; 128])?)?),
+    )];
+
+    for (bytes, expected_packet) in valid_packets.iter() {
+        // verify raw bytes can be serialised to a packet
+        let packet: Packet = bytes.as_slice().try_into()?;
+        // verify the serialised packet equals our expected packet
+        assert_eq!(packet, *expected_packet);
+        // convert packet back into bytes
+        let packet_bytes: Vec<u8> = (&packet).try_into()?;
+        // verify the bytes -> packet -> bytes round-trips
+        assert_eq!(packet_bytes.as_slice(), bytes);
+
+        // ensure equivalent packets serialise to equivalent bytes
+        let expected_packet_bytes: Vec<u8> = expected_packet.try_into()?;
+        assert_eq!(packet_bytes, expected_packet_bytes);
+    }
+    Ok(())
+}
