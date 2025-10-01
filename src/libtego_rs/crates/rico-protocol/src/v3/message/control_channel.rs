@@ -342,7 +342,7 @@ pub struct OpenChannel {
 
 impl OpenChannel {
     pub fn new(
-        channel_identifier: i32,
+        channel_identifier: i32, // TODO: this should be a u16
         channel_type: ChannelType,
         extension: Option<OpenChannelExtension>,
     ) -> Result<Self, Error> {

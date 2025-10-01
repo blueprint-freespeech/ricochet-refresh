@@ -5,3 +5,4 @@ pub mod control;
 pub mod file_channel;
 pub mod introduction;
 pub mod packet_handler_legacy_client;
+pub mod packet_handler_legacy_host;

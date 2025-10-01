@@ -317,7 +317,7 @@ impl FileHeader {
 #[derive(Debug, PartialEq)]
 pub struct FileHeaderAck {
     file_id: u32,
-    accepted: bool,
+    accepted: bool, // TODO: can this ever be false in practice?
 }
 
 impl FileHeaderAck {
