@@ -23,3 +23,6 @@ unicode-general-category = "1.0"
 
 [dev-dependencies]
 anyhow = "1.0"
+
+[features]
+test-features = []

@@ -229,6 +229,11 @@ impl MessageHandle {
     const CONNECTION_HANDLE_SHIFT: u64 = 32u64;
     const DIRECTION_BITS: u64 = 0x8000000000000000u64;
     const DIRECTION_SHIFT: u64 = 63u64;
+
+    #[cfg(feature = "test-features")]
+    pub fn message_id(&self) -> u32 {
+        self.message_id
+    }
 }
 
 impl From<MessageHandle> for u64 {
@@ -291,6 +296,11 @@ impl FileTransferHandle {
     const CONNECTION_HANDLE_SHIFT: u64 = 32u64;
     const DIRECTION_BITS: u64 = 0x8000000000000000u64;
     const DIRECTION_SHIFT: u64 = 63u64;
+
+    #[cfg(feature = "test-features")]
+    pub fn file_id(&self) -> u32 {
+        self.file_id
+    }
 }
 
 impl From<FileTransferHandle> for u64 {
@@ -340,6 +350,7 @@ impl From<u64> for FileTransferHandle {
     }
 }
 
+#[derive(Debug)]
 pub enum Event {
     IntroductionReceived,
     IntroductionResponseReceived,
@@ -1894,7 +1905,7 @@ impl PacketHandler {
             todo!();
         };
 
-        let mut pending_replies: Vec<Packet> = Vec::with_capacity(3);
+        let mut pending_replies: Vec<Packet> = Vec::with_capacity(4);
 
         // build contact request accepted packet
         use contact_request_channel::{Response, Status};
