@@ -77,10 +77,6 @@ namespace std {\
 }
 
 TEGO_DEFAULT_DELETE_IMPL(tego_ed25519_private_key)
-#if !defined(ENABLE_LIBTEGO_RS)
-    TEGO_DEFAULT_DELETE_IMPL(tego_ed25519_public_key)
-    TEGO_DEFAULT_DELETE_IMPL(tego_ed25519_signature)
-#endif
 TEGO_DEFAULT_DELETE_IMPL(tego_v3_onion_service_id)
 TEGO_DEFAULT_DELETE_IMPL(tego_tor_launch_config)
 TEGO_DEFAULT_DELETE_IMPL(tego_tor_daemon_config)

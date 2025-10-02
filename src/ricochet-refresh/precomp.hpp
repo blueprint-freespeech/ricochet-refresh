@@ -6,9 +6,6 @@
 #   include <windows.h>
 #endif
 
-// openssl
-#include <openssl/crypto.h>
-
 // Qt
 #if defined(Q_OS_WIN)
 #   include <QAbstractNativeEventFilter>

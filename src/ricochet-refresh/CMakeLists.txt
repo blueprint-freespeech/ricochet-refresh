@@ -190,16 +190,7 @@ setup_compiler(ricochet-refresh)
 target_compile_features(ricochet-refresh PRIVATE cxx_std_20)
 
 target_link_libraries(ricochet-refresh PUBLIC tego_ui)
-if (ENABLE_LIBTEGO_RS)
-    target_link_libraries(ricochet-refresh PUBLIC tego_rs)
-else()
-    target_link_libraries(ricochet-refresh PUBLIC tego)
-    if (NOT USE_SUBMODULE_FMT)
-        find_package(fmt REQUIRED)
-    endif ()
-    target_link_libraries(ricochet-refresh PRIVATE OpenSSL::Crypto)
-endif()
-
+target_link_libraries(ricochet-refresh PUBLIC tego_rs)
 target_link_libraries(ricochet-refresh PRIVATE fmt::fmt-header-only)
 target_link_libraries(
     ricochet-refresh

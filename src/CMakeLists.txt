@@ -72,13 +72,6 @@ else ()
     message(WARNING "Could not determine compiler, this may not build on non debug builds!")
 endif ()
 
-# experimental Rust backend
-option(ENABLE_LIBTEGO_RS "Enable experimental Rust backend" OFF)
-
-if (ENABLE_LIBTEGO_RS)
-    add_compile_definitions(ENABLE_LIBTEGO_RS)
-endif()
-
 # Run Rust's clippy for Rust targets and cppcheck for C++ targets
 option(ENABLE_LINTING "Enable lint make target" OFF)
 if (ENABLE_LINTING)
@@ -90,22 +83,13 @@ option(ENABLE_FORMATTING "Enable format make target" OFF)
 if (ENABLE_FORMATTING)
     # todo: add C++ support once we ove off of the Qt frontend
     add_custom_target(format)
-endif()
 
-if (ENABLE_LIBTEGO_RS)
     find_program(CARGO_FMT_EXECUTABLE NAMES cargo-fmt)
     if (NOT CARGO_FMT_EXECUTABLE)
         message(FATAL_ERROR "cargo-fmt not found; required to run format make target")
     else()
         message(STATUS "Found cargo-fmt: ${CARGO_FMT_EXECUTABLE}")
     endif()
-else()
-    # openssl configuration. this propogates to all subprojects
-    set(OPENSSL_USE_STATIC_LIBS OFF CACHE BOOL "Use statically-linked OpenSSL")
-    set(OPENSSL_ROOT_DIR "" CACHE STRING "Path to custom OpenSSL installation")
-
-    include(FindOpenSSL)
-    find_package(OpenSSL 3.0.0 REQUIRED)
 endif()
 
 # qt configuration
@@ -118,11 +102,6 @@ if (USE_SUBMODULE_FMT)
     add_subdirectory(extern/fmt)
 endif ()
 
-if (ENABLE_LIBTEGO_RS)
-    add_subdirectory(libtego_rs)
-else()
-    add_subdirectory(libtego)
-endif()
-
+add_subdirectory(libtego_rs)
 add_subdirectory(libtego_ui)
 add_subdirectory(ricochet-refresh)
