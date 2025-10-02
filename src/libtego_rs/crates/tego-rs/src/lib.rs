@@ -2,7 +2,6 @@ pub(crate) mod command_queue;
 #[allow(clippy::too_many_arguments)]
 pub(crate) mod context;
 pub(crate) mod error;
-pub(crate) mod file_hash;
 pub(crate) mod macros;
 pub(crate) mod object_map;
 pub(crate) mod promise;

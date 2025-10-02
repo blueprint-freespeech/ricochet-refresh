@@ -15,7 +15,6 @@ use tor_interface::tor_provider::{DomainAddr, TargetAddr};
 // internal crates
 use crate::context::Context;
 use crate::error::{translate_failures, Error};
-use crate::file_hash::*;
 use crate::macros::*;
 use crate::object_map::ObjectMap;
 use crate::tor_daemon_config::TorDaemonConfig;
@@ -47,7 +46,6 @@ pub(crate) enum TegoObject {
     Ed25519PrivateKey(Ed25519PrivateKey),
     V3OnionServiceId(V3OnionServiceId),
     UserId(UserId),
-    FileHash(FileHash),
     TorDaemonConfig(TorDaemonConfig),
     TorLaunchConfig(TorLaunchConfig),
 }
@@ -1628,92 +1626,8 @@ pub type tego_time = u64;
 pub type tego_message_id = u64;
 /// unique (per user) file transfer identifier
 pub type tego_file_transfer_id = u64;
-// struct for file hash
-pub struct tego_file_hash;
 /// integer type for file size
 pub type tego_file_size = u64;
-
-/// Calculates the number of bytes needed to serialize a file hash to
-/// a null-terminated utf8 string
-///
-/// @param file_hash : file hash object to serialize
-/// @param error : filled on error
-/// @return : the number of bytes required to serialize fileHash including
-///  the null-terinator
-///
-/// # Safety
-///
-/// All pointers must be properly initialised or NULL
-#[no_mangle]
-pub unsafe extern "C" fn tego_file_hash_string_size(
-    file_hash: *const tego_file_hash,
-    error: *mut *mut tego_error,
-) -> usize {
-    translate_failures(0usize, error, || -> Result<usize> {
-        bail_if_null!(file_hash);
-        let file_hash = file_hash as TegoKey;
-        match get_object_map().get(&file_hash) {
-            Some(TegoObject::FileHash(_file_hash)) => Ok(FILE_HASH_STRING_SIZE),
-            Some(_) => bail!(
-                "not a tego_file_hash pointer: {:?}",
-                file_hash as *const c_void
-            ),
-            None => bail!("not a valid pointer: {:?}", file_hash as *const c_void),
-        }
-    })
-}
-
-/// Serializes out a file hash as a null-terminated utf8 string to
-/// provided character buffer.
-///
-/// @param file_hash : file hash object to serialize
-/// @param out_hash_string : destination buffer to write string
-/// @param hash_string_size : size of the out_hash_string buffer in bytes
-/// @param error : filled on error
-/// @return : number of bytes written to out_hash_string including the
-///  null-terminator
-///
-/// # Safety
-///
-/// All pointers must be properly initialised or NULL
-#[no_mangle]
-pub unsafe extern "C" fn tego_file_hash_to_string(
-    file_hash: *const tego_file_hash,
-    out_hash_string: *mut c_char,
-    hash_string_size: usize,
-    error: *mut *mut tego_error,
-) -> usize {
-    translate_failures(0usize, error, || -> Result<usize> {
-        bail_if_null!(file_hash);
-        bail_if_null!(out_hash_string);
-        bail_if!(hash_string_size < FILE_HASH_STRING_SIZE);
-
-        let file_hash = file_hash as TegoKey;
-        match get_object_map().get(&file_hash) {
-            Some(TegoObject::FileHash(file_hash)) => {
-                let hash_string = file_hash.to_string();
-                unsafe {
-                    let out_hash_string = std::slice::from_raw_parts_mut(
-                        out_hash_string as *mut u8,
-                        hash_string_size,
-                    );
-                    std::ptr::copy(
-                        hash_string.as_bytes().as_ptr(),
-                        out_hash_string.as_mut_ptr(),
-                        FILE_HASH_STRING_LENGTH,
-                    );
-                    out_hash_string[FILE_HASH_STRING_LENGTH] = 0u8;
-                }
-                Ok(FILE_HASH_STRING_SIZE)
-            }
-            Some(_) => bail!(
-                "not a tego_file_hash pointer: {:?}",
-                file_hash as *const c_void
-            ),
-            None => bail!("not a valid pointer: {:?}", file_hash as *const c_void),
-        }
-    })
-}
 
 /// Send a text message from the host to the given user
 ///
@@ -1776,7 +1690,6 @@ pub unsafe extern "C" fn tego_context_send_message(
 /// @param file_path : utf8 path to file to send
 /// @param file_path_length : length of file_path not including null-terminator
 /// @param out_id : optional, filled with assigned file transfer id for callbacks
-/// @param out_file_hash : optional, filled with hash of the file to send
 /// @param out_file_size : optional, filled with the size of the file in bytes
 /// @param error : filled on error
 ///
@@ -1790,7 +1703,6 @@ pub unsafe extern "C" fn tego_context_send_file_transfer_request(
     file_path: *const c_char,
     file_path_length: usize,
     out_id: *mut tego_file_transfer_id,
-    out_file_hash: *mut *mut tego_file_hash,
     out_file_size: *mut tego_file_size,
     error: *mut *mut tego_error,
 ) {
@@ -1798,10 +1710,6 @@ pub unsafe extern "C" fn tego_context_send_file_transfer_request(
         bail_if_null!(context);
         bail_if_null!(user);
         bail_if_null!(file_path);
-        if !out_file_hash.is_null() {
-            let out_file_hash = unsafe { *out_file_hash };
-            bail_if_not_null!(out_file_hash);
-        }
         bail_if_equal!(file_path_length, 0usize);
 
         let object_map = get_object_map();
@@ -2254,7 +2162,6 @@ pub type tego_file_transfer_request_received_callback = Option<
         file_name: *const c_char,
         file_name_length: usize,
         file_size: tego_file_size,
-        file_hash: *const tego_file_hash,
     ) -> (),
 >;
 
@@ -2632,9 +2539,4 @@ pub extern "C" fn tego_tor_launch_config_delete(value: *mut tego_tor_launch_conf
 #[no_mangle]
 pub extern "C" fn tego_tor_daemon_config_delete(value: *mut tego_tor_daemon_config) {
     impl_deleter!(TegoObject::TorDaemonConfig(_), value);
-}
-
-#[no_mangle]
-pub extern "C" fn tego_file_hash_delete(value: *mut tego_file_hash) {
-    impl_deleter!(TegoObject::FileHash(_), value);
 }

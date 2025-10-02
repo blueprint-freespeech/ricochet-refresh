@@ -110,7 +110,7 @@ namespace shims
 
         void setStatus(ContactUser::Status status);
 
-        void fileTransferRequestReceived(tego_file_transfer_id id, QString fileName, QString fileHash, quint64 fileSize);
+        void fileTransferRequestReceived(tego_file_transfer_id id, QString fileName, quint64 fileSize);
         void fileTransferRequestAcknowledged(tego_file_transfer_id id, bool accepted);
         void fileTransferRequestResponded(tego_file_transfer_id id, tego_file_transfer_response response);
         void fileTransferRequestProgressUpdated(tego_file_transfer_id id, quint64 bytesTransferred);
@@ -143,7 +143,6 @@ namespace shims
             // file transfer data
             QString fileName = {};
             qint64 fileSize = 0;
-            QString fileHash = {};
             quint64 bytesTransferred = 0;
             TransferDirection transferDirection = InvalidDirection;
             TransferStatus transferStatus = InvalidTransfer;

@@ -417,22 +417,12 @@ fn test_legacy_client_interop() -> Result<()> {
         file_transfer_handle,
         file_name,
         file_size,
-        file_hash,
     } = event
     {
         assert_eq!(&service_id, client_service_id);
         assert_eq!(file_transfer_handle.file_id(), 338555240u32);
         assert_eq!(file_size, 128u64);
         assert_eq!(file_name, "small-file.bin");
-        assert_eq!(
-            file_hash,
-            [
-                18, 122, 4, 8, 136, 86, 210, 183, 149, 112, 122, 154, 225, 69, 207, 170, 119, 140,
-                248, 129, 203, 219, 196, 237, 94, 12, 206, 88, 64, 9, 89, 110, 158, 170, 232, 137,
-                216, 159, 27, 136, 24, 227, 92, 60, 42, 252, 179, 83, 253, 175, 183, 148, 52, 216,
-                243, 123, 255, 31, 194, 28, 93, 161, 50, 247,
-            ]
-        );
         file_transfer_handle
     } else {
         bail!("unexpected event: {event:?}");

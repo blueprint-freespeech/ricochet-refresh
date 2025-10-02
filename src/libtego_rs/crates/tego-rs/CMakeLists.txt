@@ -6,7 +6,6 @@ set(tego_rs_sources
     src/context.rs
     src/error.rs
     src/ffi.rs
-    src/file_hash.rs
     src/lib.rs
     src/macros.rs
     src/object_map.rs

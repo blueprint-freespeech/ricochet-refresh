@@ -444,12 +444,10 @@ namespace
         tego_file_transfer_id id,
         char const* fileName,
         size_t fileNameLength,
-        tego_file_size fileSize,
-        tego_file_hash const* fileHash)
+        tego_file_size fileSize)
     {
         auto contactId = tegoUserIdToContactId(sender);
         QString fileNameCopy = QString::fromUtf8(fileName, safe_cast<int>(fileNameLength));
-        auto hashStr = tego::to_string(fileHash);
 
         push_task([=,fileName=std::move(fileNameCopy)]() -> void
         {
@@ -458,7 +456,7 @@ namespace
             auto conversationModel = contactUser->conversation();
             Q_ASSERT(conversationModel != nullptr);
 
-            conversationModel->fileTransferRequestReceived(id, fileName, QString::fromStdString(hashStr), fileSize);
+            conversationModel->fileTransferRequestReceived(id, fileName, fileSize);
         });
     }
 

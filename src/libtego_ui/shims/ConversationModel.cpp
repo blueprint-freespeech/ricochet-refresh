@@ -104,7 +104,6 @@ namespace shims
                     QVariantMap transfer;
                     transfer["file_name"] = message.fileName;
                     transfer["file_size"] = message.fileSize;
-                    transfer["file_hash"] = message.fileHash;
                     // this is cursed
                     // basically, the QVariant type will squish all numberss
                     // into a double, and so it cannot store an arbitrary
@@ -238,7 +237,6 @@ namespace shims
             const auto path = filePath.toUtf8();
             const auto userId = this->contactUser->toTegoUserId();
             tego_file_transfer_id id;
-            std::unique_ptr<tego_file_hash> fileHash;
             tego_file_size fileSize = 0;
 
             try
@@ -249,11 +247,10 @@ namespace shims
                     path.data(),
                     static_cast<size_t>(path.size()),
                     &id,
-                    tego::out(fileHash),
                     &fileSize,
                     tego::throw_on_error());
 
-                logger::println("send file request id : {}, hash : {}", id, tego::to_string(fileHash.get()));
+                logger::println("send file request id : {}", id);
 
                 MessageData md;
                 md.type = TransferMessage;
@@ -263,7 +260,6 @@ namespace shims
 
                 md.fileName = QFileInfo(filePath).fileName();
                 md.fileSize = safe_cast<qint64>(fileSize);
-                md.fileHash = QString::fromStdString(tego::to_string(fileHash.get()));
                 md.transferStatus = Pending;
                 md.transferDirection = Uploading;
 
@@ -323,22 +319,20 @@ namespace shims
             case Rejected:          //FALLTHROUGH
             case Cancelled:         //FALLTHROUGH
             case Finished:
-                fmt::print(ofile, "[{}] file '{}' from <{}> (hash: {}, size: {:L} bytes): {}\n",
+                fmt::print(ofile, "[{}] file '{}' from <{}> (size: {:L} bytes): {}\n",
                                     event.time.toString().toStdString(),
                                     md.fileName.toStdString(),
                                     sender,
-                                    md.fileHash.toStdString(),
                                     md.fileSize,
                                     getTransferStatusString(event.transferData.status)); break;
             case UnknownFailure:    //FALLTHROUGH
             case BadFileHash:       //FALLTHROUGH
             case NetworkError:      //FALLTHROUGH
             case FileSystemError:
-                fmt::print(ofile, "[{}] file '{}' from <{}> (hash: {}, size: {:L} bytes): Error: {}, bytes transferred: {:L} bytes\n",
+                fmt::print(ofile, "[{}] file '{}' from <{}> (size: {:L} bytes): Error: {}, bytes transferred: {:L} bytes\n",
                                     event.time.toString().toStdString(),
                                     md.fileName.toStdString(),
                                     sender,
-                                    md.fileHash.toStdString(),
                                     md.fileSize,
                                     getTransferStatusString(event.transferData.status),
                                     event.transferData.bytesTransferred); break;
@@ -548,7 +542,7 @@ namespace shims
         this->addEventFromMessage(row);
     }
 
-    void ConversationModel::fileTransferRequestReceived(tego_file_transfer_id id, QString fileName, QString fileHash, quint64 fileSize)
+    void ConversationModel::fileTransferRequestReceived(tego_file_transfer_id id, QString fileName, quint64 fileSize)
     {
         MessageData md;
         md.type = TransferMessage;
@@ -557,7 +551,6 @@ namespace shims
         md.status = Received;
 
         md.fileName = std::move(fileName);
-        md.fileHash = std::move(fileHash);
         md.fileSize = safe_cast<qint64>(fileSize);
         md.transferDirection = Downloading;
         md.transferStatus = Pending;

@@ -419,7 +419,6 @@ pub enum Event {
         file_transfer_handle: FileTransferHandle,
         file_name: String,
         file_size: u64,
-        file_hash: FileHash,
     },
     FileTransferRequestAcknowledgeReceived {
         service_id: V3OnionServiceId,
@@ -1563,7 +1562,6 @@ impl PacketHandler {
                     file_transfer_handle,
                     file_name,
                     file_size,
-                    file_hash,
                 })
             }
             file_channel::Packet::FileChunk(file_chunk) => {

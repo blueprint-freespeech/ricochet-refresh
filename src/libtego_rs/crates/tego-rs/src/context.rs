@@ -24,7 +24,6 @@ use tor_interface::tor_provider::{OnionListener, OnionStream, TorEvent, TorProvi
 // internal crates
 use crate::command_queue::*;
 use crate::ffi::*;
-use crate::file_hash::{FileHash, FILE_HASH_SIZE};
 use crate::macros::*;
 use crate::promise::Promise;
 use crate::user_id::UserId;
@@ -1165,7 +1164,6 @@ impl EventLoopTask {
                             file_transfer_handle,
                             file_name,
                             file_size,
-                            file_hash,
                         }) => {
                             println!("--- file transfer request received, peer: {service_id:?}, file_transfer_handle: {file_transfer_handle:?}, file_name: {file_name}, file_size: {file_size}");
 
@@ -1197,7 +1195,6 @@ impl EventLoopTask {
                                     file_transfer_id,
                                     file_name,
                                     file_size,
-                                    file_hash,
                                 });
                         }
                         Ok(Event::FileTransferRequestAcknowledgeReceived {
@@ -1683,7 +1680,6 @@ impl EventLoopTask {
                     file_transfer_id,
                     file_name,
                     file_size,
-                    file_hash,
                 } => {
                     if let Some(on_file_transfer_request_received) =
                         callbacks.on_file_transfer_request_received
@@ -1694,8 +1690,6 @@ impl EventLoopTask {
                             .insert(TegoObject::UserId(UserId { service_id: sender }));
                         let file_name = CString::new(file_name.as_str()).unwrap();
                         let file_name_length = file_name.as_bytes().len();
-                        let file_hash = get_object_map()
-                            .insert(TegoObject::FileHash(FileHash { data: file_hash }));
 
                         on_file_transfer_request_received(
                             context,
@@ -1704,11 +1698,9 @@ impl EventLoopTask {
                             file_name.as_c_str().as_ptr(),
                             file_name_length,
                             file_size,
-                            file_hash as *const tego_file_hash,
                         );
 
                         get_object_map().remove(&sender);
-                        get_object_map().remove(&file_hash);
                     }
                 }
                 CallbackData::FileTransferRequestAcknowledged {
@@ -2033,7 +2025,6 @@ enum CallbackData {
         file_transfer_id: tego_file_transfer_id,
         file_name: String,
         file_size: u64,
-        file_hash: [u8; FILE_HASH_SIZE],
     },
     FileTransferRequestAcknowledged {
         service_id: V3OnionServiceId,
