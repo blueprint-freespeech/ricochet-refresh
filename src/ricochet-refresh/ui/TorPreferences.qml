@@ -101,51 +101,6 @@ Item {
                 textFormat: Text.PlainText
             }
         }
-
-        Rectangle {
-            width: parent.width
-            height: 1
-            color: palette.mid
-        }
-
-        Label {
-            text: bootstrap.summary
-            visible: bootstrap.done
-        }
-
-        ProgressBar {
-            width: parent.width
-            maximumValue: 100
-            indeterminate: bootstrap.progress === undefined
-            value: bootstrap.progress === undefined ? 0 : bootstrap.progress
-            visible: bootstrap.done
-        }
-
-        Label {
-            //: %1 is error message
-            text: qsTr("Error: <b>%1</b>").arg(Utils.htmlEscaped(errorMessage))
-            visible: errorMessage != ""
-
-            property string errorMessage: {
-                if (torInstance.hasError)
-                    return torInstance.errorMessage
-                else if (torControl.errorMessage != "")
-                    return torControl.errorMessage
-                else if (bootstrap.warning !== undefined)
-                    return bootstrap.warning
-                else
-                    return ""
-            }
-        }
-
-        Button {
-            text: qsTr("Configure")
-            visible: torControl.hasOwnership
-            onClicked: {
-                var object = createDialog("NetworkSetupWizard.qml")
-                object.visible = true
-            }
-        }
     }
 
     TorLogDisplay {

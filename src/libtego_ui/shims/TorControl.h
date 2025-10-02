@@ -19,7 +19,6 @@ namespace shims
         Q_PROPERTY(QVariantMap bootstrapStatus READ bootstrapStatus NOTIFY bootstrapStatusChanged)
         // uses statusChanged like actual backend implementation
         Q_PROPERTY(QString errorMessage READ errorMessage NOTIFY statusChanged)
-        Q_PROPERTY(bool hasBootstrappedSuccessfully READ hasBootstrappedSuccessfully CONSTANT)
     public:
         enum Status
         {

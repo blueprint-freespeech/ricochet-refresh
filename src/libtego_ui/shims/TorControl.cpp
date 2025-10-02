@@ -331,12 +331,6 @@ namespace shims
         return true;
     }
 
-    bool TorControl::hasBootstrappedSuccessfully() const
-    {
-        auto value= SettingsObject().read("tor.bootstrappedSuccessfully");
-        return value.isBool() ? value.toBool() : false;
-    }
-
     QString TorControl::torVersion() const
     {
         logger::trace();
@@ -428,9 +422,5 @@ namespace shims
         this->m_bootstrapSummary = std::move(summary);
 
         emit torControl->bootstrapStatusChanged();
-
-        if (tag == tego_tor_bootstrap_tag_done) {
-            SettingsObject().write("tor.bootstrappedSuccessfully", true);
-        }
     }
 }
