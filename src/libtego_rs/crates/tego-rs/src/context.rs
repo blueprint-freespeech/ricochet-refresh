@@ -197,7 +197,6 @@ impl Context {
         let contact_request_message = Some(message);
         self.push_command(CommandData::ConnectContact {
             service_id,
-            failure_count: 0usize,
             contact_request_message,
         });
     }
@@ -350,6 +349,7 @@ struct UserData {
     pending_connection_handle: Option<tor_interface::tor_provider::ConnectHandle>,
     connection_handle: Option<ConnectionHandle>,
     // todo: maybe we can queue messages here?
+    connection_failures: usize,
 }
 
 struct EventLoopTask {
@@ -370,10 +370,9 @@ struct EventLoopTask {
     event_loop_complete: Promise<()>,
     // file reader buffer for uploads
     file_read_buffer: [u8; Self::FILE_READ_BUFFER_SIZE],
-    // todo: we need to keep track of numberr of authentication failures
-    // and use this in place of the decentralised connection  failures
-    // which are passed along through the relevant Connect command
     users: BTreeMap<V3OnionServiceId, UserData>,
+    // connections to be removed and cleaned up
+    to_remove: BTreeSet<ConnectionHandle>,
 }
 
 impl EventLoopTask {
@@ -395,22 +394,25 @@ impl EventLoopTask {
         // create our list of known contacts from our users
         // and our UserData structs
         let mut known_contacts: BTreeSet<V3OnionServiceId> = Default::default();
+        let mut blocked_contacts: BTreeSet<V3OnionServiceId> = Default::default();
         let mut user_data: BTreeMap<V3OnionServiceId, UserData> = Default::default();
 
-        for (user_id, user_type) in users.iter() {
+        for (user_id, user_type) in users.into_iter() {
             use tego_user_type::*;
             match user_type {
                 tego_user_type_allowed | tego_user_type_pending => {
-                    known_contacts.insert(user_id.clone());
+                    known_contacts.insert(user_id.clone())
                 }
-                _ => (),
-            }
+                tego_user_type_blocked => blocked_contacts.insert(user_id.clone()),
+                _ => false,
+            };
             user_data.insert(
-                user_id.clone(),
+                user_id,
                 UserData {
-                    user_type: *user_type,
+                    user_type,
                     pending_connection_handle: None,
                     connection_handle: None,
+                    connection_failures: 0usize,
                 },
             );
         }
@@ -425,7 +427,7 @@ impl EventLoopTask {
             private_key: private_key.clone(),
             command_queue,
             read_buffer: [0u8; Self::READ_BUFFER_SIZE],
-            packet_handler: PacketHandler::new(private_key, known_contacts),
+            packet_handler: PacketHandler::new(private_key, known_contacts, blocked_contacts),
             pending_connections: Default::default(),
             connections: Default::default(),
             callback_queue: Default::default(),
@@ -433,6 +435,7 @@ impl EventLoopTask {
             event_loop_complete,
             file_read_buffer: [0u8; Self::FILE_READ_BUFFER_SIZE],
             users: user_data,
+            to_remove: Default::default(),
         }
     }
 
@@ -465,6 +468,17 @@ impl EventLoopTask {
         self.event_loop_complete.resolve(());
 
         Ok(())
+    }
+
+    fn retry_delay(failure_count: usize) -> Duration {
+        let delay = match failure_count {
+            // todo: immediately retry a few times first before 30s delay
+            0..=10 => 30u64,
+            11..=15 => 60u64,
+            16..=20 => 120u64,
+            21.. => 600u64,
+        };
+        Duration::from_secs(delay)
     }
 
     fn handle_tor_events(&mut self) -> Result<()> {
@@ -517,7 +531,6 @@ impl EventLoopTask {
                                 self.command_queue.push(
                                     CommandData::ConnectContact {
                                         service_id: user_id.clone(),
-                                        failure_count: 0usize,
                                         contact_request_message: None,
                                     },
                                     Duration::ZERO,
@@ -567,7 +580,6 @@ impl EventLoopTask {
                                     write_packets: replies,
                                     file_downloads: Default::default(),
                                     file_uploads: Default::default(),
-                                    remove: false,
                                 };
 
                                 self.connections.insert(handle, connection);
@@ -582,27 +594,23 @@ impl EventLoopTask {
                 TorEvent::ConnectFailed { handle, error: _ } => {
                     if let Some(pending_connection) = self.pending_connections.remove(&handle) {
                         let service_id = pending_connection.service_id;
-                        let failure_count = pending_connection.failure_count + 1;
+                        if let Some(user_data) = self.users.get_mut(&service_id) {
+                            user_data.connection_failures += 1;
 
-                        // delay before trying to connect in seconds
-                        let delay = match failure_count {
-                            0..=10 => 30u64,
-                            11..=15 => 60u64,
-                            16..=20 => 120u64,
-                            21.. => 600u64,
-                        };
+                            let failure_count = user_data.connection_failures;
+                            // delay before trying to connect in seconds
+                            let delay = Self::retry_delay(failure_count);
 
-                        println!("--- connect attempt {failure_count} to {service_id:?} failed; try again in {delay} seconds");
+                            println!("--- connect attempt {failure_count} to {service_id:?} failed; try again in {delay:?}");
 
-                        let contact_request_message = pending_connection.message_text;
-                        let command_data = CommandData::ConnectContact {
-                            service_id,
-                            failure_count,
-                            contact_request_message,
-                        };
+                            let contact_request_message = pending_connection.message_text;
+                            let command_data = CommandData::ConnectContact {
+                                service_id,
+                                contact_request_message,
+                            };
 
-                        self.command_queue
-                            .push(command_data, Duration::from_secs(delay));
+                            self.command_queue.push(command_data, delay);
+                        }
                     }
                 }
             }
@@ -657,7 +665,6 @@ impl EventLoopTask {
                             write_packets: Default::default(),
                             file_downloads: Default::default(),
                             file_uploads: Default::default(),
-                            remove: false,
                         };
 
                         println!("begin server handshake: {connection:?}");
@@ -692,7 +699,9 @@ impl EventLoopTask {
                         Ok(connection_handle) => {
                             if let Some(connection) = self.connections.get_mut(&connection_handle) {
                                 connection.write_packets.append(&mut replies);
-                                connection.remove = remove;
+                                if remove {
+                                    self.to_remove.insert(connection_handle);
+                                }
                             }
                         }
                         Err(_err) => todo!(),
@@ -700,7 +709,6 @@ impl EventLoopTask {
                 }
                 CommandData::ConnectContact {
                     service_id,
-                    failure_count,
                     contact_request_message: message_text,
                 } => {
                     // only open new connection if there is no existing verified
@@ -715,7 +723,6 @@ impl EventLoopTask {
 
                         let pending_connection = PendingConnection {
                             service_id,
-                            failure_count,
                             message_text,
                         };
                         self.pending_connections
@@ -949,11 +956,9 @@ impl EventLoopTask {
     }
 
     fn handle_connections(&mut self) -> Result<()> {
-        // connections to be removed
-        let mut to_remove: BTreeSet<ConnectionHandle> = Default::default();
         // TODO: we need some kind of exponential backoff for repeated failures to connect+authenticate
         // blocked users will currently spam over and over again
-        let to_retry: BTreeSet<V3OnionServiceId> = Default::default();
+        let mut to_retry: BTreeSet<V3OnionServiceId> = Default::default();
 
         // read bytes from each connection
         for (&handle, connection) in self.connections.iter_mut() {
@@ -966,20 +971,18 @@ impl EventLoopTask {
                     _ => {
                         // some error
                         println!("stream read err: {err:?}");
-                        connection.remove = true;
-                        // todo: we should only retry allowed or pending contacts
-                        if let Some(_service_id) = &connection.service_id {
-                            // to_retry.insert(service_id.clone());
+                        self.to_remove.insert(handle);
+                        if let Some(service_id) = &connection.service_id {
+                            to_retry.insert(service_id.clone());
                         }
                     }
                 },
                 Ok(0) => {
                     // end of stream
                     println!("stream read err: end of stream");
-                    connection.remove = true;
-                    // todo: we should only retry allowed or pending contacts
-                    if let Some(_service_id) = &connection.service_id {
-                        // to_retry.insert(service_id.clone());
+                    self.to_remove.insert(handle);
+                    if let Some(service_id) = &connection.service_id {
+                        to_retry.insert(service_id.clone());
                     }
                 }
                 Ok(size) => {
@@ -1019,7 +1022,7 @@ impl EventLoopTask {
                             println!("parse packet error: {err:?}");
                             println!("- read_bytes: {read_bytes:?}");
                             // drop connection
-                            connection.remove = true;
+                            self.to_remove.insert(handle);
                             break 'packet_parse;
                         }
                     }
@@ -1049,26 +1052,47 @@ impl EventLoopTask {
                         }) => {
                             // todo: handle closed connection
                             println!("--- client authenticated: peer: {service_id:?}, duplicate_connection: {duplicate_connection:?} ---");
+                            if let Some(user_data) = self.users.get_mut(&service_id) {
+                                user_data.connection_failures = 0usize;
+                            }
+
                             connection.service_id = Some(service_id);
-                            if duplicate_connection.is_some() {
-                                connection.remove = true;
+
+                            if let Some(connection_handle) = duplicate_connection {
+                                self.to_remove.insert(connection_handle);
                             }
                         }
                         Ok(Event::BlockedClientAuthenticationAttempted { service_id }) => {
                             println!(
                                 "--- blocked client attempted authentication, peer: {service_id}"
                             );
-                            connection.remove = true;
-                            break 'packet_handle;
+                            self.to_remove.insert(handle);
                         }
                         Ok(Event::HostAuthenticated {
                             service_id,
+                            is_known_contact,
                             duplicate_connection,
                         }) => {
+                            // when we are connecting to a client we only
+                            // want to clear our connection failure count
+                            // if the remote host has short-cut the contact request
+                            // machinery
+                            // the remote host may still reject the user in the second
+                            // case which we want to treat as a conneciton failure
+                            // for the purposes of reconnect attempt delays to reduce
+                            // cconnection spamming
+                            // that is to say, if we were to *always* clear this counter
+                            // just on authentication success, a blocked user would repeatdly connect over and over and over again which we
+                            // do not want
+                            if is_known_contact {
+                                if let Some(user_data) = self.users.get_mut(&service_id) {
+                                    user_data.connection_failures = 0usize;
+                                }
+                            }
                             // todo: handle closed connection
                             println!("--- host authenticated: peer: {service_id:?}, duplicate_connection: {duplicate_connection:?} ---");
-                            if duplicate_connection.is_some() {
-                                connection.remove = true;
+                            if let Some(connection_handle) = duplicate_connection {
+                                self.to_remove.insert(connection_handle);
                             }
                         }
                         Ok(Event::DuplicateConnectionDropped {
@@ -1076,7 +1100,7 @@ impl EventLoopTask {
                         }) => {
                             // todo: handle closed connection
                             println!("--- duplicate connection dropped: {duplicate_connection}");
-                            connection.remove = true;
+                            self.to_remove.insert(duplicate_connection);
                         }
                         Ok(Event::ContactRequestReceived {
                             service_id,
@@ -1102,7 +1126,8 @@ impl EventLoopTask {
                         }
                         Ok(Event::ContactRequestResultRejected { service_id }) => {
                             println!("--- contact request result rejected, peer: {service_id:?}");
-                            connection.remove = true;
+                            self.to_remove.insert(handle);
+                            to_retry.insert(service_id.clone());
                             self.callback_queue
                                 .push(CallbackData::ChatRequestResponseReceived {
                                     service_id,
@@ -1456,7 +1481,7 @@ impl EventLoopTask {
                         }
                         Ok(Event::FatalProtocolFailure) => {
                             println!("--- fatal protocol error, removing connection ---");
-                            connection.remove = true;
+                            self.to_remove.insert(handle);
                             break 'packet_handle;
                         }
                         Err(err) => panic!("error: {err:?}"),
@@ -1478,56 +1503,66 @@ impl EventLoopTask {
                 // send bytes
                 let stream = &mut connection.stream;
                 if stream.write(write_bytes.as_slice()).is_err() {
-                    connection.remove = true;
-                    if let Some(_service_id) = &connection.service_id {
-                        // todo: only retry known +  pending contacts
-                        // to_retry.insert(service_id.clone());
+                    self.to_remove.insert(handle);
+                    if let Some(service_id) = &connection.service_id {
+                        to_retry.insert(service_id.clone());
                     }
                 }
-            }
-
-            // handle connection flagged for removal
-            if connection.remove {
-                to_remove.insert(handle);
             }
         }
 
         // drop our dead connections
-        for &handle in to_remove.iter() {
-            self.packet_handler.remove_connection(&handle);
+        for handle in self.to_remove.iter() {
+            self.packet_handler.remove_connection(handle);
             let connection = self
                 .connections
-                .remove(&handle)
+                .remove(handle)
                 .expect("removed non-existing connection");
-            // signal user ofline status to frontend
+            // signal user offline status to frontend
             if let Some(service_id) = connection.service_id {
                 println!("--- dropping connection; handle: {handle}, service_id: {service_id}");
                 // signal user offline status if there is not another connection
                 // todo: only signal for allowed users
                 if !self.packet_handler.has_verified_connection(&service_id) {
-                    use crate::ffi::tego_user_status::tego_user_status_offline;
-                    let status = tego_user_status_offline;
-                    self.callback_queue
-                        .push(CallbackData::UserStatusChanged { service_id, status });
+                    if let Some(user_data) = self.users.get(&service_id) {
+                        if matches!(
+                            user_data.user_type,
+                            tego_user_type::tego_user_type_allowed
+                                | tego_user_type::tego_user_type_pending
+                        ) {
+                            use crate::ffi::tego_user_status::tego_user_status_offline;
+                            let status = tego_user_status_offline;
+                            self.callback_queue
+                                .push(CallbackData::UserStatusChanged { service_id, status });
+                        }
+                    }
                 }
             } else {
                 println!("--- dropping connection; handle: {handle}");
             }
         }
+        self.to_remove.clear();
 
         // initiate connection retries for connections which had IO failures
         for service_id in to_retry.iter() {
-            // todo: check if user is allowed or pending or requesting
-            let service_id = service_id.clone();
+            if let Some(user_data) = self.users.get_mut(service_id) {
+                if matches!(
+                    user_data.user_type,
+                    tego_user_type::tego_user_type_allowed | tego_user_type::tego_user_type_pending
+                ) {
+                    user_data.connection_failures += 1usize;
 
-            let command_data = CommandData::ConnectContact {
-                service_id,
-                failure_count: 0,
-                contact_request_message: None,
-            };
+                    let command_data = CommandData::ConnectContact {
+                        service_id: service_id.clone(),
+                        contact_request_message: None,
+                    };
+                    let delay = Self::retry_delay(user_data.connection_failures);
 
-            self.command_queue
-                .push(command_data, Duration::from_secs(0));
+                    println!("--- retry connecting to {service_id} in {delay:?}");
+
+                    self.command_queue.push(command_data, delay);
+                }
+            }
         }
 
         Ok(())
@@ -1827,7 +1862,6 @@ impl ListenerTask {
 #[derive(Debug)]
 struct PendingConnection {
     pub service_id: V3OnionServiceId,
-    pub failure_count: usize,
     pub message_text: Option<rico_protocol::v3::message::contact_request_channel::MessageText>,
 }
 
@@ -1847,8 +1881,6 @@ struct Connection {
         BTreeMap<rico_protocol::v3::packet_handler::FileTransferHandle, FileDownload>,
     // pending and in-process file uploads
     pub file_uploads: BTreeMap<rico_protocol::v3::packet_handler::FileTransferHandle, FileUpload>,
-    // whether this connection should be removed after sending queued packets
-    pub remove: bool,
 }
 
 #[derive(Debug)]

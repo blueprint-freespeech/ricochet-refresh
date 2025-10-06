@@ -512,6 +512,7 @@ pub enum tego_user_type {
     /// in host's contact list
     tego_user_type_allowed,
     /// users who have added host but the host has not replied yet
+    // todo: remove requesting type
     tego_user_type_requesting,
     /// users who have added host but the host has blocked
     tego_user_type_blocked,

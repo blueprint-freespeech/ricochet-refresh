@@ -74,7 +74,6 @@ pub(crate) enum CommandData {
     //connect to a peer and optionally request to be an allowed contact
     ConnectContact {
         service_id: V3OnionServiceId,
-        failure_count: usize,
         contact_request_message:
             Option<rico_protocol::v3::message::contact_request_channel::MessageText>,
     },

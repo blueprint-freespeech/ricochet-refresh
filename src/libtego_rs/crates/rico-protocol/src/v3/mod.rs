@@ -69,6 +69,8 @@ pub enum Error {
     OutgoingConnectionToBlockedPeerRejected(tor_interface::tor_crypto::V3OnionServiceId),
     #[error("no ConnectionHandle associated with V3OnionServiceId: {0}")]
     ServiceIdToConnectionHandleMappingFailure(tor_interface::tor_crypto::V3OnionServiceId),
+    #[error("no V3OnionServiceId associated with ConnectionHandle: {0}")]
+    ConnectionHandleToServiceIdMappingFailure(u32),
     #[error("no Connection associated with ConnectionHandle: {0}")]
     ConnectionHandleToConnectionMappingFailure(u32),
     #[error("channel already open: {0}")]

@@ -368,6 +368,7 @@ pub enum Event {
     // Optionally inludes handle of existing connection to drop
     HostAuthenticated {
         service_id: V3OnionServiceId,
+        is_known_contact: bool,
         duplicate_connection: Option<ConnectionHandle>,
     },
     // Fired when a duplicate authenticated connection must be dropped
@@ -478,10 +479,17 @@ pub struct PacketHandler {
     service_id: V3OnionServiceId,
     // set of known contacts which have been approved by host
     known_contacts: BTreeSet<V3OnionServiceId>,
+    // set of blocked contacts which the host does not want to chat with
+    // TODO: specify blocked contact behaviour in the spec
+    blocked_contacts: BTreeSet<V3OnionServiceId>,
 }
 
 impl PacketHandler {
-    pub fn new(private_key: Ed25519PrivateKey, known_contacts: BTreeSet<V3OnionServiceId>) -> Self {
+    pub fn new(
+        private_key: Ed25519PrivateKey,
+        known_contacts: BTreeSet<V3OnionServiceId>,
+        blocked_contacts: BTreeSet<V3OnionServiceId>,
+    ) -> Self {
         let service_id = V3OnionServiceId::from_private_key(&private_key);
         Self {
             next_connection_handle: Default::default(),
@@ -490,6 +498,7 @@ impl PacketHandler {
             private_key,
             service_id,
             known_contacts,
+            blocked_contacts,
         }
     }
 
@@ -518,6 +527,20 @@ impl PacketHandler {
                 service_id.clone(),
             ))
             .copied()
+    }
+
+    fn connection_handle_to_service_id(
+        &self,
+        connection_handle: ConnectionHandle,
+    ) -> Result<V3OnionServiceId, Error> {
+        let connection = self.connection(connection_handle)?;
+        if let Some(service_id) = &connection.peer_service_id {
+            Ok(service_id.clone())
+        } else {
+            Err(Error::ConnectionHandleToServiceIdMappingFailure(
+                connection_handle,
+            ))
+        }
     }
 
     // On successful packet read returns a (packet, bytes read) tuple
@@ -818,38 +841,70 @@ impl PacketHandler {
                         ChannelType::ContactRequest,
                         Some(OpenChannelExtension::ContactRequestChannel(extension)),
                     ) => {
-                        let connection = self.connection_mut(connection_handle)?;
-                        if let Some(service_id) = &connection.peer_service_id {
+                        if let Ok(service_id) =
+                            self.connection_handle_to_service_id(connection_handle)
+                        {
+                            let connection = self.connection_mut(connection_handle)?;
+
                             connection
                                 .channel_map
                                 .insert(channel_identifier, ChannelData::IncomingContactRequest)?;
 
+                            let is_blocked_contact = self.blocked_contacts.contains(&service_id);
+
                             use contact_request_channel::{Response, Status};
                             use control_channel::ChannelResultExtension;
-                            let channel_result_extension =
-                                ChannelResultExtension::ContactRequestChannel(
-                                    contact_request_channel::ChannelResult {
-                                        response: Response {
-                                            status: Status::Pending,
+
+                            if is_blocked_contact {
+                                let channel_result_extension =
+                                    ChannelResultExtension::ContactRequestChannel(
+                                        contact_request_channel::ChannelResult {
+                                            response: Response {
+                                                status: Status::Rejected,
+                                            },
                                         },
-                                    },
-                                );
+                                    );
 
-                            let channel_result = control_channel::ChannelResult::new(
-                                channel_identifier as i32,
-                                true,
-                                None,
-                                Some(channel_result_extension),
-                            )?;
-                            let packet = control_channel::Packet::ChannelResult(channel_result);
-                            let reply = Packet::ControlChannelPacket(packet);
-                            replies.push(reply);
+                                let channel_result = control_channel::ChannelResult::new(
+                                    channel_identifier as i32,
+                                    true,
+                                    None,
+                                    Some(channel_result_extension),
+                                )?;
+                                let packet = control_channel::Packet::ChannelResult(channel_result);
+                                let reply = Packet::ControlChannelPacket(packet);
+                                replies.push(reply);
 
-                            Ok(Event::ContactRequestReceived {
-                                service_id: service_id.clone(),
-                                nickname: (&extension.contact_request.nickname).into(),
-                                message_text: (&extension.contact_request.message_text).into(),
-                            })
+                                let connection = self.connection_mut(connection_handle)?;
+                                connection.close_channel(channel_identifier, Some(replies));
+
+                                Ok(Event::BlockedClientAuthenticationAttempted { service_id })
+                            } else {
+                                let channel_result_extension =
+                                    ChannelResultExtension::ContactRequestChannel(
+                                        contact_request_channel::ChannelResult {
+                                            response: Response {
+                                                status: Status::Pending,
+                                            },
+                                        },
+                                    );
+
+                                let channel_result = control_channel::ChannelResult::new(
+                                    channel_identifier as i32,
+                                    true,
+                                    None,
+                                    Some(channel_result_extension),
+                                )?;
+                                let packet = control_channel::Packet::ChannelResult(channel_result);
+                                let reply = Packet::ControlChannelPacket(packet);
+                                replies.push(reply);
+
+                                Ok(Event::ContactRequestReceived {
+                                    service_id: service_id.clone(),
+                                    nickname: (&extension.contact_request.nickname).into(),
+                                    message_text: (&extension.contact_request.message_text).into(),
+                                })
+                            }
                         } else {
                             Ok(Event::FatalProtocolFailure)
                         }
@@ -1363,7 +1418,7 @@ impl PacketHandler {
                         let mut pending_replies: Vec<Packet> = Vec::with_capacity(3);
 
                         connection.close_channel(channel, Some(&mut pending_replies));
-                        match result.is_known_contact() {
+                        let is_known_contact = match result.is_known_contact() {
                             None | Some(false) => {
                                 // contact request
                                 let message_text = if let Some(message_text) =
@@ -1401,6 +1456,7 @@ impl PacketHandler {
                                 connection
                                     .channel_map
                                     .insert(channel_id, ChannelData::OutgoingContactRequest)?;
+                                false
                             }
                             Some(true) => {
                                 // build chat channel open packet
@@ -1432,8 +1488,9 @@ impl PacketHandler {
                                 connection
                                     .channel_map
                                     .insert(channel_id, ChannelData::OutgoingFileTransfer)?;
+                                true
                             }
-                        }
+                        };
 
                         let service_id = server_service_id.clone();
 
@@ -1458,6 +1515,7 @@ impl PacketHandler {
                                     let duplicate_connection = Some(duplicate_connection);
                                     Event::HostAuthenticated {
                                         service_id,
+                                        is_known_contact,
                                         duplicate_connection,
                                     }
                                 } else {
@@ -1474,6 +1532,7 @@ impl PacketHandler {
                                 let service_id = service_id.clone();
                                 Event::HostAuthenticated {
                                     service_id,
+                                    is_known_contact,
                                     duplicate_connection: None,
                                 }
                             }
@@ -1878,6 +1937,7 @@ impl PacketHandler {
             self.remove_connection(&connection_handle);
         }
         self.known_contacts.remove(service_id);
+        self.blocked_contacts.remove(service_id);
     }
 
     pub fn accept_contact_request(
