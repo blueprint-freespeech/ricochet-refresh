@@ -3,6 +3,8 @@
 
 #include "pluggables.hpp"
 
+#include <iostream>
+
 namespace shims
 {
     TorControl* TorControl::torControl = nullptr;
@@ -239,6 +241,61 @@ namespace shims
                 tor["bridgeType"] = bridgeType;
             }
         }
+        // pluggable transports
+        if (!pluggableTransportConfigs.empty()) {
+            std::vector<tego_pluggable_transport_config*> pt_configs;
+            for(auto it = pluggableTransportConfigs.begin(); it != pluggableTransportConfigs.end(); ++it) {
+                // marshall binary_name
+                const auto binaryPath = fmt::format("{}/pluggable_transports/{}", qApp->applicationDirPath(), it->binary_name);
+                const auto binaryPathLen = binaryPath.size();
+                const auto rawBinaryPath = binaryPath.c_str();
+
+                // marshall transports
+                const auto transportCount = it->transports.size();
+                auto rawTransports = std::make_unique<const char* []>(transportCount);
+                auto rawTransportLengths = std::make_unique<size_t[]>(transportCount);
+                size_t transportIndex = 0;
+                for (auto tit = it->transports.begin(); tit != it->transports.end(); ++tit) {
+                    rawTransports[transportIndex] = tit->c_str();
+                    rawTransportLengths[transportIndex] = tit->size();
+                    ++transportIndex;
+                }
+
+                // marshall options
+                const auto optionCount = it->options.size();
+                auto rawOptions = std::make_unique<const char* []>(optionCount);
+                auto rawOptionLengths = std::make_unique<size_t[]>(optionCount);
+                size_t optionIndex = 0;
+                for (auto oit = it->options.begin(); oit != it->options.end(); ++oit) {
+                    rawOptions[optionIndex] = oit->c_str();
+                    rawOptionLengths[optionIndex] = oit->size();
+                    ++optionIndex;
+                }
+
+                std::unique_ptr<tego_pluggable_transport_config> pt_config;
+                tego_pluggable_transport_config_initialize(
+                    tego::out(pt_config),
+                    rawBinaryPath,
+                    binaryPathLen,
+                    rawTransports.get(),
+                    rawTransportLengths.get(),
+                    transportCount,
+                    rawOptions.get(),
+                    rawOptionLengths.get(),
+                    optionCount,
+                    tego::throw_on_error());
+                pt_configs.push_back(pt_config.release());
+            }
+            tego_tor_daemon_config_set_pluggable_transport_configs(daemonConfig.get(),
+                pt_configs.data(),
+                pt_configs.size(),
+                tego::throw_on_error());
+            for (auto pt_config: pt_configs) {
+                tego_pluggable_transport_config_delete(pt_config);
+            }
+
+        }
+
         tego_context_update_tor_daemon_config(
             context,
             daemonConfig.get(),
