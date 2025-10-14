@@ -11,13 +11,13 @@ use std::sync::{
 use std::time::{Duration, Instant};
 
 // extern
-use anyhow::{Context as AnyhowContext, Result};
+use anyhow::{bail, Context as AnyhowContext, Result};
 use rico_protocol::v3::file_hasher::*;
 use rico_protocol::v3::packet_handler::*;
 use rico_protocol::v3::Error;
+use tor_interface::legacy_tor_client::LegacyTorClientConfig;
 use tor_interface::legacy_tor_client::*;
 use tor_interface::legacy_tor_version::LegacyTorVersion;
-use tor_interface::proxy::ProxyConfig;
 use tor_interface::tor_crypto::{Ed25519PrivateKey, V3OnionServiceId};
 use tor_interface::tor_provider::{OnionListener, OnionStream, TorEvent, TorProvider};
 
@@ -42,8 +42,7 @@ pub(crate) struct Context {
     pub callbacks: Arc<Mutex<Callbacks>>,
     // tor config data
     tor_data_directory: PathBuf,
-    proxy_settings: Option<ProxyConfig>,
-    allowed_ports: Option<Vec<u16>>,
+    tor_config: Option<LegacyTorClientConfig>,
     // tor runtime data
     tor_version_cstring: Option<CString>,
     // todo: arguably these should be accessed by a Command
@@ -71,13 +70,8 @@ impl Context {
     }
 
     // todo: this needs to support bridges and pluggable-transports
-    pub fn set_tor_config(
-        &mut self,
-        proxy_settings: Option<ProxyConfig>,
-        allowed_ports: Option<Vec<u16>>,
-    ) {
-        self.proxy_settings = proxy_settings;
-        self.allowed_ports = allowed_ports;
+    pub fn set_tor_config(&mut self, legacy_tor_config: LegacyTorClientConfig) {
+        self.tor_config = Some(legacy_tor_config);
     }
 
     pub fn tor_version_string(&mut self) -> Option<&CString> {
@@ -124,14 +118,18 @@ impl Context {
         let tego_key = self.tego_key;
         let callbacks = Arc::downgrade(&self.callbacks);
 
-        // todo: should read proxy, firewall, bridge and pt settings too
-        let tor_config = LegacyTorClientConfig::BundledTor {
-            tor_bin_path: Self::tor_bin_path()?,
-            data_directory: self.tor_data_directory.clone(),
-            proxy_settings: None,
-            allowed_ports: None,
-            pluggable_transports: None,
-            bridge_lines: None,
+        let tor_config = if let Some(tor_config) = self.tor_config.clone() {
+            let mut tor_config = tor_config.clone();
+            if let LegacyTorClientConfig::BundledTor {
+                ref mut data_directory,
+                ..
+            } = tor_config
+            {
+                *data_directory = self.tor_data_directory.clone();
+            }
+            tor_config
+        } else {
+            bail!("tor config not set");
         };
         let tor_client = LegacyTorClient::new(tor_config)?;
 
@@ -318,7 +316,7 @@ impl Context {
         result_future.wait()
     }
 
-    fn tor_bin_path() -> Result<PathBuf> {
+    pub fn tor_bin_path() -> Result<PathBuf> {
         let bin_name = format!("tor{}", std::env::consts::EXE_SUFFIX);
 
         // get the path of the current running exe

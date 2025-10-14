@@ -7,7 +7,9 @@ use std::str::FromStr;
 
 // extern
 use anyhow::{bail, Result};
+use tor_interface::censorship_circumvention::PluggableTransportConfig;
 use tor_interface::censorship_circumvention::*;
+use tor_interface::legacy_tor_client::LegacyTorClientConfig;
 use tor_interface::proxy::*;
 use tor_interface::tor_crypto::{Ed25519PrivateKey, V3OnionServiceId};
 use tor_interface::tor_provider::{DomainAddr, TargetAddr};
@@ -17,7 +19,6 @@ use crate::context::Context;
 use crate::error::{translate_failures, Error};
 use crate::macros::*;
 use crate::object_map::ObjectMap;
-use crate::tor_daemon_config::TorDaemonConfig;
 use crate::tor_launch_config::TorLaunchConfig;
 use crate::user_id::UserId;
 
@@ -46,7 +47,8 @@ pub(crate) enum TegoObject {
     Ed25519PrivateKey(Ed25519PrivateKey),
     V3OnionServiceId(V3OnionServiceId),
     UserId(UserId),
-    TorDaemonConfig(TorDaemonConfig),
+    PluggableTransportConfig(PluggableTransportConfig),
+    TorDaemonConfig(LegacyTorClientConfig),
     TorLaunchConfig(TorLaunchConfig),
 }
 
@@ -691,7 +693,18 @@ pub unsafe extern "C" fn tego_tor_daemon_config_initialize(
     translate_failures((), error, || -> Result<()> {
         bail_if_null!(out_config);
 
-        let object = TegoObject::TorDaemonConfig(Default::default());
+        let tor_bin_path = Context::tor_bin_path()?;
+
+        let bundled_tor_config = LegacyTorClientConfig::BundledTor {
+            tor_bin_path,
+            data_directory: Default::default(),
+            proxy_settings: None,
+            allowed_ports: None,
+            pluggable_transports: None,
+            bridge_lines: None,
+        };
+
+        let object = TegoObject::TorDaemonConfig(bundled_tor_config);
         let key = get_object_map().insert(object);
         unsafe {
             *out_config = key as *mut tego_tor_daemon_config;
@@ -748,8 +761,11 @@ pub unsafe extern "C" fn tego_tor_daemon_config_set_proxy_socks4(
         // update the config
         let key = config as TegoKey;
         match get_object_map().get_mut(&key) {
-            Some(TegoObject::TorDaemonConfig(config)) => {
-                config.proxy_settings = Some(proxy_config);
+            Some(TegoObject::TorDaemonConfig(LegacyTorClientConfig::BundledTor {
+                proxy_settings,
+                ..
+            })) => {
+                *proxy_settings = Some(proxy_config);
             }
             Some(_) => bail!(
                 "not a tego_tor_daemon_config pointer: {:?}",
@@ -845,8 +861,11 @@ pub unsafe extern "C" fn tego_tor_daemon_config_set_proxy_socks5(
         // update the config
         let key = config as TegoKey;
         match get_object_map().get_mut(&key) {
-            Some(TegoObject::TorDaemonConfig(config)) => {
-                config.proxy_settings = Some(proxy_config);
+            Some(TegoObject::TorDaemonConfig(LegacyTorClientConfig::BundledTor {
+                proxy_settings,
+                ..
+            })) => {
+                *proxy_settings = Some(proxy_config);
             }
             Some(_) => bail!(
                 "not a tego_tor_daemon_config pointer: {:?}",
@@ -942,8 +961,11 @@ pub unsafe extern "C" fn tego_tor_daemon_config_set_proxy_https(
         // update the config
         let key = config as TegoKey;
         match get_object_map().get_mut(&key) {
-            Some(TegoObject::TorDaemonConfig(config)) => {
-                config.proxy_settings = Some(proxy_config);
+            Some(TegoObject::TorDaemonConfig(LegacyTorClientConfig::BundledTor {
+                proxy_settings,
+                ..
+            })) => {
+                *proxy_settings = Some(proxy_config);
             }
             Some(_) => bail!(
                 "not a tego_tor_daemon_config pointer: {:?}",
@@ -986,8 +1008,11 @@ pub unsafe extern "C" fn tego_tor_daemon_config_set_allowed_ports(
         // update the config
         let key = config as TegoKey;
         match get_object_map().get_mut(&key) {
-            Some(TegoObject::TorDaemonConfig(config)) => {
-                config.allowed_ports = ports;
+            Some(TegoObject::TorDaemonConfig(LegacyTorClientConfig::BundledTor {
+                allowed_ports,
+                ..
+            })) => {
+                *allowed_ports = ports;
             }
             Some(_) => bail!(
                 "not a tego_tor_daemon_config pointer: {:?}",
@@ -996,6 +1021,160 @@ pub unsafe extern "C" fn tego_tor_daemon_config_set_allowed_ports(
             None => bail!("not a valid pointer: {:?}", key as *const c_void),
         };
 
+        Ok(())
+    })
+}
+
+pub struct tego_pluggable_transport_config;
+
+/// Init a pluggable transport config struct
+///
+/// @param out_config : destination to write ponter to initalised configuration
+/// @param binary_path : utf8 encoded absolute path to pluggable-transport binary
+/// @param binary_path_length : length of binary_path not counting the null terminator
+/// @param transports : pointer to array of utf8 encoded transport strings
+/// @param transport_lengths: array of lengths of the strings stored in 'transports',
+///  does not include any NULL terminators
+/// @param transport_count: the number of transport strings being passed in
+/// @param options : pointer to array of utf8 encoded option strings
+/// @param option_lengths: array of lengths of the strings stored in 'options',
+///  does not include any NULL terminators
+/// @param option_count: the number of option strings being passed in
+/// @param error : filled on error
+///
+/// # Safety
+///
+/// All pointers must be properly initialised or NULL
+#[no_mangle]
+pub unsafe extern "C" fn tego_pluggable_transport_config_initialize(
+    out_config: *mut *mut tego_pluggable_transport_config,
+    binary_path: *const c_char,
+    binary_path_length: usize,
+    transports: *const *const c_char,
+    transport_lengths: *const usize,
+    transport_count: usize,
+    options: *const *const c_char,
+    option_lengths: *const usize,
+    option_count: usize,
+    error: *mut *mut tego_error,
+) {
+    translate_failures((), error, || -> Result<()> {
+        bail_if_null!(out_config);
+        bail_if_null!(binary_path);
+        bail_if_equal!(binary_path_length, 0usize);
+        bail_if_null!(transports);
+        bail_if_null!(transport_lengths);
+        bail_if_null!(options);
+        bail_if_null!(option_lengths);
+
+        // construct binary path
+        let binary_path = std::slice::from_raw_parts(binary_path as *const u8, binary_path_length);
+        let binary_path = std::str::from_utf8(binary_path)?;
+        let binary_path = std::path::Path::new(binary_path);
+        binary_path.canonicalize()?;
+
+        // construct list of transports
+        let transports = std::slice::from_raw_parts(transports, transport_count);
+        let transport_lengths = std::slice::from_raw_parts(transport_lengths, transport_count);
+
+        let mut transport_vec: Vec<String> = Vec::with_capacity(transport_count);
+        for (transport, transport_len) in transports.iter().zip(transport_lengths.iter()) {
+            bail_if!(transport.is_null());
+            let transport = std::slice::from_raw_parts(*transport as *const u8, *transport_len);
+            let transport = std::str::from_utf8(transport)?;
+
+            transport_vec.push(transport.to_string());
+        }
+
+        let mut pluggable_transport_config =
+            PluggableTransportConfig::new(transport_vec, binary_path.into())?;
+
+        // construct list of options
+        let options = std::slice::from_raw_parts(options, option_count);
+        let option_lengths = std::slice::from_raw_parts(option_lengths, option_count);
+
+        for (option, option_len) in options.iter().zip(option_lengths.iter()) {
+            bail_if!(option.is_null());
+            let option = std::slice::from_raw_parts(*option as *const u8, *option_len);
+            let option = std::str::from_utf8(option)?;
+
+            pluggable_transport_config.add_option(option.to_string());
+        }
+
+        let object = TegoObject::PluggableTransportConfig(pluggable_transport_config);
+        let key = get_object_map().insert(object);
+        *out_config = key as *mut tego_pluggable_transport_config;
+        Ok(())
+    })
+}
+
+/// Set the list of pluggable transports for tor to use
+///
+/// @param config : config to update
+/// @param pluggable_transport_configs : array of pluggable transport configs
+/// @param pluggable_transport_config_count : the number of puggable transport configs
+///  being  passed in
+/// @param : filled on error
+///
+/// # Safety
+///
+/// All pointers must be properly initialised or NULL
+#[no_mangle]
+pub unsafe extern "C" fn tego_tor_daemon_config_set_pluggable_transport_configs(
+    config: *mut tego_tor_daemon_config,
+    pluggable_transport_configs: *const *const tego_pluggable_transport_config,
+    pluggable_transport_config_count: usize,
+    error: *mut *mut tego_error,
+) {
+    translate_failures((), error, || -> Result<()> {
+        bail_if_null!(config);
+        bail_if!(
+            pluggable_transport_configs.is_null() && pluggable_transport_config_count != 0usize
+        );
+        bail_if!(
+            !pluggable_transport_configs.is_null() && pluggable_transport_config_count == 0usize
+        );
+
+        let pluggable_transport_configs = if pluggable_transport_configs.is_null() {
+            None
+        } else {
+            let pluggable_transport_configs = std::slice::from_raw_parts(
+                pluggable_transport_configs,
+                pluggable_transport_config_count,
+            );
+
+            let mut pluggable_transport_config_vec: Vec<PluggableTransportConfig> =
+                Vec::with_capacity(pluggable_transport_config_count);
+            for pluggable_transport_config in pluggable_transport_configs {
+                let key = *pluggable_transport_config as TegoKey;
+                match get_object_map().get(&key) {
+                    Some(TegoObject::PluggableTransportConfig(pluggable_transport_config)) => {
+                        pluggable_transport_config_vec.push(pluggable_transport_config.clone());
+                    }
+                    Some(_) => bail!(
+                        "not a tego_pluggable_trasnport_config pointer: {:?}",
+                        key as *const c_void
+                    ),
+                    None => bail!("not a valid pointer: {:?}", key as *const c_void),
+                }
+            }
+            Some(pluggable_transport_config_vec)
+        };
+
+        let key = config as TegoKey;
+        match get_object_map().get_mut(&key) {
+            Some(TegoObject::TorDaemonConfig(LegacyTorClientConfig::BundledTor {
+                pluggable_transports,
+                ..
+            })) => {
+                *pluggable_transports = pluggable_transport_configs;
+            }
+            Some(_) => bail!(
+                "not a tego_tor_daemon_config pointer: {:?}",
+                key as *const c_void
+            ),
+            None => bail!("not a valid pointer: {:?}", key as *const c_void),
+        };
         Ok(())
     })
 }
@@ -1024,7 +1203,7 @@ pub unsafe extern "C" fn tego_tor_daemon_config_set_bridges(
     translate_failures((), error, || -> Result<()> {
         bail_if_null!(config);
 
-        let bridge_lines: Option<Vec<BridgeLine>> = if bridge_lines.is_null() {
+        let bridge_lines_vec: Option<Vec<BridgeLine>> = if bridge_lines.is_null() {
             None
         } else {
             let bridge_lines = unsafe { std::slice::from_raw_parts(bridge_lines, bridge_count) };
@@ -1050,8 +1229,11 @@ pub unsafe extern "C" fn tego_tor_daemon_config_set_bridges(
         // update the config
         let key = config as TegoKey;
         match get_object_map().get_mut(&key) {
-            Some(TegoObject::TorDaemonConfig(config)) => {
-                config.bridge_lines = bridge_lines;
+            Some(TegoObject::TorDaemonConfig(LegacyTorClientConfig::BundledTor {
+                bridge_lines,
+                ..
+            })) => {
+                *bridge_lines = bridge_lines_vec;
             }
             Some(_) => bail!(
                 "not a tego_tor_daemon_config pointer: {:?}",
@@ -1088,13 +1270,10 @@ pub unsafe extern "C" fn tego_context_update_tor_daemon_config(
 
         let mut object_map = get_object_map();
 
-        // TODO: add bridge and pts
-        let (proxy_settings, allowed_ports) = {
+        let config = {
             let key = tor_config as TegoKey;
             match object_map.get(&key) {
-                Some(TegoObject::TorDaemonConfig(config)) => {
-                    (config.proxy_settings.clone(), config.allowed_ports.clone())
-                }
+                Some(TegoObject::TorDaemonConfig(config)) => config.clone(),
                 Some(_) => bail!(
                     "not a tego_tor_daemon_config pointer: {:?}",
                     key as *const c_void
@@ -1106,7 +1285,7 @@ pub unsafe extern "C" fn tego_context_update_tor_daemon_config(
         let key = context_ptr as TegoKey;
         match object_map.get_mut(&key) {
             Some(TegoObject::Context(context)) => {
-                context.set_tor_config(proxy_settings, allowed_ports);
+                context.set_tor_config(config);
 
                 let callbacks = context
                     .callbacks
@@ -2535,6 +2714,13 @@ pub extern "C" fn tego_user_id_delete(value: *mut tego_user_id) {
 #[no_mangle]
 pub extern "C" fn tego_tor_launch_config_delete(value: *mut tego_tor_launch_config) {
     impl_deleter!(TegoObject::TorLaunchConfig(_), value);
+}
+
+#[no_mangle]
+pub extern "C" fn tego_pluggable_transport_config_delete(
+    value: *mut tego_pluggable_transport_config,
+) {
+    impl_deleter!(TegoObject::PluggableTransportConfig(_), value);
 }
 
 #[no_mangle]
