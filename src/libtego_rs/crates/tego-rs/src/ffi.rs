@@ -528,6 +528,9 @@ pub enum tego_user_type {
 // Tor Config
 //
 
+// TODO: only 1 config: merge launch config, daemon config, and
+// working direcotry into one; tear down and recreate whenever we go
+// back to the main networking configuration` window
 pub struct tego_tor_launch_config;
 
 /// Init a default tor configuration struct
@@ -649,28 +652,6 @@ pub unsafe extern "C" fn tego_context_start_tor(
 
         context.set_tor_data_directory(tor_data_directory);
 
-        let callbacks = context
-            .callbacks
-            .lock()
-            .expect("another thread panicked while holding callback's mutex");
-
-        // TODO: these callbacks are required to enable the 'connect' button
-        // in the network configuraiton screen
-        if let Some(callback) = callbacks.on_tor_control_status_changed {
-            callback(
-                context_ptr,
-                tego_tor_control_status::tego_tor_control_status_connected,
-            );
-        }
-
-        if let Some(callback) = callbacks.on_tor_process_status_changed {
-            callback(
-                context_ptr,
-                tego_tor_process_status::tego_tor_process_status_running,
-            );
-        }
-
-        // we defer tor daemonn launch until after tego_context_update_tor_daemon_config
         Ok(())
     })
 }
@@ -1574,51 +1555,6 @@ pub unsafe extern "C" fn tego_context_get_tor_version_string(
     })
 }
 
-/// corresponds to Ricochet's Tor::TorControl::Status enum
-#[repr(C)]
-pub enum tego_tor_control_status {
-    tego_tor_control_status_error = -1,
-    tego_tor_control_status_not_connected,
-    tego_tor_control_status_connecting,
-    tego_tor_control_status_authenticating,
-    tego_tor_control_status_connected,
-}
-
-/// Get the current status of our tor control channel
-///
-/// @param context : the current tego context
-/// @param out_status : destination to save control status
-/// @param error : filled on error
-///
-/// # Safety
-///
-/// All pointers must be properly initialised or NULL
-#[no_mangle]
-pub unsafe extern "C" fn tego_context_get_tor_control_status(
-    context: *const tego_context,
-    out_status: *mut tego_tor_control_status,
-    error: *mut *mut tego_error,
-) {
-    translate_failures((), error, || -> Result<()> {
-        // TODO: remove this function
-        bail_if_null!(context);
-        bail_if_null!(out_status);
-        unsafe {
-            *out_status = tego_tor_control_status::tego_tor_control_status_connected;
-        }
-        Ok(())
-    })
-}
-
-#[repr(C)]
-pub enum tego_tor_process_status {
-    tego_tor_process_status_unknown,
-    tego_tor_process_status_external,
-    tego_tor_process_status_not_started,
-    tego_tor_process_status_starting,
-    tego_tor_process_status_running,
-    tego_tor_process_status_failed,
-}
 
 #[repr(C)]
 pub enum tego_tor_network_status {
@@ -2216,20 +2152,6 @@ pub type tego_tor_error_occurred_callback = Option<
 pub type tego_update_tor_daemon_config_succeeded_callback =
     Option<extern "C" fn(context: *mut tego_context, success: tego_bool) -> ()>;
 
-/// Callback fired when the tor control port status has changed
-///
-/// @param context : the current tego context
-/// @param status : the new control status
-pub type tego_tor_control_status_changed_callback =
-    Option<extern "C" fn(context: *mut tego_context, status: tego_tor_control_status) -> ()>;
-
-/// Callback fired when the tor daemon process' status changes
-///
-/// @param context : the current tego context
-/// @param status : the new process status
-pub type tego_tor_process_status_changed_callback =
-    Option<extern "C" fn(context: *mut tego_context, status: tego_tor_process_status) -> ()>;
-
 /// Callback fired when the tor daemon's network status changes
 ///
 /// @param context : the current tego context
@@ -2507,24 +2429,6 @@ pub extern "C" fn tego_context_set_update_tor_daemon_config_succeeded_callback(
         callback,
         error
     );
-}
-
-#[no_mangle]
-pub extern "C" fn tego_context_set_tor_control_status_changed_callback(
-    context: *mut tego_context,
-    callback: tego_tor_control_status_changed_callback,
-    error: *mut *mut tego_error,
-) {
-    impl_callback_setter!(on_tor_control_status_changed, context, callback, error);
-}
-
-#[no_mangle]
-pub extern "C" fn tego_context_set_tor_process_status_changed_callback(
-    context: *mut tego_context,
-    callback: tego_tor_process_status_changed_callback,
-    error: *mut *mut tego_error,
-) {
-    impl_callback_setter!(on_tor_process_status_changed, context, callback, error);
 }
 
 #[no_mangle]

@@ -13,7 +13,7 @@ namespace shims
         Q_PROPERTY(bool hasOwnership READ hasOwnership CONSTANT)
         Q_PROPERTY(QString torVersion READ torVersion CONSTANT)
         // Status of the control connection
-        Q_PROPERTY(Status status READ status NOTIFY statusChanged)
+        Q_PROPERTY(Status status READ status CONSTANT)
         // Status of Tor (and whether it believes it can connect)
         Q_PROPERTY(TorStatus torStatus READ torStatus NOTIFY torStatusChanged)
         Q_PROPERTY(QVariantMap bootstrapStatus READ bootstrapStatus NOTIFY bootstrapStatusChanged)

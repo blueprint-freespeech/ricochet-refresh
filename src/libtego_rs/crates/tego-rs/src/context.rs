@@ -2090,8 +2090,6 @@ enum CallbackData {
 pub(crate) struct Callbacks {
     pub on_tor_error_occurred: tego_tor_error_occurred_callback,
     pub on_update_tor_daemon_config_succeeded: tego_update_tor_daemon_config_succeeded_callback,
-    pub on_tor_control_status_changed: tego_tor_control_status_changed_callback,
-    pub on_tor_process_status_changed: tego_tor_process_status_changed_callback,
     pub on_tor_network_status_changed: tego_tor_network_status_changed_callback,
     pub on_tor_bootstrap_status_changed: tego_tor_bootstrap_status_changed_callback,
     pub on_tor_log_received: tego_tor_log_received_callback,

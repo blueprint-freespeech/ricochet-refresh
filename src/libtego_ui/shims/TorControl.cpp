@@ -398,14 +398,7 @@ namespace shims
 
     TorControl::Status TorControl::status() const
     {
-        tego_tor_control_status status;
-        tego_context_get_tor_control_status(
-            context,
-            &status,
-            tego::throw_on_error());
-
-        logger::trace();
-        return static_cast<TorControl::Status>(status);
+        return TorControl::Status::Connected;
     }
 
     TorControl::TorStatus TorControl::torStatus() const

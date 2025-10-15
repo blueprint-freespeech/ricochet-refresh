@@ -207,40 +207,6 @@ namespace
         });
     }
 
-    void on_tor_control_status_changed(
-        tego_context*,
-        tego_tor_control_status status)
-    {
-        push_task([=]() -> void
-        {
-            logger::println("new control status : {}", status);
-            shims::TorControl::torControl->setStatus(static_cast<shims::TorControl::Status>(status));
-        });
-    }
-
-    void on_tor_process_status_changed(
-        tego_context*,
-        tego_tor_process_status status)
-    {
-        push_task([=]() -> void
-        {
-            logger::println("new process status : {}", status);
-            auto torManager = shims::TorManager::torManager;
-            switch(status)
-            {
-                case tego_tor_process_status_running:
-                    torManager->setRunning("Yes");
-                    break;
-                case tego_tor_process_status_external:
-                    torManager->setRunning("External");
-                    break;
-                default:
-                    torManager->setRunning("No");
-                    break;
-            }
-        });
-    }
-
     void on_tor_network_status_changed(
         tego_context*,
         tego_tor_network_status status)
@@ -586,16 +552,6 @@ void init_libtego_callbacks(tego_context* context)
     tego_context_set_update_tor_daemon_config_succeeded_callback(
         context,
         &on_update_tor_daemon_config_succeeded,
-        tego::throw_on_error());
-
-    tego_context_set_tor_control_status_changed_callback(
-        context,
-        &on_tor_control_status_changed,
-        tego::throw_on_error());
-
-    tego_context_set_tor_process_status_changed_callback(
-        context,
-        &on_tor_process_status_changed,
         tego::throw_on_error());
 
     tego_context_set_tor_network_status_changed_callback(
