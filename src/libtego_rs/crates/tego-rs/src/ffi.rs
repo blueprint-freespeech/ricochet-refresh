@@ -798,9 +798,7 @@ pub unsafe extern "C" fn tego_tor_daemon_config_set_proxy_socks5(
         bail_if_equal!(address_length, 0usize);
         bail_if_equal!(port, 0u16);
         bail_if!(username.is_null() && username_length != 0usize);
-        bail_if!(!username.is_null() && username_length == 0usize);
         bail_if!(password.is_null() && password_length != 0usize);
-        bail_if!(!password.is_null() && password_length == 0usize);
 
         // convert args to a proxy config
         let address = unsafe { std::slice::from_raw_parts(address as *const u8, address_length) };
@@ -818,7 +816,7 @@ pub unsafe extern "C" fn tego_tor_daemon_config_set_proxy_socks5(
             bail!("address is not a valid proxy address: {address}");
         };
 
-        let username = if username.is_null() {
+        let username = if username.is_null() || username_length == 0usize {
             None
         } else {
             let username =
@@ -827,7 +825,7 @@ pub unsafe extern "C" fn tego_tor_daemon_config_set_proxy_socks5(
             Some(username.to_string())
         };
 
-        let password = if password.is_null() {
+        let password = if password.is_null() || password_length == 0usize {
             None
         } else {
             let password =
@@ -898,9 +896,7 @@ pub unsafe extern "C" fn tego_tor_daemon_config_set_proxy_https(
         bail_if_equal!(address_length, 0usize);
         bail_if_equal!(port, 0u16);
         bail_if!(username.is_null() && username_length != 0usize);
-        bail_if!(!username.is_null() && username_length == 0usize);
         bail_if!(password.is_null() && password_length != 0usize);
-        bail_if!(!password.is_null() && password_length == 0usize);
 
         // convert args to a proxy config
         let address = unsafe { std::slice::from_raw_parts(address as *const u8, address_length) };
@@ -918,7 +914,7 @@ pub unsafe extern "C" fn tego_tor_daemon_config_set_proxy_https(
             bail!("address is not a valid proxy address: {address}");
         };
 
-        let username = if username.is_null() {
+        let username = if username.is_null() || username_length == 0usize {
             None
         } else {
             let username =
@@ -927,7 +923,7 @@ pub unsafe extern "C" fn tego_tor_daemon_config_set_proxy_https(
             Some(username.to_string())
         };
 
-        let password = if password.is_null() {
+        let password = if password.is_null() || password_length == 0usize {
             None
         } else {
             let password =
