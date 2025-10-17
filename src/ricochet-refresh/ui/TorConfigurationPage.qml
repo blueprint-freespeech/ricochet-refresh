@@ -415,7 +415,7 @@ Column {
             //: Button label for connecting to tor
             text: qsTr("Save")
             isDefault: true
-            enabled: (torControl.status == TorControl.Connected) && (setup.proxyType == "none" ? true : (proxyAddressField.text && (() => {const p = parseInt(proxyPortField.text); return p > 0 && p < 65536;})()))
+            enabled: (setup.proxyType == "none" ? true : (proxyAddressField.text && (() => {const p = parseInt(proxyPortField.text); return p > 0 && p < 65536;})()))
             onClicked: {
                 setup.save();
                 window.back();

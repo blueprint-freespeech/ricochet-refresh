@@ -2117,28 +2117,6 @@ pub unsafe extern "C" fn tego_context_forget_user(
 //  callback is invoked, so duplicate/marshall data as necessary
 //
 
-/// TODO: remove the origin param once we better understand how errors are routed through the UI
-/// temporarily used by the error callback
-#[repr(C)]
-pub enum tego_tor_error_origin {
-    tego_tor_error_origin_control,
-    tego_tor_error_origin_manager,
-}
-
-/// Callback fired when an error relating to Tor occurs, unrelated to an existing
-/// execution context (ie a function being called)
-///
-/// @param context : the current tego context
-/// @param origin : which legacy Qt component the error came from
-/// @param error : error containing our message
-pub type tego_tor_error_occurred_callback = Option<
-    extern "C" fn(
-        context: *mut tego_context,
-        origin: tego_tor_error_origin,
-        error: *const tego_error,
-    ) -> (),
->;
-
 /// TODO: this should go away and only exists for the ricochet Qt UI :(
 ///  saving the daemon config should probably just be synchrynous
 /// Callback fired after we attempt to save the tor configuration
@@ -2402,15 +2380,6 @@ macro_rules! impl_callback_setter {
             Ok(())
         })
     };
-}
-
-#[no_mangle]
-pub extern "C" fn tego_context_set_tor_error_occurred_callback(
-    context: *mut tego_context,
-    callback: tego_tor_error_occurred_callback,
-    error: *mut *mut tego_error,
-) {
-    impl_callback_setter!(on_tor_error_occurred, context, callback, error);
 }
 
 #[no_mangle]

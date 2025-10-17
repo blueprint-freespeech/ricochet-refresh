@@ -40,22 +40,6 @@ Item {
                 Accessible.description: qsTr("Whether tor is running")
             }
             Label {
-                //: Display label that beside it indicates whether ricochet is connected to tor's control port
-                text: qsTr("Control connected:")
-                Accessible.role: Accessible.StaticText
-                Accessible.name: qsTr("Control connected")
-            }
-            Label {
-                font.bold: true
-                Layout.fillWidth: true
-                text: ((torControl.status == TorControl.Connected) ? qsTr("Yes") : qsTr("No"))
-
-                Accessible.role: Accessible.StaticText
-                Accessible.name: text
-                //: Description of the value of this label, used by acccessibility tech like screen readers
-                Accessible.description: qsTr("Whether tor control connected")
-            }
-            Label {
                 text: qsTr("Circuits established:")
                 Accessible.role: Accessible.StaticText
                 Accessible.name: qsTr("Circuits established")

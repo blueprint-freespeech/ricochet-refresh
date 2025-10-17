@@ -293,7 +293,6 @@ namespace shims
             for (auto pt_config: pt_configs) {
                 tego_pluggable_transport_config_delete(pt_config);
             }
-
         }
 
         tego_context_update_tor_daemon_config(
@@ -396,11 +395,6 @@ namespace shims
             tego::throw_on_error());
     }
 
-    TorControl::Status TorControl::status() const
-    {
-        return TorControl::Status::Connected;
-    }
-
     TorControl::TorStatus TorControl::torStatus() const
     {
         tego_tor_network_status status;
@@ -431,22 +425,6 @@ namespace shims
         return retval;
     }
 
-    QString TorControl::errorMessage() const
-    {
-        return m_errorMessage;
-    }
-
-    void TorControl::setStatus(Status status)
-    {
-        auto oldStatus = m_status;
-        if (oldStatus == status) return;
-
-        m_status = status;
-        emit this->statusChanged(
-            static_cast<int>(status),
-            static_cast<int>(oldStatus));
-    }
-
     void TorControl::setTorStatus(TorStatus status)
     {
         auto oldStatus = m_torStatus;
@@ -456,12 +434,6 @@ namespace shims
         emit this->torStatusChanged(
             static_cast<int>(status),
             static_cast<int>(oldStatus));
-    }
-
-    void TorControl::setErrorMessage(const QString& msg)
-    {
-        m_errorMessage = msg;
-        this->setStatus(TorControl::Error);
     }
 
     void TorControl::setBootstrapStatus(int32_t progress, tego_tor_bootstrap_tag tag, QString&& summary)

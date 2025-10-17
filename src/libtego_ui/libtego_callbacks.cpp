@@ -165,32 +165,6 @@ namespace
     // libtego callbacks
     //
 
-    void on_tor_error_occurred(
-        tego_context*,
-        tego_tor_error_origin origin,
-        const tego_error* error)
-    {
-        // route the error message to the appropriate component
-        QString errorMsg = tego_error_get_message(error);
-        logger::println("tor error : {}", errorMsg);
-        push_task([=]() -> void
-        {
-            switch(origin)
-            {
-                case tego_tor_error_origin_control:
-                {
-                    shims::TorControl::torControl->setErrorMessage(errorMsg);
-                }
-                break;
-                case tego_tor_error_origin_manager:
-                {
-                    shims::TorManager::torManager->setErrorMessage(errorMsg);
-                }
-                break;
-            }
-        });
-    }
-
     void on_update_tor_daemon_config_succeeded(
         tego_context*,
         tego_bool success)
@@ -543,11 +517,6 @@ void init_libtego_callbacks(tego_context* context)
     //
     // register each of our callbacks with libtego
     //
-
-    tego_context_set_tor_error_occurred_callback(
-        context,
-        &on_tor_error_occurred,
-        tego::throw_on_error());
 
     tego_context_set_update_tor_daemon_config_succeeded_callback(
         context,

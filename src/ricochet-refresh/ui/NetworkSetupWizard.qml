@@ -70,27 +70,6 @@ ApplicationWindow {
         visible: false
     }
 
-    StartupStatusPage {
-        id: statusPage
-        anchors {
-            top: parent.top
-            left: parent.left
-            right: parent.right
-            margins: 8
-        }
-        visible: false
-
-        onHasErrorChanged: {
-            if (hasError) {
-                if (visibleItem)
-                    visibleItem.visible = false
-                pageLoader.visible = false
-                statusPage.visible = true
-                visibleItem = statusPage
-            }
-        }
-    }
-
     Component {
         id: firstPage
 
@@ -112,7 +91,7 @@ ApplicationWindow {
                 //: Label for button to connect to the Tor network
                 text: qsTr("Connect")
                 isDefault: true
-                enabled: torControl.status == TorControl.Connected
+                enabled: true
                 onClicked: {
                     let command = torControl.beginBootstrap();
                     if (command != null) {
@@ -154,7 +133,7 @@ ApplicationWindow {
                 //: Label for button to configure the Tor daemon beore connecting to the Tor network
                 text: qsTr("Configure")
                 onClicked: window.openConfig()
-                enabled: torControl.status == TorControl.Connected
+                enabled: true
 
                 Accessible.role: Accessible.Button
                 Accessible.name: text

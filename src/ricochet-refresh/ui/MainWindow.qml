@@ -79,7 +79,6 @@ ApplicationWindow {
                 ContactList {
                     id: contactList
                     anchors.fill: parent
-                    opacity: offlineLoader.item !== null ? (1 - offlineLoader.item.opacity) : 1
 
                     function onContactActivated(contact, actions) {
                         if (contact.status === ContactUser.RequestPending || contact.status === ContactUser.RequestRejected) {
@@ -92,13 +91,6 @@ ApplicationWindow {
                     Accessible.role: Accessible.Pane
                     //: Name of the pane holding the user's contacts for accessibility tech like screen readers
                     Accessible.name: qsTr("Contact pane")
-                }
-
-                Loader {
-                    id: offlineLoader
-                    active: torControl.torStatus !== TorControl.TorReady
-                    anchors.fill: parent
-                    source: Qt.resolvedUrl("OfflineStateItem.qml")
                 }
             }
         }

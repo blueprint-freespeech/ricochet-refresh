@@ -12,7 +12,6 @@
         <file>PresenceIcon.qml</file>
         <file>ContactRequestDialog.qml</file>
         <file>ContactRequestFields.qml</file>
-        <file>TorStateWidget.qml</file>
         <file>ContactWindow.js</file>
         <file>NetworkSetupWizard.qml</file>
         <file>TorConfigurationPage.qml</file>
@@ -23,8 +22,6 @@
         <file>ContactIDField.qml</file>
         <file>AboutPreferences.qml</file>
         <file>MessageDialogWrapper.qml</file>
-        <file>StartupStatusPage.qml</file>
-        <file>OfflineStateItem.qml</file>
         <file>MainWindow.qml</file>
         <file>Bubble.qml</file>
         <file>PageView.qml</file>
