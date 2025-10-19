@@ -127,35 +127,39 @@ elseif (UNIX)
     add_executable(ricochet-refresh)
 endif ()
 
+if (NOT USE_SUBMODULE_FMT)
+    find_package(fmt REQUIRED)
+endif ()
+
 # Add the translations
 qt_add_translation(RICOCHET_QM_RES
-    translation/ricochet_cs.ts
-    translation/ricochet_ru.ts
-    translation/ricochet_ja.ts
-    translation/ricochet_tr.ts
-    translation/ricochet_zh.ts
-    translation/ricochet_uk.ts
-    translation/ricochet_sv.ts
-    translation/ricochet_sl.ts
-    translation/ricochet_es.ts
-    translation/ricochet_pt_BR.ts
-    translation/ricochet_it.ts
     translation/ricochet_bg.ts
+    translation/ricochet_cs.ts
     translation/ricochet_da.ts
-    translation/ricochet_et_EE.ts
-    translation/ricochet_sq.ts
-    translation/ricochet_he.ts
     translation/ricochet_de.ts
+    translation/ricochet_en.ts
+    translation/ricochet_es.ts
+    translation/ricochet_et_EE.ts
     translation/ricochet_fi.ts
-    translation/ricochet_nb.ts
-    translation/ricochet_it_IT.ts
     translation/ricochet_fil_PH.ts
     translation/ricochet_fr.ts
-    translation/ricochet_pt_PT.ts
-    translation/ricochet_en.ts
-    translation/ricochet_pl.ts
-    translation/ricochet_zh_HK.ts
+    translation/ricochet_he.ts
+    translation/ricochet_it.ts
+    translation/ricochet_it_IT.ts
+    translation/ricochet_ja.ts
+    translation/ricochet_nb.ts
     translation/ricochet_nl_NL.ts
+    translation/ricochet_pl.ts
+    translation/ricochet_pt_BR.ts
+    translation/ricochet_pt_PT.ts
+    translation/ricochet_ru.ts
+    translation/ricochet_sl.ts
+    translation/ricochet_sq.ts
+    translation/ricochet_sv.ts
+    translation/ricochet_tr.ts
+    translation/ricochet_uk.ts
+    translation/ricochet_zh.ts
+    translation/ricochet_zh_HK.ts
 )
 # The QM files are generated in the build dir, but the qrc file expects the
 # QM files to be relative paths. Work around this by copying the qrc file to
@@ -173,14 +177,53 @@ if (DEFINED ENV{RICOCHET_REFRESH_VERSION})
     add_compile_definitions(TEGO_VERSION=$ENV{RICOCHET_REFRESH_VERSION})
 endif ()
 
-target_sources(ricochet-refresh PRIVATE main.cpp ${RICOCHET_QML_RES} ${RICOCHET_QM_RES})
+set(RICOCHET_SOURCES
+    shims/ContactIDValidator.cpp
+    shims/ContactIDValidator.h
+    shims/ContactsManager.cpp
+    shims/ContactsManager.h
+    shims/ContactUser.cpp
+    shims/ContactUser.h
+    shims/ConversationModel.cpp
+    shims/ConversationModel.h
+    shims/IncomingContactRequest.cpp
+    shims/IncomingContactRequest.h
+    shims/OutgoingContactRequest.cpp
+    shims/OutgoingContactRequest.h
+    shims/TorCommand.cpp
+    shims/TorCommand.h
+    shims/TorControl.cpp
+    shims/TorControl.h
+    shims/TorManager.cpp
+    shims/TorManager.h
+    shims/UserIdentity.cpp
+    shims/UserIdentity.h
+    ui/Clipboard.cpp
+    ui/Clipboard.h
+    ui/ContactsModel.cpp
+    ui/ContactsModel.h
+    ui/LanguagesModel.cpp
+    ui/LanguagesModel.h
+    ui/MainWindow.cpp
+    ui/MainWindow.h
+    utils/Settings.cpp
+    utils/Settings.h
+    utils/Useful.h
+    libtego_callbacks.cpp
+    libtego_callbacks.hpp
+    main.cpp
+    pluggables.hpp
+)
+
+target_sources(ricochet-refresh PRIVATE ${RICOCHET_SOURCES} ${RICOCHET_QML_RES} ${RICOCHET_QM_RES})
+target_precompile_headers(ricochet-refresh PRIVATE precomp.hpp)
+
 if (STATIC_QT)
     include(qmake_static)
     target_generate_static_qml_plugins(ricochet-refresh)
     target_generate_static_qt_plugins(ricochet-refresh)
 endif ()
 
-target_precompile_headers(ricochet-refresh PRIVATE precomp.hpp)
 
 include(lto)
 include(compiler_opts)
@@ -189,7 +232,6 @@ setup_compiler(ricochet-refresh)
 
 target_compile_features(ricochet-refresh PRIVATE cxx_std_20)
 
-target_link_libraries(ricochet-refresh PUBLIC tego_ui)
 target_link_libraries(ricochet-refresh PUBLIC tego_rs)
 target_link_libraries(ricochet-refresh PRIVATE fmt::fmt-header-only)
 target_link_libraries(

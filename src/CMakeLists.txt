@@ -103,5 +103,4 @@ if (USE_SUBMODULE_FMT)
 endif ()
 
 add_subdirectory(libtego_rs)
-add_subdirectory(libtego_ui)
 add_subdirectory(ricochet-refresh)
