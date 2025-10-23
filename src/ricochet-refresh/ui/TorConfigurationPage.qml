@@ -93,15 +93,7 @@ Column {
             conf.bridgeStrings = bridgeStrings.split('\n').map(x => x.trim()).filter(x => x.length > 0);
         }
 
-        let command = torControl.setConfiguration(conf);
-        if (command != null) {
-            command.finished.connect(function(successful) {
-                if (!successful)
-                {
-                    console.log("SETCONF error:", command.errorMessage)
-                }
-             });
-        }
+        torControl.setConfiguration(conf);
     }
 
     GroupBox {
@@ -401,12 +393,12 @@ Column {
         width: parent.width
 
         Button {
-            //: Button label for going back to previous screen
-            text: qsTr("Back")
-            onClicked: window.back()
+            //: Button label for going bsack to previous screen
+            text: qsTr("Cancel")
+            onClicked: window.openBeginning()
 
             Accessible.name: text
-            Accessible.onPressAction: window.back()
+            Accessible.onPressAction: window.openBeginning()
         }
 
         Item { height: 1; Layout.fillWidth: true }
@@ -418,13 +410,13 @@ Column {
             enabled: (setup.proxyType == "none" ? true : (proxyAddressField.text && (() => {const p = parseInt(proxyPortField.text); return p > 0 && p < 65536;})()))
             onClicked: {
                 setup.save();
-                window.back();
+                window.openBeginning();
             }
 
             Accessible.name: text
             Accessible.onPressAction: {
                 setup.save();
-                window.back();
+                window.openBeginning();
             }
         }
     }

@@ -586,25 +586,25 @@ Name of the button for launching the preferences window for accessibility tech l
 <context>
     <name>NetworkSetupWizard</name>
     <message>
-        <location filename="../ui/NetworkSetupWizard.qml" line="82"/>
+        <location filename="../ui/NetworkSetupWizard.qml" line="72"/>
         <source>This computer&apos;s Internet connection is free of obstacles. I would like to connect directly to the Tor network.</source>
         <extracomment>A label with directions for when to use the &apos;Connect&apos; button</extracomment>
         <translation>La conexión a Internet de este equipo está libre de obstáculos. Me gustaría conectar directamente a la red Tor.</translation>
     </message>
     <message>
-        <location filename="../ui/NetworkSetupWizard.qml" line="92"/>
+        <location filename="../ui/NetworkSetupWizard.qml" line="82"/>
         <source>Connect</source>
         <extracomment>Label for button to connect to the Tor network</extracomment>
         <translation>Conectar</translation>
     </message>
     <message>
-        <location filename="../ui/NetworkSetupWizard.qml" line="124"/>
+        <location filename="../ui/NetworkSetupWizard.qml" line="106"/>
         <source>This computer&apos;s Internet connection is censored, filtered, or proxied. I need to configure network settings.</source>
         <extracomment>A label with directions for when to use the &apos;Configure&apos; button</extracomment>
         <translation>La conexión a Internet de este equipo está censurada, filtrada, o proxyficada. Necesito configurar las preferencias de red.</translation>
     </message>
     <message>
-        <location filename="../ui/NetworkSetupWizard.qml" line="134"/>
+        <location filename="../ui/NetworkSetupWizard.qml" line="116"/>
         <source>Configure</source>
         <extracomment>Label for button to configure the Tor daemon beore connecting to the Tor network</extracomment>
         <translation>Configurar</translation>
@@ -677,218 +677,212 @@ Name of the button for launching the preferences window for accessibility tech l
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/TorBootstrapStatus.qml" line="61"/>
-        <location filename="../ui/TorBootstrapStatus.qml" line="65"/>
-        <source>Back</source>
-        <extracomment>Label for button which moves us back to previous screen</extracomment>
-        <translation>Atrás</translation>
-    </message>
-    <message>
-        <location filename="../ui/TorBootstrapStatus.qml" line="74"/>
+        <location filename="../ui/TorBootstrapStatus.qml" line="64"/>
         <source>Hide Details</source>
         <extracomment>Label for button which hides the tor logs</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/TorBootstrapStatus.qml" line="76"/>
+        <location filename="../ui/TorBootstrapStatus.qml" line="66"/>
         <source>Show Details</source>
         <extracomment>Label for button which shows the tor logs</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/TorBootstrapStatus.qml" line="88"/>
+        <location filename="../ui/TorBootstrapStatus.qml" line="78"/>
         <source>Hides the tor progress log</source>
         <extracomment>Description of hide details button, used by accessibility tech like screen readers</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/TorBootstrapStatus.qml" line="90"/>
+        <location filename="../ui/TorBootstrapStatus.qml" line="80"/>
         <source>Shows the tor progress log</source>
         <extracomment>Description of show details button, used by accessibility tech like screen readers</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/TorBootstrapStatus.qml" line="101"/>
-        <source>Done</source>
-        <extracomment>Label for button which closes the tor connection window</extracomment>
-        <translation>Hecho</translation>
+        <location filename="../ui/TorBootstrapStatus.qml" line="89"/>
+        <location filename="../ui/TorBootstrapStatus.qml" line="93"/>
+        <source>Cancel</source>
+        <extracomment>Label for button which moves us back to previous screen</extracomment>
+        <translation type="unfinished">Cancelar</translation>
     </message>
 </context>
 <context>
     <name>TorConfigurationPage</name>
     <message>
-        <location filename="../ui/TorConfigurationPage.qml" line="115"/>
+        <location filename="../ui/TorConfigurationPage.qml" line="107"/>
         <source>Do you use a proxy to connect to the internet?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/TorConfigurationPage.qml" line="122"/>
+        <location filename="../ui/TorConfigurationPage.qml" line="114"/>
         <source>Proxy</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/TorConfigurationPage.qml" line="127"/>
-        <location filename="../ui/TorConfigurationPage.qml" line="340"/>
+        <location filename="../ui/TorConfigurationPage.qml" line="119"/>
+        <location filename="../ui/TorConfigurationPage.qml" line="332"/>
         <source>Type:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/TorConfigurationPage.qml" line="132"/>
-        <location filename="../ui/TorConfigurationPage.qml" line="350"/>
+        <location filename="../ui/TorConfigurationPage.qml" line="124"/>
+        <location filename="../ui/TorConfigurationPage.qml" line="342"/>
         <source>None</source>
         <translation>Ninguno</translation>
     </message>
     <message>
-        <location filename="../ui/TorConfigurationPage.qml" line="162"/>
+        <location filename="../ui/TorConfigurationPage.qml" line="154"/>
         <source>If you need a proxy to access the internet, select one from this list.</source>
         <extracomment>Description used by accessibility tech, such as screen readers</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/TorConfigurationPage.qml" line="171"/>
+        <location filename="../ui/TorConfigurationPage.qml" line="163"/>
         <source>Address:</source>
         <extracomment>Label indicating the textbox to place a proxy IP or URL</extracomment>
         <translation>Dirección:</translation>
     </message>
     <message>
-        <location filename="../ui/TorConfigurationPage.qml" line="183"/>
+        <location filename="../ui/TorConfigurationPage.qml" line="175"/>
         <source>IP address or hostname</source>
         <extracomment>Placeholder text of text box expecting an IP or URL for proxy</extracomment>
         <translation>Dirección IP o nombre del equipo</translation>
     </message>
     <message>
-        <location filename="../ui/TorConfigurationPage.qml" line="188"/>
+        <location filename="../ui/TorConfigurationPage.qml" line="180"/>
         <source>Enter the IP address or hostname of the proxy you wish to connect to</source>
         <extracomment>Description of what to enter into the IP textbox, used by accessibility tech such as screen readers</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/TorConfigurationPage.qml" line="192"/>
+        <location filename="../ui/TorConfigurationPage.qml" line="184"/>
         <source>Port:</source>
         <extracomment>Label indicating the textbox to place a proxy port</extracomment>
         <translation>Puerto:</translation>
     </message>
     <message>
-        <location filename="../ui/TorConfigurationPage.qml" line="213"/>
+        <location filename="../ui/TorConfigurationPage.qml" line="205"/>
         <source>Port</source>
         <extracomment>Name of the port label, used by accessibility tech such as screen readers</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/TorConfigurationPage.qml" line="215"/>
+        <location filename="../ui/TorConfigurationPage.qml" line="207"/>
         <source>Enter the port of the proxy you wish to connect to</source>
         <extracomment>Description of what to enter into the Port textbox, used by accessibility tech such as screen readers</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/TorConfigurationPage.qml" line="224"/>
+        <location filename="../ui/TorConfigurationPage.qml" line="216"/>
         <source>Username:</source>
         <extracomment>Label indicating the textbox to place the proxy username</extracomment>
         <translation>Nombre de usuario:</translation>
     </message>
     <message>
-        <location filename="../ui/TorConfigurationPage.qml" line="235"/>
-        <location filename="../ui/TorConfigurationPage.qml" line="256"/>
+        <location filename="../ui/TorConfigurationPage.qml" line="227"/>
+        <location filename="../ui/TorConfigurationPage.qml" line="248"/>
         <source>Optional</source>
         <extracomment>Textbox placeholder text indicating the field is not required</extracomment>
         <translation>Opcional</translation>
     </message>
     <message>
-        <location filename="../ui/TorConfigurationPage.qml" line="239"/>
+        <location filename="../ui/TorConfigurationPage.qml" line="231"/>
         <source>Username</source>
         <extracomment>Name of the username label, used by accessibility tech such as screen readers</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/TorConfigurationPage.qml" line="241"/>
+        <location filename="../ui/TorConfigurationPage.qml" line="233"/>
         <source>If required, enter the username for the proxy you wish to connect to</source>
         <extracomment>Description to enter into the Username textbox, used by accessibility tech such as screen readers</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/TorConfigurationPage.qml" line="245"/>
+        <location filename="../ui/TorConfigurationPage.qml" line="237"/>
         <source>Password:</source>
         <extracomment>Label indicating the textbox to place the proxy password</extracomment>
         <translation>Contraseña:</translation>
     </message>
     <message>
-        <location filename="../ui/TorConfigurationPage.qml" line="260"/>
+        <location filename="../ui/TorConfigurationPage.qml" line="252"/>
         <source>Password</source>
         <extracomment>Name of the password label, used by accessibility tech such as screen readers</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/TorConfigurationPage.qml" line="262"/>
+        <location filename="../ui/TorConfigurationPage.qml" line="254"/>
         <source>If required, enter the password for the proxy you wish to connect to</source>
         <extracomment>Description to enter into the Password textbox, used by accessibility tech such as screen readers</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/TorConfigurationPage.qml" line="276"/>
+        <location filename="../ui/TorConfigurationPage.qml" line="268"/>
         <source>Does your computer go through a firewall that only allows connections to certain ports?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/TorConfigurationPage.qml" line="283"/>
+        <location filename="../ui/TorConfigurationPage.qml" line="275"/>
         <source>Firewall</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/TorConfigurationPage.qml" line="327"/>
+        <location filename="../ui/TorConfigurationPage.qml" line="319"/>
         <source>Bridges help you access the Tor Network in places where Tor is blocked. Depending on where you are, one bridge may work better than another.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/TorConfigurationPage.qml" line="334"/>
+        <location filename="../ui/TorConfigurationPage.qml" line="326"/>
         <source>Bridges</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/TorConfigurationPage.qml" line="351"/>
+        <location filename="../ui/TorConfigurationPage.qml" line="343"/>
         <source>Custom</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/TorConfigurationPage.qml" line="370"/>
+        <location filename="../ui/TorConfigurationPage.qml" line="362"/>
         <source>If you need a bridge to access Tor, select one from this list.</source>
         <extracomment>Description used by accessibility tech, such as screen readers</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/TorConfigurationPage.qml" line="416"/>
+        <location filename="../ui/TorConfigurationPage.qml" line="397"/>
+        <source>Cancel</source>
+        <extracomment>Button label for going bsack to previous screen</extracomment>
+        <translation type="unfinished">Cancelar</translation>
+    </message>
+    <message>
+        <location filename="../ui/TorConfigurationPage.qml" line="408"/>
         <source>Save</source>
         <extracomment>Button label for connecting to tor</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/TorConfigurationPage.qml" line="290"/>
+        <location filename="../ui/TorConfigurationPage.qml" line="282"/>
         <source>Allowed ports:</source>
         <extracomment>Label indicating the textbox to place the allowed ports</extracomment>
         <translation>Puertos permitidos:</translation>
     </message>
     <message>
-        <location filename="../ui/TorConfigurationPage.qml" line="299"/>
+        <location filename="../ui/TorConfigurationPage.qml" line="291"/>
         <source>Example: 80,443</source>
         <extracomment>Textbox showing an example entry for the firewall allowed ports entry</extracomment>
         <translation>Ejemplo: 80,443</translation>
     </message>
     <message>
-        <location filename="../ui/TorConfigurationPage.qml" line="304"/>
+        <location filename="../ui/TorConfigurationPage.qml" line="296"/>
         <source>Allowed ports</source>
         <extracomment>Name of the allowed ports label, used by accessibility tech such as screen readers</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ui/TorConfigurationPage.qml" line="376"/>
-        <location filename="../ui/TorConfigurationPage.qml" line="394"/>
+        <location filename="../ui/TorConfigurationPage.qml" line="368"/>
+        <location filename="../ui/TorConfigurationPage.qml" line="386"/>
         <source>Enter one or more bridge relays (one per line):</source>
         <translation>Introduzca uno o más repetidores puente (uno por línea):</translation>
-    </message>
-    <message>
-        <location filename="../ui/TorConfigurationPage.qml" line="405"/>
-        <source>Back</source>
-        <extracomment>Button label for going back to previous screen</extracomment>
-        <translation>Atrás</translation>
     </message>
 </context>
 <context>

@@ -19,7 +19,6 @@ use crate::context::Context;
 use crate::error::{translate_failures, Error};
 use crate::macros::*;
 use crate::object_map::ObjectMap;
-use crate::tor_launch_config::TorLaunchConfig;
 use crate::user_id::UserId;
 
 pub const TEGO_TRUE: i32 = 1;
@@ -46,10 +45,10 @@ pub(crate) enum TegoObject {
     Context(Box<Context>),
     Ed25519PrivateKey(Ed25519PrivateKey),
     V3OnionServiceId(V3OnionServiceId),
+    // TODO: UserId can just be a V3OnionServiceId
     UserId(UserId),
     PluggableTransportConfig(PluggableTransportConfig),
     TorDaemonConfig(LegacyTorClientConfig),
-    TorLaunchConfig(TorLaunchConfig),
 }
 
 type TegoObjectMap = ObjectMap<TegoObject>;
@@ -140,6 +139,32 @@ pub unsafe extern "C" fn tego_uninitialize(
 
 pub struct tego_ed25519_private_key;
 pub struct tego_v3_onion_service_id;
+
+/// Securely generate a new ed25519 private key
+///
+/// @param out_private_key : returned ed25519 private key
+/// @param error : filled on error
+///
+/// # Safety
+///
+/// All pointers must be properly initialised or NULL
+#[no_mangle]
+pub unsafe extern "C" fn tego_ed25519_private_key_generate(
+    out_private_key: *mut *mut tego_ed25519_private_key,
+    error: *mut *mut tego_error,
+) {
+    translate_failures((), error, || -> Result<()> {
+        bail_if_null!(out_private_key);
+
+        let private_key = Ed25519PrivateKey::generate();
+        let object = TegoObject::Ed25519PrivateKey(private_key);
+        let key = get_object_map().insert(object);
+        unsafe {
+            *out_private_key = key as *mut tego_ed25519_private_key;
+        }
+        Ok(())
+    })
+}
 
 /// Conversion method for converting the keyblob string returned by
 /// ADD_ONION command into an ed25519_private_key_t
@@ -528,39 +553,11 @@ pub enum tego_user_type {
 // Tor Config
 //
 
-// TODO: only 1 config: merge launch config, daemon config, and
-// working direcotry into one; tear down and recreate whenever we go
-// back to the main networking configuration` window
-pub struct tego_tor_launch_config;
+pub struct tego_tor_daemon_config;
 
-/// Init a default tor configuration struct
+/// Returns a tor daemon config struct with default params
 ///
-/// @param out_launch_config : destination to write pointer to empty tor configuration
-/// @apram error : filled on error
-///
-/// # Safety
-///
-/// All pointers must be properly initialised or NULL
-#[no_mangle]
-pub unsafe extern "C" fn tego_tor_launch_config_initialize(
-    out_launch_config: *mut *mut tego_tor_launch_config,
-    error: *mut *mut tego_error,
-) {
-    translate_failures((), error, || -> Result<()> {
-        bail_if_null!(out_launch_config);
-
-        let object = TegoObject::TorLaunchConfig(Default::default());
-        let key = get_object_map().insert(object);
-        unsafe {
-            *out_launch_config = key as *mut tego_tor_launch_config;
-        }
-        Ok(())
-    })
-}
-
-/// Set the root directory for the tor daemon to save/read settings
-///
-/// @param tor_config : config struct to save to
+/// @param out_config : destination for config
 /// @param data_directory : our desired data directory
 /// @param data_directory_length : length of data_directory string not counting the
 ///  null termiantor
@@ -570,115 +567,29 @@ pub unsafe extern "C" fn tego_tor_launch_config_initialize(
 ///
 /// All pointers must be properly initialised or NULL
 #[no_mangle]
-pub unsafe extern "C" fn tego_tor_launch_config_set_data_directory(
-    launch_config: *mut tego_tor_launch_config,
+pub unsafe extern "C" fn tego_tor_daemon_config_initialize(
+    out_config: *mut *mut tego_tor_daemon_config,
     data_directory: *const c_char,
     data_directory_length: usize,
     error: *mut *mut tego_error,
 ) {
     translate_failures((), error, || -> Result<()> {
-        bail_if_null!(launch_config);
+        bail_if_null!(out_config);
         bail_if_null!(data_directory);
         bail_if_equal!(data_directory_length, 0usize);
+
+        let tor_bin_path = Context::tor_bin_path()?;
 
         let data_directory = unsafe {
             std::slice::from_raw_parts(data_directory as *const u8, data_directory_length)
         };
         let data_directory = std::str::from_utf8(data_directory)?;
-
-        let mut object_map = get_object_map();
-        let key = launch_config as TegoKey;
-        let launch_config: &mut TorLaunchConfig = match object_map.get_mut(&key) {
-            Some(TegoObject::TorLaunchConfig(launch_config)) => launch_config,
-            Some(_) => bail!(
-                "not a tego_tor_launch_config pointer: {:?}",
-                key as *const c_void
-            ),
-            None => bail!("not a valid pointer: {:?}", key as *const c_void),
-        };
-
         let data_directory = PathBuf::from(data_directory);
         let data_directory = std::path::absolute(data_directory)?;
-        launch_config.data_directory = data_directory;
-
-        Ok(())
-    })
-}
-
-/// Start an instance of the tor daemon and associate it with the given context
-///
-/// @param context : the current tego context
-/// @param tor_config : tor configuration params
-/// @param error : filled on error
-///
-/// # Safety
-///
-/// All pointers must be properly initialised or NULL
-#[no_mangle]
-pub unsafe extern "C" fn tego_context_start_tor(
-    context: *mut tego_context,
-    tor_config: *const tego_tor_launch_config,
-    error: *mut *mut tego_error,
-) {
-    translate_failures((), error, || -> Result<()> {
-        bail_if_null!(context);
-        bail_if_null!(tor_config);
-
-        let mut object_map = get_object_map();
-
-        let tor_data_directory = {
-            let tor_config_key = tor_config as TegoKey;
-            let tor_config = match object_map.get(&tor_config_key) {
-                Some(TegoObject::TorLaunchConfig(tor_config)) => tor_config,
-                Some(_) => bail!(
-                    "not a tego_tor_launch_config pointer: {:?}",
-                    tor_config_key as *const c_void
-                ),
-                None => bail!("not a valid pointer: {:?}", tor_config_key as *const c_void),
-            };
-            tor_config.data_directory.clone()
-        };
-
-        let context_ptr = context;
-        let context_key = context_ptr as TegoKey;
-        let context = match object_map.get_mut(&context_key) {
-            Some(TegoObject::Context(context)) => context,
-            Some(_) => bail!(
-                "not a tego_context pointer: {:?}",
-                context_key as *const c_void
-            ),
-            None => bail!("not a valid pointer: {:?}", context_key as *const c_void),
-        };
-
-        context.set_tor_data_directory(tor_data_directory);
-
-        Ok(())
-    })
-}
-
-pub struct tego_tor_daemon_config;
-
-/// Returns a tor daemon config struct with default params
-///
-/// @param out_config : destination for config
-/// @param error : filled on error
-///
-/// # Safety
-///
-/// All pointers must be properly initialised or NULL
-#[no_mangle]
-pub unsafe extern "C" fn tego_tor_daemon_config_initialize(
-    out_config: *mut *mut tego_tor_daemon_config,
-    error: *mut *mut tego_error,
-) {
-    translate_failures((), error, || -> Result<()> {
-        bail_if_null!(out_config);
-
-        let tor_bin_path = Context::tor_bin_path()?;
 
         let bundled_tor_config = LegacyTorClientConfig::BundledTor {
             tor_bin_path,
-            data_directory: Default::default(),
+            data_directory,
             proxy_settings: None,
             allowed_ports: None,
             pluggable_transports: None,
@@ -1223,114 +1134,10 @@ pub unsafe extern "C" fn tego_tor_daemon_config_set_bridges(
     })
 }
 
-/// Update the tor daemon settings of running instance of tor associated
-/// with a given tego context
+/// Launch+configure tor, bootstrap, and begin event+network threads
 ///
 /// @param context : the current tego context
 /// @param tor_config : tor configuration params
-/// @param error : filled on error
-///
-/// # Safety
-///
-/// All pointers must be properly initialised or NULL
-#[no_mangle]
-pub unsafe extern "C" fn tego_context_update_tor_daemon_config(
-    context: *mut tego_context,
-    tor_config: *const tego_tor_daemon_config,
-    error: *mut *mut tego_error,
-) {
-    translate_failures((), error, || -> Result<()> {
-        bail_if_null!(context);
-        bail_if_null!(tor_config);
-
-        let context_ptr = context;
-
-        let mut object_map = get_object_map();
-
-        let config = {
-            let key = tor_config as TegoKey;
-            match object_map.get(&key) {
-                Some(TegoObject::TorDaemonConfig(config)) => config.clone(),
-                Some(_) => bail!(
-                    "not a tego_tor_daemon_config pointer: {:?}",
-                    key as *const c_void
-                ),
-                None => bail!("not a valid pointer: {:?}", key as *const c_void),
-            }
-        };
-
-        let key = context_ptr as TegoKey;
-        match object_map.get_mut(&key) {
-            Some(TegoObject::Context(context)) => {
-                context.set_tor_config(config);
-
-                let callbacks = context
-                    .callbacks
-                    .lock()
-                    .expect("another thread panicked while holding callback's mutex");
-
-                // TODO: remove need for this callback
-                if let Some(callback) = callbacks.on_update_tor_daemon_config_succeeded {
-                    callback(context_ptr, TEGO_TRUE);
-                }
-
-                Ok(())
-            }
-            Some(_) => bail!("not a tego_context pointer: {:?}", key as *const c_void),
-            None => bail!("not a valid pointer: {:?}", key as *const c_void),
-        }
-    })
-}
-
-/// Set the DisableNetwork flag of running instance of tor associated
-/// with a given tego context
-///
-/// @param context : the current tego context
-/// @param disable_network : TEGO_TRUE or TEGO_FALSE
-/// @param error : filled on error
-///
-/// # Safety
-///
-/// All pointers must be properly initialised or NULL
-#[no_mangle]
-pub unsafe extern "C" fn tego_context_update_disable_network_flag(
-    context: *mut tego_context,
-    disable_network: tego_bool,
-    error: *mut *mut tego_error,
-) {
-    translate_failures((), error, || -> Result<()> {
-        bail_if_null!(context);
-        bail_if_not_equal!(disable_network, TEGO_FALSE);
-
-        let context_ptr = context;
-
-        let key = context_ptr as TegoKey;
-        match get_object_map().get_mut(&key) {
-            Some(TegoObject::Context(context)) => {
-                context.connect()?;
-
-                let callbacks = context
-                    .callbacks
-                    .lock()
-                    .expect("another thread panicked while holding callback's mutex");
-
-                // TODO: this callback invocation is required to move
-                // the network configuration screen forward into the
-                // bootstrapping progression screen
-                if let Some(callback) = callbacks.on_update_tor_daemon_config_succeeded {
-                    callback(context_ptr, TEGO_TRUE);
-                }
-            }
-            Some(_) => bail!("not a tego_context pointer: {:?}", key as *const c_void),
-            None => bail!("not a valid pointer: {:?}", key as *const c_void),
-        }
-        Ok(())
-    })
-}
-
-/// Start tego's onion service and try to connect to users
-///
-/// @param context : the current tego context
 /// @param host_private_key : the hosts private ed25519 key, or null if
 ///  we want to create a new identity
 /// @param user_buffer : the list of all users we care about
@@ -1342,8 +1149,9 @@ pub unsafe extern "C" fn tego_context_update_disable_network_flag(
 ///
 /// All pointers must be properly initialised or NULL
 #[no_mangle]
-pub unsafe extern "C" fn tego_context_start_service(
+pub unsafe extern "C" fn tego_context_begin(
     context: *mut tego_context,
+    tor_config: *const tego_tor_daemon_config,
     host_private_key: *const tego_ed25519_private_key,
     user_buffer: *const *const tego_user_id,
     user_type_buffer: *const tego_user_type,
@@ -1351,90 +1159,90 @@ pub unsafe extern "C" fn tego_context_start_service(
     error: *mut *mut tego_error,
 ) {
     translate_failures((), error, || -> Result<()> {
-        // TODO: refactor so this funciton is called *after* bootstrap
         bail_if_null!(context);
-        bail_if!(user_buffer.is_null() && !user_type_buffer.is_null());
-        bail_if!(!user_buffer.is_null() && user_type_buffer.is_null());
-
-        let context_ptr = context;
-
-        let key = context_ptr as TegoKey;
-        match get_object_map().get(&key) {
-            Some(TegoObject::Context(context)) => bail_if!(context.private_key().is_some()),
-            Some(_) => bail!("not a tego_context pointer: {:?}", key as *const c_void),
-            None => bail!("not a valid pointer: {:?}", key as *const c_void),
+        bail_if_null!(tor_config);
+        bail_if_null!(host_private_key);
+        if user_count > 0 {
+            bail_if_null!(user_buffer);
+            bail_if_null!(user_type_buffer);
         }
-        let private_key = if host_private_key.is_null() {
-            let private_key = Ed25519PrivateKey::generate();
-            // notify caller new identity created
-            let on_new_identity_created = match get_object_map().get(&key) {
-                Some(TegoObject::Context(context)) => {
-                    let callbacks = context
-                        .callbacks
-                        .lock()
-                        .expect("another thread panicked while holding callback's mutex");
-                    callbacks.on_new_identity_created
-                }
-                Some(_) => bail!("not a tego_context pointer: {:?}", key as *const c_void),
-                None => bail!("not a valid pointer: {:?}", key as *const c_void),
-            };
-            if let Some(on_new_identity_created) = on_new_identity_created {
-                let object = TegoObject::Ed25519PrivateKey(private_key.clone());
-                let key = get_object_map().insert(object);
-                on_new_identity_created(context_ptr, key as *const tego_ed25519_private_key);
-            }
-            private_key
-        } else {
-            let key = host_private_key as TegoKey;
-            match get_object_map().get(&key) {
-                Some(TegoObject::Ed25519PrivateKey(private_key)) => private_key.clone(),
-                Some(_) => bail!(
-                    "not a tego_ed25519_private_key pointer: {:?}",
-                    key as *const c_void
-                ),
-                None => bail!("not a valid pointer: {:?}", key as *const c_void),
-            }
+
+        let key = tor_config as TegoKey;
+        let tor_config: LegacyTorClientConfig = match get_object_map().get(&key) {
+            Some(TegoObject::TorDaemonConfig(config)) => config.clone(),
+            Some(_) => bail!(
+                "not a tego_tor_daemon_config pointer: {:?}",
+                key as *const c_void
+            ),
+            None => bail!("not a valid pointer: {:?}", key as *const c_void),
         };
 
-        let host_service_id = V3OnionServiceId::from_private_key(&private_key);
+        let key = host_private_key as TegoKey;
+        let host_private_key: Ed25519PrivateKey = match get_object_map().get(&key) {
+            Some(TegoObject::Ed25519PrivateKey(private_key)) => private_key.clone(),
+            Some(_) => bail!(
+                "not a tego_ed25519_private_key pointer: {:?}",
+                key as *const c_void
+            ),
+            None => bail!("not a valid pointer: {:?}", key as *const c_void),
+        };
+        let host_service_id = V3OnionServiceId::from_private_key(&host_private_key);
+
+        let user_buffer = std::slice::from_raw_parts(user_buffer, user_count);
+        let user_type_buffer = std::slice::from_raw_parts(user_type_buffer, user_count);
 
         let mut users: BTreeMap<V3OnionServiceId, tego_user_type> = Default::default();
 
-        if !user_buffer.is_null() && !user_type_buffer.is_null() {
-            let user_buffer = unsafe { std::slice::from_raw_parts(user_buffer, user_count) };
-            let user_type_buffer =
-                unsafe { std::slice::from_raw_parts(user_type_buffer, user_count) };
+        for (user_id, user_type) in user_buffer.iter().zip(user_type_buffer.iter()) {
+            let key = *user_id as TegoKey;
+            let user_id = match get_object_map().get(&key) {
+                Some(TegoObject::UserId(UserId { service_id })) => service_id.clone(),
+                Some(_) => bail!("not a tego_user_id pointer: {:?}", key as *const c_void),
+                None => bail!("not a valid pointer: {:?}", key as *const c_void),
+            };
 
-            for (user_id, user_type) in user_buffer.iter().zip(user_type_buffer.iter()) {
-                let key = *user_id as TegoKey;
-                let service_id = match get_object_map().get(&key) {
-                    Some(TegoObject::UserId(UserId { service_id })) => service_id.clone(),
-                    Some(_) => bail!("not a tego_user_id pointer: {:?}", key as *const c_void),
-                    None => bail!("not a valid pointer: {:?}", key as *const c_void),
-                };
+            // ensure we have no dupes
+            bail_if!(users.contains_key(&user_id));
+            // ensure we're not adding our own service id
+            bail_if_equal!(host_service_id, user_id);
 
-                // ensure we have no dupes
-                bail_if!(users.contains_key(&service_id));
-                // ensure we're not adding our own service id
-                bail_if_equal!(host_service_id, service_id);
-
-                use tego_user_type::*;
-                match user_type {
-                    tego_user_type_host => bail!("user type may not be tego_user_type_host"),
-                    _ => users.insert(service_id, *user_type),
-                };
-            }
+            use tego_user_type::*;
+            match user_type {
+                tego_user_type_host => bail!("user type may not be tego_user_type_host"),
+                _ => users.insert(user_id, *user_type),
+            };
         }
 
-        let key = context_ptr as TegoKey;
+        let key = context as TegoKey;
         match get_object_map().get_mut(&key) {
             Some(TegoObject::Context(context)) => {
-                context.set_private_key(private_key);
-                context.set_users(users);
+                context.begin(tor_config.clone(), host_private_key.clone(), users)
             }
             Some(_) => bail!("not a tego_context pointer: {:?}", key as *const c_void),
             None => bail!("not a valid pointer: {:?}", key as *const c_void),
-        };
+        }
+    })
+}
+
+/// Tear down a running context; cancels bootstrap and ends event+network threads
+///
+/// @param context : the current tego context
+/// @param error : filled on error
+///
+/// # Safety
+///
+/// All pointers must be properly initialised or NULL
+#[no_mangle]
+pub unsafe extern "C" fn tego_context_end(context: *mut tego_context, error: *mut *mut tego_error) {
+    translate_failures((), error, || -> Result<()> {
+        bail_if_null!(context);
+        let key = context as TegoKey;
+
+        match get_object_map().get_mut(&key) {
+            Some(TegoObject::Context(context)) => context.end(),
+            Some(_) => bail!("not a tego_context pointer: {:?}", key as *const c_void),
+            None => bail!("not a valid pointer: {:?}", key as *const c_void),
+        }
         Ok(())
     })
 }
@@ -1550,7 +1358,6 @@ pub unsafe extern "C" fn tego_context_get_tor_version_string(
         }
     })
 }
-
 
 #[repr(C)]
 pub enum tego_tor_network_status {
@@ -2117,15 +1924,6 @@ pub unsafe extern "C" fn tego_context_forget_user(
 //  callback is invoked, so duplicate/marshall data as necessary
 //
 
-/// TODO: this should go away and only exists for the ricochet Qt UI :(
-///  saving the daemon config should probably just be synchrynous
-/// Callback fired after we attempt to save the tor configuration
-///
-/// @param context : the current tego context
-/// @param out_success : where the result is saved, TEGO_TRUE on success, else TEGO_FALSE
-pub type tego_update_tor_daemon_config_succeeded_callback =
-    Option<extern "C" fn(context: *mut tego_context, success: tego_bool) -> ()>;
-
 /// Callback fired when the tor daemon's network status changes
 ///
 /// @param context : the current tego context
@@ -2349,15 +2147,6 @@ pub type tego_user_status_changed_callback = Option<
     ) -> (),
 >;
 
-/// Callback fired when tor creates a new onion service for
-/// the host
-///
-/// @param context : the current tego context
-/// @param private_key : the host's private key
-pub type tego_new_identity_created_callback = Option<
-    extern "C" fn(context: *mut tego_context, private_key: *const tego_ed25519_private_key) -> (),
->;
-
 //
 // Setters for various callbacks
 //
@@ -2380,20 +2169,6 @@ macro_rules! impl_callback_setter {
             Ok(())
         })
     };
-}
-
-#[no_mangle]
-pub extern "C" fn tego_context_set_update_tor_daemon_config_succeeded_callback(
-    context: *mut tego_context,
-    callback: tego_update_tor_daemon_config_succeeded_callback,
-    error: *mut *mut tego_error,
-) {
-    impl_callback_setter!(
-        on_update_tor_daemon_config_succeeded,
-        context,
-        callback,
-        error
-    );
 }
 
 #[no_mangle]
@@ -2537,15 +2312,6 @@ pub extern "C" fn tego_context_set_user_status_changed_callback(
     impl_callback_setter!(on_user_status_changed, context, callback, error);
 }
 
-#[no_mangle]
-pub extern "C" fn tego_context_set_new_identity_created_callback(
-    context: *mut tego_context,
-    callback: tego_new_identity_created_callback,
-    error: *mut *mut tego_error,
-) {
-    impl_callback_setter!(on_new_identity_created, context, callback, error);
-}
-
 //
 // Destructors for various tego types
 //
@@ -2578,11 +2344,6 @@ pub extern "C" fn tego_v3_onion_service_id_delete(value: *mut tego_v3_onion_serv
 #[no_mangle]
 pub extern "C" fn tego_user_id_delete(value: *mut tego_user_id) {
     impl_deleter!(TegoObject::UserId(_), value);
-}
-
-#[no_mangle]
-pub extern "C" fn tego_tor_launch_config_delete(value: *mut tego_tor_launch_config) {
-    impl_deleter!(TegoObject::TorLaunchConfig(_), value);
 }
 
 #[no_mangle]

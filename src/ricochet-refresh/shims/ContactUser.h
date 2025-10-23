@@ -19,6 +19,7 @@ namespace shims
         Q_PROPERTY(shims::OutgoingContactRequest* contactRequest READ contactRequest NOTIFY statusChanged)
         Q_PROPERTY(shims::ConversationModel* conversation READ conversation CONSTANT)
     public:
+        // todo: swap this out with tego user type? or just store type as well?
         enum Status
         {
             Online,

@@ -20,16 +20,6 @@ ApplicationWindow {
 
     property Item visibleItem: configPage.visible ? configPage : pageLoader.item
 
-    function back() {
-        if (pageLoader.visible) {
-            pageLoader.visible = false
-            configPage.init();
-            configPage.visible = true
-        } else {
-            openBeginning()
-        }
-    }
-
     function openBeginning() {
         configPage.visible = false;
         pageLoader.sourceComponent = firstPage
@@ -93,22 +83,14 @@ ApplicationWindow {
                 isDefault: true
                 enabled: true
                 onClicked: {
-                    let command = torControl.beginBootstrap();
-                    if (command != null) {
-                        command.finished.connect(function(successful)
-                        {
-                            if (successful) {
-                                window.openBootstrap()
-                            } else {
-                                console.log("SETCONF error:", command.errorMessage)
-                            }
-                        });
-                    };
+                    torControl.beginBootstrap();
+                    window.openBootstrap();
                 }
                 Accessible.role: Accessible.Button
                 Accessible.name: text
                 Accessible.onPressAction: {
-                    configPage.save()
+                    torControl.beginBootstrap();
+                    window.openBootstrap();
                 }
             }
 

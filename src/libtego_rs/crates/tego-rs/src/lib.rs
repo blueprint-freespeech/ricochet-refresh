@@ -5,7 +5,6 @@ pub(crate) mod error;
 pub(crate) mod macros;
 pub(crate) mod object_map;
 pub(crate) mod promise;
-pub(crate) mod tor_launch_config;
 pub(crate) mod user_id;
 
 #[allow(non_camel_case_types)]

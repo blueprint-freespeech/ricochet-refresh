@@ -1,4 +1,7 @@
 #include "TorControl.h"
+#include "TorManager.h"
+#include "UserIdentity.h"
+
 #include "utils/Settings.h"
 
 #include "pluggables.hpp"
@@ -15,19 +18,31 @@ namespace shims
 
     // callable from QML
     // see TorConfigurationPage.qml
-    QObject* TorControl::setConfiguration(const QVariantMap &options)
+    void TorControl::setConfiguration(const QVariantMap &options)
     {
         QJsonObject json = QJsonObject::fromVariantMap(options);
-        return this->setConfiguration(json);
+        this->setConfiguration(json);
     }
 
-    QObject* TorControl::setConfiguration(const QJsonObject &config) try
+    void TorControl::setConfiguration(const QJsonObject &config) try
     {
-        Q_ASSERT(this->m_setConfigurationCommand == nullptr);
+        settings_to_tor_config(config, nullptr);
+        QJsonObject tor(config);
+        SettingsObject settings;
+        settings.write("tor", tor);
+    } catch (std::exception& ex) {
+        logger::println("Exception: {}", ex.what());
+    }
+
+    void TorControl::settings_to_tor_config(const QJsonObject &config, tego_tor_daemon_config** out_config) {
+
+        auto rawFilePath = (QFileInfo(SettingsObject::defaultFile()->filePath()).path() + QStringLiteral("/tor/")).toUtf8();
 
         std::unique_ptr<tego_tor_daemon_config> daemonConfig;
         tego_tor_daemon_config_initialize(
             tego::out(daemonConfig),
+            rawFilePath.data(),
+            static_cast<size_t>(rawFilePath.size()),
             tego::throw_on_error());
 
         // generate own json to save to settings
@@ -295,33 +310,9 @@ namespace shims
             }
         }
 
-        tego_context_update_tor_daemon_config(
-            context,
-            daemonConfig.get(),
-            tego::throw_on_error());
-
-        // after config is confirmed updated then save our settings
-        auto setConfigurationCommand = std::make_unique<TorControlCommand>();
-        QQmlEngine::setObjectOwnership(setConfigurationCommand.get(), QQmlEngine::CppOwnership);
-
-        this->m_setConfigurationCommand = setConfigurationCommand.release();
-        connect(
-            this->m_setConfigurationCommand,
-            &shims::TorControlCommand::finished,
-            [tor=std::move(tor)](bool successful) -> void {
-                SettingsObject settings;
-                // only persist settings if config was set successfully
-                if (successful) {
-                    settings.write("tor", tor);
-                } else {
-                    settings.unset("tor");
-                }
-            });
-
-        return this->m_setConfigurationCommand;
-    } catch (std::exception& ex) {
-        logger::println("Exception: {}", ex.what());
-        return nullptr;
+        if (out_config != nullptr) {
+            *out_config = daemonConfig.release();
+        }
     }
 
     QJsonObject TorControl::getConfiguration()
@@ -329,21 +320,100 @@ namespace shims
         return SettingsObject().read("tor").toObject();
     }
 
-    QObject* TorControl::beginBootstrap() try
+
+    void TorControl::beginBootstrap() try
     {
-        tego_context_update_disable_network_flag(
+        //
+        // Create Tor Config
+        //
+
+        auto networkSettings = SettingsObject().read("tor").toObject();
+        std::unique_ptr<tego_tor_daemon_config> daemonConfig;
+        this->settings_to_tor_config(networkSettings, tego::out(daemonConfig));
+
+
+        //
+        // Load/Generate Host Identity Key
+        //
+
+        auto privateKeyString = SettingsObject("identity").read<QString>("privateKey");
+
+        std::unique_ptr<tego_ed25519_private_key> privateKey;
+        if (privateKeyString.isEmpty()) {
+            // generate a new one
+            tego_ed25519_private_key_generate(tego::out(privateKey), tego::throw_on_error());
+
+            char rawKeyBlob[TEGO_ED25519_KEYBLOB_SIZE] = {0};
+            tego_ed25519_keyblob_from_ed25519_private_key(
+                rawKeyBlob,
+                sizeof(rawKeyBlob),
+                privateKey.get(),
+                tego::throw_on_error());
+
+            QString keyBlob(rawKeyBlob);
+            SettingsObject so(QStringLiteral("identity"));
+            so.write("privateKey", keyBlob);
+        } else {
+            // construct privatekey from privateKey keyblob
+            auto keyBlob = privateKeyString.toUtf8();
+            tego_ed25519_private_key_from_ed25519_keyblob(
+                tego::out(privateKey),
+                keyBlob.data(),
+                static_cast<size_t>(keyBlob.size()),
+                tego::throw_on_error());
+        }
+
+        //
+        // Load Contacts
+        //
+
+        auto contactsManager = shims::UserIdentity::userIdentity->getContacts();
+
+        // load all of our user objects
+        std::vector<tego_user_id*> userIds;
+        std::vector<tego_user_type> userTypes;
+        auto userIdCleanup = tego::make_scope_exit([&]() -> void
+        {
+            std::for_each(userIds.begin(), userIds.end(), &tego_user_id_delete);
+        });
+
+        for(auto user : contactsManager->contacts()) {
+            const auto status = user->getStatus();
+            auto user_id = user->toTegoUserId();
+            userIds.push_back(user_id.release());
+            auto user_type = [=]() {
+                switch (status) {
+                    case shims::ContactUser::Offline: return tego_user_type_allowed;
+                    case shims::ContactUser::RequestPending: return tego_user_type_pending;
+                    case shims::ContactUser::RequestRejected: return tego_user_type_rejected;
+                }
+            }();
+            userTypes.push_back(user_type);
+        }
+
+        Q_ASSERT(userIds.size() == userTypes.size());
+        const size_t userCount = userIds.size();
+
+        tego_context_begin(
             context,
-            TEGO_FALSE,
+            daemonConfig.get(),
+            privateKey.get(),
+            userIds.data(),
+            userTypes.data(),
+            userCount,
             tego::throw_on_error());
 
-        auto setConfigurationCommand = std::make_unique<TorControlCommand>();
-        QQmlEngine::setObjectOwnership(setConfigurationCommand.get(), QQmlEngine::CppOwnership);
-        this->m_setConfigurationCommand = setConfigurationCommand.release();
+        shims::TorManager::torManager->setRunning("Yes");
 
-        return this->m_setConfigurationCommand;
     } catch (std::exception& ex) {
         logger::println("Exception: {}", ex.what());
-        return nullptr;
+    }
+
+    void TorControl::cancelBootstrap() try
+    {
+        tego_context_end(context, tego::throw_on_error());
+    } catch (std::exception& ex) {
+        logger::println("Exception: {}", ex.what());
     }
 
     QList<QString> TorControl::getBridgeTypes()

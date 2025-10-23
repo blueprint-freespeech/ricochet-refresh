@@ -165,22 +165,6 @@ namespace
     // libtego callbacks
     //
 
-    void on_update_tor_daemon_config_succeeded(
-        tego_context*,
-        tego_bool success)
-    {
-        push_task([=]() -> void
-        {
-            logger::println("tor daemon config succeeded : {}", success);
-            auto torControl = shims::TorControl::torControl;
-            if (torControl->m_setConfigurationCommand != nullptr)
-            {
-                torControl->m_setConfigurationCommand->onFinished(success);
-                torControl->m_setConfigurationCommand = nullptr;
-            }
-        });
-    }
-
     void on_tor_network_status_changed(
         tego_context*,
         tego_tor_network_status status)
@@ -486,27 +470,6 @@ namespace
             conversationModel->fileTransferRequestCompleted(id, result);
         });
     }
-
-    void on_new_identity_created(
-        tego_context*,
-        const tego_ed25519_private_key* privateKey)
-    {
-        // convert privateKey to KeyBlob
-        char rawKeyBlob[TEGO_ED25519_KEYBLOB_SIZE] = {0};
-        tego_ed25519_keyblob_from_ed25519_private_key(
-            rawKeyBlob,
-            sizeof(rawKeyBlob),
-            privateKey,
-            tego::throw_on_error());
-
-        QString keyBlob(rawKeyBlob);
-
-        push_task([=]() -> void
-        {
-            SettingsObject so(QStringLiteral("identity"));
-            so.write("privateKey", keyBlob);
-        });
-    }
 }
 
 void init_libtego_callbacks(tego_context* context)
@@ -517,11 +480,6 @@ void init_libtego_callbacks(tego_context* context)
     //
     // register each of our callbacks with libtego
     //
-
-    tego_context_set_update_tor_daemon_config_succeeded_callback(
-        context,
-        &on_update_tor_daemon_config_succeeded,
-        tego::throw_on_error());
 
     tego_context_set_tor_network_status_changed_callback(
         context,
@@ -591,10 +549,5 @@ void init_libtego_callbacks(tego_context* context)
     tego_context_set_message_acknowledged_callback(
         context,
         &on_message_acknowledged,
-        tego::throw_on_error());
-
-    tego_context_set_new_identity_created_callback(
-        context,
-        &on_new_identity_created,
         tego::throw_on_error());
 }

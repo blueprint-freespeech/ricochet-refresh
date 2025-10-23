@@ -56,16 +56,6 @@ Column {
     RowLayout {
         width: parent.width
 
-        Button {
-            //: Label for button which moves us back to previous screen
-            text: qsTr("Back")
-            onClicked: window.back()
-
-            //: Label for button which moves us back to previous screen
-            Accessible.name: qsTr("Back")
-            Accessible.onPressAction: window.back()
-        }
-
         Item { height: 1; Layout.fillWidth: true }
 
         Button {
@@ -94,18 +84,14 @@ Column {
             }
         }
 
-        Item { height: 1; Layout.fillWidth: true }
-
         Button {
-            //: Label for button which closes the tor connection window
-            text: qsTr("Done")
-            isDefault: true
-            enabled: bootstrap.done
-            onClicked: window.visible = false
+            //: Label for button which moves us back to previous screen
+            text: qsTr("Cancel")
+            onClicked: { torControl.cancelBootstrap(); window.openBeginning() }
 
-            Accessible.name: text
-            Accessible.role: Accessible.Button
-            Accessible.onPressAction: window.visible = false
+            //: Label for button which moves us back to previous screen
+            Accessible.name: qsTr("Cancel")
+            Accessible.onPressAction: { torControl.cancelBootstrap(); window.openBeginning() }
         }
     }
 }

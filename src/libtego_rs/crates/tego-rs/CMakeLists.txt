@@ -10,7 +10,6 @@ set(tego_rs_sources
     src/macros.rs
     src/object_map.rs
     src/promise.rs
-    src/tor_launch_config.rs
     src/user_id.rs
 )
 

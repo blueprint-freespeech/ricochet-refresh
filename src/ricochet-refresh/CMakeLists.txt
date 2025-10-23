@@ -150,8 +150,6 @@ set(RICOCHET_SOURCE
     shims/IncomingContactRequest.h
     shims/OutgoingContactRequest.cpp
     shims/OutgoingContactRequest.h
-    shims/TorCommand.cpp
-    shims/TorCommand.h
     shims/TorControl.cpp
     shims/TorControl.h
     shims/TorManager.cpp

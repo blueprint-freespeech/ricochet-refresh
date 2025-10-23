@@ -11,7 +11,7 @@ use std::sync::{
 use std::time::{Duration, Instant};
 
 // extern
-use anyhow::{bail, Context as AnyhowContext, Result};
+use anyhow::{Context as AnyhowContext, Result};
 use rico_protocol::v3::file_hasher::*;
 use rico_protocol::v3::packet_handler::*;
 use rico_protocol::v3::Error;
@@ -35,14 +35,8 @@ const RICOCHET_PORT: u16 = 9878u16;
 #[derive(Default)]
 pub(crate) struct Context {
     tego_key: TegoKey,
-    // todo: this should not exposed directly
-    // callback setters in FFI should pass pointers
-    // down here and set them via cmd to avoid
-    // this lock
+    // callback struct
     pub callbacks: Arc<Mutex<Callbacks>>,
-    // tor config data
-    tor_data_directory: PathBuf,
-    tor_config: Option<LegacyTorClientConfig>,
     // tor runtime data
     tor_version_cstring: Option<CString>,
     // todo: arguably these should be accessed by a Command
@@ -63,15 +57,6 @@ pub(crate) struct Context {
 impl Context {
     pub fn set_tego_key(&mut self, tego_key: TegoKey) {
         self.tego_key = tego_key;
-    }
-
-    pub fn set_tor_data_directory(&mut self, tor_data_directory: PathBuf) {
-        self.tor_data_directory = tor_data_directory;
-    }
-
-    // todo: this needs to support bridges and pluggable-transports
-    pub fn set_tor_config(&mut self, legacy_tor_config: LegacyTorClientConfig) {
-        self.tor_config = Some(legacy_tor_config);
     }
 
     pub fn tor_version_string(&mut self) -> Option<&CString> {
@@ -95,63 +80,37 @@ impl Context {
         tor_logs.clone()
     }
 
-    pub fn set_private_key(&mut self, private_key: Ed25519PrivateKey) {
-        self.private_key = Some(private_key);
-    }
-
-    pub fn private_key(&self) -> Option<&Ed25519PrivateKey> {
-        self.private_key.as_ref()
-    }
-
-    pub fn set_users(&mut self, users: BTreeMap<V3OnionServiceId, tego_user_type>) {
-        self.users = users;
-    }
-
     pub fn host_service_id(&self) -> Option<V3OnionServiceId> {
         self.private_key
             .as_ref()
             .map(V3OnionServiceId::from_private_key)
     }
 
-    // todo: should take a tor config as an argument
-    pub fn connect(&mut self) -> Result<()> {
+    pub fn begin(
+        &mut self,
+        tor_config: LegacyTorClientConfig,
+        private_key: Ed25519PrivateKey,
+        users: BTreeMap<V3OnionServiceId, tego_user_type>,
+    ) -> Result<()> {
+        self.private_key = Some(private_key.clone());
         let tego_key = self.tego_key;
         let callbacks = Arc::downgrade(&self.callbacks);
-
-        let tor_config = if let Some(tor_config) = self.tor_config.clone() {
-            let mut tor_config = tor_config.clone();
-            if let LegacyTorClientConfig::BundledTor {
-                ref mut data_directory,
-                ..
-            } = tor_config
-            {
-                *data_directory = self.tor_data_directory.clone();
-            }
-            tor_config
-        } else {
-            bail!("tor config not set");
-        };
-        let tor_client = LegacyTorClient::new(tor_config)?;
-
         let tor_version = Arc::downgrade(&self.tor_version);
         let tor_logs = Arc::downgrade(&self.tor_logs);
 
         let connect_complete = Arc::downgrade(&self.connect_complete);
         let event_loop_complete = self.event_loop_complete.clone();
 
-        let private_key = self.private_key.as_ref().unwrap().clone();
-
         let command_queue = self.command_queue.downgrade();
 
         let task = EventLoopTask::new(
             tego_key,
             callbacks,
-            tor_client,
             tor_version,
             tor_logs,
             connect_complete,
             private_key,
-            std::mem::take(&mut self.users),
+            users,
             command_queue,
             event_loop_complete,
         );
@@ -160,12 +119,31 @@ impl Context {
             .name("event-loop".to_string())
             .spawn(move || {
                 // start event loop
-                let _ = task.run();
+                if let Err(err) = task.run(tor_config) {
+                    // todo: proper error handling/logging
+                    println!("ERROR: {err:?}");
+                }
             })?;
 
         Ok(())
     }
 
+    pub fn end(&mut self) {
+        self.push_command(CommandData::EndEventLoop);
+        let complete = self.event_loop_complete.get_future();
+        complete.wait();
+
+        self.tor_version_cstring = Default::default();
+        self.tor_version = Default::default();
+        self.tor_logs = Default::default();
+        self.connect_complete = Default::default();
+        self.event_loop_complete = Default::default();
+        self.command_queue = Default::default();
+        self.private_key = Default::default();
+        self.users = Default::default();
+    }
+
+    // todo: remove need for this
     pub fn connect_complete(&self) -> bool {
         self.connect_complete.load(Ordering::Relaxed)
     }
@@ -336,9 +314,7 @@ impl Context {
 
 impl Drop for Context {
     fn drop(&mut self) {
-        self.push_command(CommandData::EndEventLoop);
-        let complete = self.event_loop_complete.get_future();
-        complete.wait();
+        self.end();
     }
 }
 
@@ -353,7 +329,6 @@ struct UserData {
 struct EventLoopTask {
     context: TegoKey,
     callbacks: Weak<Mutex<Callbacks>>,
-    tor_client: LegacyTorClient,
     tor_version: Weak<Mutex<Option<LegacyTorVersion>>>,
     tor_logs: Weak<Mutex<String>>,
     connect_complete: Weak<AtomicBool>,
@@ -380,7 +355,6 @@ impl EventLoopTask {
     fn new(
         context: TegoKey,
         callbacks: Weak<Mutex<Callbacks>>,
-        tor_client: LegacyTorClient,
         tor_version: Weak<Mutex<Option<LegacyTorVersion>>>,
         tor_logs: Weak<Mutex<String>>,
         connect_complete: Weak<AtomicBool>,
@@ -418,7 +392,6 @@ impl EventLoopTask {
         Self {
             context,
             callbacks,
-            tor_client,
             tor_version,
             tor_logs,
             connect_complete,
@@ -437,23 +410,25 @@ impl EventLoopTask {
         }
     }
 
-    fn run(mut self) -> Result<()> {
+    fn run(mut self, tor_config: LegacyTorClientConfig) -> Result<()> {
+        let mut tor_client = LegacyTorClient::new(tor_config)?;
+
         // save off the tor daemon version
         {
             let tor_version = self.tor_version.upgrade().context("tor_version dropped")?;
             let mut tor_version = tor_version.lock().expect("tor_version mutex poisoned");
-            *tor_version = Some(self.tor_client.version());
+            *tor_version = Some(tor_client.version());
         }
 
         // begin connect to tor network
-        self.tor_client.bootstrap()?;
+        tor_client.bootstrap()?;
 
         while !self.task_complete {
             // handle tor provider events
-            self.handle_tor_events()?;
+            self.handle_tor_events(&mut tor_client)?;
 
             // get and handle pending commands
-            self.handle_commands()?;
+            self.handle_commands(&mut tor_client)?;
 
             // read any pending bytes and update the packet handler
             self.handle_connections()?;
@@ -464,6 +439,8 @@ impl EventLoopTask {
 
         // signal task completion
         self.event_loop_complete.resolve(());
+
+        // TODO: we should trigger exit callback here?
 
         Ok(())
     }
@@ -479,9 +456,9 @@ impl EventLoopTask {
         Duration::from_secs(delay)
     }
 
-    fn handle_tor_events(&mut self) -> Result<()> {
+    fn handle_tor_events(&mut self, tor_client: &mut LegacyTorClient) -> Result<()> {
         // handle tor events
-        for e in self.tor_client.update()? {
+        for e in tor_client.update()? {
             match e {
                 TorEvent::BootstrapStatus {
                     progress,
@@ -505,9 +482,7 @@ impl EventLoopTask {
                         CallbackData::HostOnionServiceStateChanged{state: tego_host_onion_service_state::tego_host_onion_service_state_service_added});
 
                     // start onion service
-                    let listener =
-                        self.tor_client
-                            .listener(&self.private_key, RICOCHET_PORT, None)?;
+                    let listener = tor_client.listener(&self.private_key, RICOCHET_PORT, None)?;
                     std::thread::Builder::new()
                         .name("listener-loop".to_string())
                         .spawn({
@@ -617,7 +592,7 @@ impl EventLoopTask {
         Ok(())
     }
 
-    fn handle_commands(&mut self) -> Result<()> {
+    fn handle_commands(&mut self, tor_client: &mut LegacyTorClient) -> Result<()> {
         let mut command_queue = self.command_queue.take();
 
         while let Some(cmd) = command_queue.peek() {
@@ -716,8 +691,7 @@ impl EventLoopTask {
                         let target_addr: tor_interface::tor_provider::TargetAddr =
                             (service_id.clone(), RICOCHET_PORT).into();
 
-                        let connect_handle =
-                            self.tor_client.connect_async(target_addr, None).unwrap();
+                        let connect_handle = tor_client.connect_async(target_addr, None).unwrap();
 
                         let pending_connection = PendingConnection {
                             service_id,
@@ -2088,7 +2062,6 @@ enum CallbackData {
 
 #[derive(Default)]
 pub(crate) struct Callbacks {
-    pub on_update_tor_daemon_config_succeeded: tego_update_tor_daemon_config_succeeded_callback,
     pub on_tor_network_status_changed: tego_tor_network_status_changed_callback,
     pub on_tor_bootstrap_status_changed: tego_tor_bootstrap_status_changed_callback,
     pub on_tor_log_received: tego_tor_log_received_callback,
@@ -2104,5 +2077,4 @@ pub(crate) struct Callbacks {
     pub on_file_transfer_progress: tego_file_transfer_progress_callback,
     pub on_file_transfer_complete: tego_file_transfer_complete_callback,
     pub on_user_status_changed: tego_user_status_changed_callback,
-    pub on_new_identity_created: tego_new_identity_created_callback,
 }

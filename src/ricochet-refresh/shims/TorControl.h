@@ -1,7 +1,5 @@
 #pragma once
 
-#include "TorCommand.h"
-
 namespace shims
 {
 	// shim version of Tor::ToControl with just the functionality requried by the UI
@@ -24,10 +22,11 @@ namespace shims
             TorReady
         };
 
-        Q_INVOKABLE QObject *setConfiguration(const QVariantMap &options);
-        QObject* setConfiguration(const QJsonObject& options);
+        Q_INVOKABLE void setConfiguration(const QVariantMap &options);
+        void setConfiguration(const QJsonObject& options);
         Q_INVOKABLE QJsonObject getConfiguration();
-        Q_INVOKABLE QObject *beginBootstrap();
+        Q_INVOKABLE void beginBootstrap();
+        Q_INVOKABLE void cancelBootstrap();
 
         // QVariant(Map) is not needed here, since QT handles the conversion to
         // a JS array for us: see https://doc.qt.io/qt-5/qtqml-cppintegration-data.html#sequence-type-to-javascript-array
@@ -49,7 +48,6 @@ namespace shims
         void setBootstrapStatus(int32_t progress, tego_tor_bootstrap_tag tag, QString&& summary);
 
         static TorControl* torControl;
-        TorControlCommand* m_setConfigurationCommand = nullptr;
         TorStatus m_torStatus = TorUnknown;
         int m_bootstrapProgress = 0;
         tego_tor_bootstrap_tag m_bootstrapTag = tego_tor_bootstrap_tag_invalid;
@@ -60,6 +58,7 @@ namespace shims
         void bootstrapStatusChanged();
 
     private:
+        void settings_to_tor_config(const QJsonObject &config, tego_tor_daemon_config** out_config);
         tego_context* context;
     };
 }
