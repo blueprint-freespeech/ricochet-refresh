@@ -149,10 +149,12 @@ FocusScope {
                 }
 
                 function send() {
-                    if (textInput.length > 2000)
-                        textInput.remove(2000, textInput.length)
-                    conversationModel.sendMessage(textInput.text)
-                    textInput.remove(0, textInput.length)
+                    if (contact.status === ContactUser.Online) {
+                        if (textInput.length > 2000)
+                            textInput.remove(2000, textInput.length)
+                        conversationModel.sendMessage(textInput.text)
+                        textInput.remove(0, textInput.length)
+                    }
                 }
 
                 onLengthChanged: {

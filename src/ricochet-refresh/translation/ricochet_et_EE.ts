@@ -78,13 +78,13 @@
 <context>
     <name>ChatPage</name>
     <message>
-        <location filename="../ui/ChatPage.qml" line="165"/>
+        <location filename="../ui/ChatPage.qml" line="167"/>
         <source>Message area</source>
         <extracomment>label for accessibility tech like screen readers</extracomment>
         <translation type="unfinished">Sõnumiala</translation>
     </message>
     <message>
-        <location filename="../ui/ChatPage.qml" line="167"/>
+        <location filename="../ui/ChatPage.qml" line="169"/>
         <source>Write the message to be sent here. Press enter to send</source>
         <extracomment>description of the text area used to send messages for accessibility tech like screen readers</extracomment>
         <translation type="unfinished">Kirjutage siia saadetav sõnum. Saatmiseks vajutage sisestusklahvi</translation>
