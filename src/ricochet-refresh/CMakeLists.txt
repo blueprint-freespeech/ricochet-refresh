@@ -137,6 +137,84 @@ if (NOT USE_SUBMODULE_FMT)
     find_package(fmt REQUIRED)
 endif ()
 
+option(ENABLE_PLUGGABLE_TRANSPORTS "Enable integrating pluggable-transports from the tor-expert-bundle" OFF)
+
+if(ENABLE_PLUGGABLE_TRANSPORTS)
+    # Download tor-expert-bundle based on requested target if not
+    # provided at configure time
+    if (NOT TOR_EXPERT_BUNDLE)
+        if(NOT TOR_EXPERT_BUNDLE_TARGET)
+            message(FATAL_ERROR "TOR_EXPERT_BUNDLE_TARGET must be defined (e.g. windows-x86_64, linux-i686, macos-aarch64, etc)")
+        endif()
+        if (NOT TOR_EXPERT_BUNDLE_VERSION)
+            set(TOR_EXPERT_BUNDLE_VERSION "15.0")
+        endif()
+
+        set(TOR_EXPERT_BUNDLE_FILENAME "tor-expert-bundle-${TOR_EXPERT_BUNDLE_TARGET}-${TOR_EXPERT_BUNDLE_VERSION}.tar.gz")
+
+        set(TOR_EXPERT_BUNDLE_URL "https://archive.torproject.org/tor-package-archive/torbrowser/${TOR_EXPERT_BUNDLE_VERSION}/${TOR_EXPERT_BUNDLE_FILENAME}")
+        set(TOR_EXPERT_BUNDLE "${CMAKE_CURRENT_BINARY_DIR}/${TOR_EXPERT_BUNDLE_FILENAME}")
+
+        if (NOT EXISTS ${TOR_EXPERT_BUNDLE})
+            message(STATUS "Downloading ${TOR_EXPERT_BUNDLE_URL}")
+            file(DOWNLOAD "${TOR_EXPERT_BUNDLE_URL}" "${TOR_EXPERT_BUNDLE}" SHOW_PROGRESS STATUS TOR_EXPERT_BUNDLE_DOWNLOADED)
+            if (NOT TOR_EXPERT_BUNDLE_DOWNLOADED EQUAL 0)
+                file (REMOVE "${TOR_EXPERT_BUNDLE}")
+                message(FATAL_ERROR "Failed to download: ${TOR_EXPERT_BUNDLE_URL}")
+            endif()
+        endif()
+    endif()
+
+    # custom directory for a particular tor-expert-bundle to avoid overwrites/collisions
+    file(SHA256 ${TOR_EXPERT_BUNDLE} TOR_EXPERT_BUNDLE_HASH)
+    string(SUBSTRING ${TOR_EXPERT_BUNDLE_HASH} 0 8 TOR_EXPERT_BUNDLE_HASH)
+    set(TOR_EXPERT_BUNDLE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/tor-expert-bundle-${TOR_EXPERT_BUNDLE_HASH}")
+    file(MAKE_DIRECTORY ${TOR_EXPERT_BUNDLE_DIRECTORY})
+
+    set(PT_CONFIG_JSON "${TOR_EXPERT_BUNDLE_DIRECTORY}/tor/pluggable_transports/pt_config.json")
+
+    # create a subdirectory for our deployed pluggable transport binaries
+    if (APPLE)
+        set(PLUGGABLE_TRANSPORTS_DEST "${CMAKE_CURRENT_BINARY_DIR}/ricochet-refresh/ricochet-refresh.app/Contents/MacOS/pluggable_transports")
+    else()
+        set(PLUGGABLE_TRANSPORTS_DEST "${CMAKE_CURRENT_BINARY_DIR}/ricochet-refresh/pluggable_transports")
+    endif()
+    file(MAKE_DIRECTORY ${PLUGGABLE_TRANSPORTS_DEST})
+
+    # extract tor-expert-bundle and deploy binaries
+    add_custom_command(
+        DEPENDS ${TOR_EXPERT_BUNDLE}
+        OUTPUT ${PT_CONFIG_JSON}
+        # extract tor expert bundle
+        COMMAND ${CMAKE_COMMAND} -E chdir ${TOR_EXPERT_BUNDLE_DIRECTORY} ${CMAKE_COMMAND} -E tar xvf ${TOR_EXPERT_BUNDLE}
+        # pt_config.json has a timestamp older than our archive, so we
+        # need to touch the contents so that this rule is not repeatedly
+        # rebuilt
+        COMMAND ${CMAKE_COMMAND} -E touch ${PT_CONFIG_JSON}
+        # deploy pluggable-transport binaries
+        COMMAND ${CMAKE_COMMAND} -E copy "${TOR_EXPERT_BUNDLE_DIRECTORY}/tor/pluggable_transports/*" "${PLUGGABLE_TRANSPORTS_DEST}/."
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    )
+endif()
+
+# Generate pluggables.hpp file
+set(RICOCHET_PLUGGABLES_SOURCE
+    build_pluggables.rs
+    Cargo.toml
+    ${PT_CONFIG_JSON}
+)
+
+add_custom_command(
+    DEPENDS ${RICOCHET_PLUGGABLES_SOURCE}
+    OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/pluggables.hpp
+    # generate pluggables.hpp header
+    COMMAND env CARGO_TARGET_DIR=${CMAKE_CURRENT_BINARY_DIR} RUST_BACKTRACE=full cargo run --bin build_pluggables ${CMAKE_CURRENT_SOURCE_DIR}/pluggables.hpp ${PT_CONFIG_JSON}
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
+add_custom_target(pluggables-hpp
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/pluggables.hpp)
+add_dependencies(ricochet-refresh pluggables-hpp)
+
 set(RICOCHET_SOURCE
     shims/ContactIDValidator.cpp
     shims/ContactIDValidator.h
@@ -170,7 +248,6 @@ set(RICOCHET_SOURCE
     libtego_callbacks.cpp
     libtego_callbacks.hpp
     main.cpp
-    pluggables.hpp
 )
 
 set(RICOCHET_SOURCE_QML
