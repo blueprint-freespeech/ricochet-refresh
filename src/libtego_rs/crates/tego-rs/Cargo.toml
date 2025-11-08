@@ -15,7 +15,7 @@ cbindgen = { version = "0.28" }
 anyhow = "1.0"
 data-encoding = "2.0"
 rico-protocol = { path = "../rico-protocol" }
-tor-interface = {version = "0.6", features = ["legacy-tor-provider"]}
+tor-interface = {version = "0.6.1", features = ["legacy-tor-provider"]}
 which = "7.0"
 
 [lib]
