@@ -30,7 +30,6 @@ make_directory(${tego_rs_include_dir}/tego)
 # hard-link our authord tego headers to tego-rs' include directory
 file(CREATE_LINK ${CMAKE_CURRENT_SOURCE_DIR}/include/tego/tego.hpp ${tego_rs_include_dir}/tego/tego.hpp)
 file(CREATE_LINK ${CMAKE_CURRENT_SOURCE_DIR}/include/tego/utilities.hpp ${tego_rs_include_dir}/tego/utilities.hpp)
-file(CREATE_LINK ${CMAKE_CURRENT_SOURCE_DIR}/include/tego/logger.hpp ${tego_rs_include_dir}/tego/logger.hpp)
 
 #
 # build tego-rs static lib

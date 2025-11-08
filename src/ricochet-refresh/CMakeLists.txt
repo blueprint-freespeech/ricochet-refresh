@@ -133,10 +133,6 @@ elseif (UNIX)
     add_executable(ricochet-refresh)
 endif ()
 
-if (NOT USE_SUBMODULE_FMT)
-    find_package(fmt REQUIRED)
-endif ()
-
 option(ENABLE_PLUGGABLE_TRANSPORTS "Enable integrating pluggable-transports from the tor-expert-bundle" OFF)
 
 if(ENABLE_PLUGGABLE_TRANSPORTS)
@@ -361,7 +357,6 @@ setup_compiler(ricochet-refresh)
 target_compile_features(ricochet-refresh PRIVATE cxx_std_20)
 
 target_link_libraries(ricochet-refresh PUBLIC tego_rs)
-target_link_libraries(ricochet-refresh PRIVATE fmt::fmt-header-only)
 target_link_libraries(
     ricochet-refresh
     PRIVATE Qt${QT_VERSION_MAJOR}::Core

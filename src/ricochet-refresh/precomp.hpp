@@ -21,10 +21,6 @@
 #   include <windows.h>
 #endif
 
-// fmt
-#include <fmt/format.h>
-#include <fmt/ostream.h>
-
 // Qt
 #if defined(Q_OS_WIN)
 #   include <QAbstractNativeEventFilter>

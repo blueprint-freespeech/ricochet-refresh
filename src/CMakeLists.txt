@@ -96,11 +96,5 @@ endif()
 set(STATIC_QT OFF CACHE BOOL "Enable if using a static build of QT" )
 set(STATIC_QT_ROOT_DIR "" CACHE STRING "Path to static build of QT (ignored if STATIC_QT is set to OFF)")
 
-option(USE_SUBMODULE_FMT "Use the version of fmt included as a submodule instead of one potentially installed to the system" ON)
-
-if (USE_SUBMODULE_FMT)
-    add_subdirectory(extern/fmt)
-endif ()
-
 add_subdirectory(libtego_rs)
 add_subdirectory(ricochet-refresh)

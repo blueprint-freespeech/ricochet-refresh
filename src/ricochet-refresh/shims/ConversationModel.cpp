@@ -185,7 +185,6 @@ namespace shims
 
     void ConversationModel::sendMessage(const QString &text)
     {
-        logger::println("sendMessage : {}", text);
         auto userIdentity = shims::UserIdentity::userIdentity;
         auto context = userIdentity->getContext();
 
@@ -250,8 +249,6 @@ namespace shims
                     &fileSize,
                     tego::throw_on_error());
 
-                logger::println("send file request id : {}", id);
-
                 MessageData md;
                 md.type = TransferMessage;
                 md.identifier = id;
@@ -282,22 +279,12 @@ namespace shims
         switch (md.status)
         {
             case Received:
-                fmt::print(ofile, "[{}] <{}>: {}\n",
-                                    md.time.toString().toStdString(),
-                                    this->contact()->getNickname().toStdString(),
-                                    md.text.toStdString()); break;
+                ofile << "[" << md.time.toString().toStdString() <<  "] <" << this->contact()->getNickname().toStdString() << ">: " << md.text.toStdString() << "\n"; break;
             case Delivered:
-                fmt::print(ofile, "[{}] <{}>: {}\n",
-                                    md.time.toString().toStdString(),
-                                    tr("me").toStdString(),
-                                    md.text.toStdString()); break;
+                ofile << "[" << md.time.toString().toStdString() << "] <" << tr("me").toStdString() << ">: " << md.text.toStdString() << "\n"; break;
             default:
                 // messages we sent that weren't delivered
-                fmt::print(ofile, "[{}] <{}> ({}): {}\n",
-                                    md.time.toString().toStdString(),
-                                    tr("me").toStdString(),
-                                    getMessageStatusString(md.status),
-                                    md.text.toStdString()); break;
+                ofile << "[" << md.time.toString().toStdString() << "] <" << tr("me").toStdString() << "> (" << getMessageStatusString(md.status) << "): " << md.text.toStdString() << "\n"; break;
         }
     }
 
@@ -319,23 +306,12 @@ namespace shims
             case Rejected:          //FALLTHROUGH
             case Cancelled:         //FALLTHROUGH
             case Finished:
-                fmt::print(ofile, "[{}] file '{}' from <{}> (size: {:L} bytes): {}\n",
-                                    event.time.toString().toStdString(),
-                                    md.fileName.toStdString(),
-                                    sender,
-                                    md.fileSize,
-                                    getTransferStatusString(event.transferData.status)); break;
+                ofile << "[" << event.time.toString().toStdString() << "] file '" << md.fileName.toStdString() << "' from <" << sender << "> (size: " << md.fileSize << " bytes): " << getTransferStatusString(event.transferData.status) << "\n"; break;
             case UnknownFailure:    //FALLTHROUGH
             case BadFileHash:       //FALLTHROUGH
             case NetworkError:      //FALLTHROUGH
             case FileSystemError:
-                fmt::print(ofile, "[{}] file '{}' from <{}> (size: {:L} bytes): Error: {}, bytes transferred: {:L} bytes\n",
-                                    event.time.toString().toStdString(),
-                                    md.fileName.toStdString(),
-                                    sender,
-                                    md.fileSize,
-                                    getTransferStatusString(event.transferData.status),
-                                    event.transferData.bytesTransferred); break;
+                ofile << "[" << event.time.toString().toStdString() << "] file '" << md.fileName.toStdString() << "' from <" << sender << "> (size: " << md.fileSize << "bytes): Error: " << getTransferStatusString(event.transferData.status) << ", bytes transferred: " << event.transferData.bytesTransferred << "bytes\n"; break;
             default:
                 qWarning() << "Invalid transfer status in events";
                 break;
@@ -354,21 +330,13 @@ namespace shims
         switch (event.userStatusData.status)
         {
             case ContactUser::Status::Online:
-                fmt::print(ofile, "[{}] <{}> is now online\n",
-                                    event.time.toString().toStdString(),
-                                    this->contact()->getNickname().toStdString()); break;
+                ofile << "[" << event.time.toString().toStdString() << "] <" << this->contact()->getNickname().toStdString() << "> is now online\n"; break;
             case ContactUser::Status::Offline:
-                fmt::print(ofile, "[{}] <{}> is now offline\n",
-                                    event.time.toString().toStdString(),
-                                    this->contact()->getNickname().toStdString()); break;
+                ofile << "[" << event.time.toString().toStdString() << "] <" << this->contact()->getNickname().toStdString() << "> is now offline\n"; break;
             case ContactUser::Status::RequestPending:
-                fmt::print(ofile, "[{}] New contact request to <{}>\n",
-                                    event.time.toString().toStdString(),
-                                    this->contact()->getNickname().toStdString()); break;
+                ofile << "[" << event.time.toString().toStdString() << "] New contacgt request to <" << this->contact()->getNickname().toStdString() << ">\n"; break;
             case ContactUser::Status::RequestRejected:
-                fmt::print(ofile, "[{}] Outgoing request to <{}> was rejected\n",
-                                    event.time.toString().toStdString(),
-                                    this->contact()->getNickname().toStdString()); break;
+                ofile << "[" << event.time.toString().toStdString() << "] Outgoing request to <" << this->contact()->getNickname().toStdString() << "> was rejected\n"; break;
             default:
                 break;
         }
@@ -413,9 +381,7 @@ namespace shims
             return false;
         }
 
-        fmt::print(ofile, "Conversation with {} ({})\n",
-                            this->contact()->getNickname().toStdString(),
-                            this->contact()->getContactID().toStdString());
+        ofile << "Conversation with " << this->contact()->getNickname().toStdString() << "(" << this->contact()->getContactID().toStdString() << ")\n";
 
         foreach(auto &event, this->events)
         {

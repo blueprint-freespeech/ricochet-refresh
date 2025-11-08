@@ -171,7 +171,6 @@ namespace
     {
         push_task([=]() -> void
         {
-            logger::println("new network status : {}", status);
             auto torControl = shims::TorControl::torControl;
             switch(status)
             {
@@ -195,7 +194,6 @@ namespace
     {
         push_task([=]() -> void
         {
-            logger::println("bootstrap status : {{ progress : {}, tag : {} }}", progress, static_cast<int>(tag));
 
             auto tagSummary = tego_tor_bootstrap_tag_to_summary(
                     tag,
@@ -237,8 +235,6 @@ namespace
         const char* message,
         size_t messageLength)
     {
-        logger::println("Received chat request from {}", tegoUserIdToServiceId(userId));
-        logger::println("Message : {}", message);
 
         auto hostname = tegoUserIdToServiceId(userId) + ".onion";
         auto messageString = QString::fromUtf8(message, safe_cast<int>(messageLength));
@@ -255,7 +251,6 @@ namespace
         const tego_user_id* userId,
         tego_bool requestAccepted)
     {
-        logger::trace();
 
         auto serviceId = tegoUserIdToServiceId(userId);
 
@@ -266,7 +261,6 @@ namespace
             auto contact = contactsManager->getShimContactByContactId(serviceIdToContactId(serviceId));
             auto outgoingContactRequest = contact->contactRequest();
 
-            logger::trace();
 
             if (requestAccepted)
             {
@@ -286,10 +280,8 @@ namespace
         const tego_user_id* userId,
         tego_user_status status)
     {
-        logger::trace();
         auto serviceId = tegoUserIdToServiceId(userId);
 
-        logger::println("user status changed -> service id : {}, status : {}", serviceId, static_cast<int>(status));
 
         push_task([=]() -> void
         {
@@ -346,15 +338,10 @@ namespace
         tego_message_id messageId,
         tego_bool messageAccepted)
     {
-        logger::trace();
-        logger::println(" userId : {}", static_cast<const void*>(userId));
-        logger::println(" messageId : {}", messageId);
-        logger::println(" messageAccepted : {}", messageAccepted);
 
         QString contactId = tegoUserIdToContactId(userId);
         push_task([=]() -> void
         {
-            logger::trace();
             auto contactsManager = shims::UserIdentity::userIdentity->getContacts();
             auto contactUser = contactsManager->getShimContactByContactId(contactId);
             auto conversationModel = contactUser->conversation();
@@ -441,14 +428,6 @@ namespace
 
             conversationModel->fileTransferRequestProgressUpdated(id, bytesComplete);
         });
-
-
-        logger::println(
-            "File Progress id : {}, direction : {}, transferred : {} bytes, total : {} bytes",
-            id,
-            direction == tego_file_transfer_direction_sending ? "sending" : "receiving",
-            bytesComplete,
-            bytesTotal);
     }
 
     void on_file_transfer_complete(

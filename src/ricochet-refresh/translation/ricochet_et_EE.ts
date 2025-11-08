@@ -1039,21 +1039,21 @@ Name of the button for launching the preferences window for accessibility tech l
         <translation type="unfinished">Kehtetu</translation>
     </message>
     <message>
-        <location filename="../shims/ConversationModel.cpp" line="229"/>
+        <location filename="../shims/ConversationModel.cpp" line="228"/>
         <source>Open File</source>
         <translation type="unfinished">Ava fail</translation>
     </message>
     <message>
-        <location filename="../shims/ConversationModel.cpp" line="292"/>
-        <location filename="../shims/ConversationModel.cpp" line="298"/>
-        <location filename="../shims/ConversationModel.cpp" line="312"/>
-        <location filename="../shims/ConversationModel.cpp" line="351"/>
+        <location filename="../shims/ConversationModel.cpp" line="284"/>
+        <location filename="../shims/ConversationModel.cpp" line="287"/>
+        <location filename="../shims/ConversationModel.cpp" line="299"/>
+        <location filename="../shims/ConversationModel.cpp" line="327"/>
         <source>me</source>
         <translation type="unfinished">mina</translation>
     </message>
     <message>
-        <location filename="../shims/ConversationModel.cpp" line="402"/>
-        <location filename="../shims/ConversationModel.cpp" line="442"/>
+        <location filename="../shims/ConversationModel.cpp" line="370"/>
+        <location filename="../shims/ConversationModel.cpp" line="408"/>
         <source>Save File</source>
         <translation type="unfinished">Salvesta fail</translation>
     </message>

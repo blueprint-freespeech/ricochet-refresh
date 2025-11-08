@@ -31,7 +31,6 @@ namespace shims
         SettingsObject settings;
         settings.write("tor", tor);
     } catch (std::exception& ex) {
-        logger::println("Exception: {}", ex.what());
     }
 
     void TorControl::settings_to_tor_config(const QJsonObject &config, tego_tor_daemon_config** out_config) {
@@ -211,7 +210,6 @@ namespace shims
                 QJsonArray bridgeStringsArray;
                 for(auto entry : bridgeStringsIt->toArray()) {
                     auto bridgeString = entry.toString();
-                    logger::println("adding: {}", bridgeString);
                     bridgeStrings.push_back(bridgeString.toStdString());
                     bridgeStringsArray.push_back(bridgeString);
                 }
@@ -261,7 +259,7 @@ namespace shims
             std::vector<tego_pluggable_transport_config*> pt_configs;
             for(auto it = pluggableTransportConfigs.begin(); it != pluggableTransportConfigs.end(); ++it) {
                 // marshall binary_name
-                const auto binaryPath = fmt::format("{}/pluggable_transports/{}", qApp->applicationDirPath(), it->binary_name);
+                const auto binaryPath = qApp->applicationDirPath().toStdString() + "/pluggable_transports/" + it->binary_name;
                 const auto binaryPathLen = binaryPath.size();
                 const auto rawBinaryPath = binaryPath.c_str();
 
@@ -406,14 +404,12 @@ namespace shims
         shims::TorManager::torManager->setRunning("Yes");
 
     } catch (std::exception& ex) {
-        logger::println("Exception: {}", ex.what());
     }
 
     void TorControl::cancelBootstrap() try
     {
         tego_context_end(context, tego::throw_on_error());
     } catch (std::exception& ex) {
-        logger::println("Exception: {}", ex.what());
     }
 
     QList<QString> TorControl::getBridgeTypes()
@@ -453,13 +449,11 @@ namespace shims
     // an existing tor process
     bool TorControl::hasOwnership() const
     {
-        logger::trace();
         return true;
     }
 
     QString TorControl::torVersion() const
     {
-        logger::trace();
         return tego_context_get_tor_version_string(
             context,
             tego::throw_on_error());

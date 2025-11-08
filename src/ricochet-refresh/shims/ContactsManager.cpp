@@ -14,9 +14,6 @@ namespace shims
             const QString &myNickname,
             const QString &message)
     {
-        logger::println("{{ contactID : {}, nickname : {}, myNickname : {}, message : {} }}",
-            contactID, nickname, myNickname, message);
-
         auto serviceId = contactID.mid(tego::static_strlen("ricochet:")).toUtf8();
 
         // check that the service id is valid before anything else
@@ -61,13 +58,10 @@ namespace shims
 
     shims::ContactUser* ContactsManager::getShimContactByContactId(const QString& contactId) const
     {
-        logger::trace();
         for(auto& cu : contactsList)
         {
-            logger::println("cu : {}", static_cast<void*>(cu));
             if (cu->getContactID() == contactId)
             {
-                logger::trace();
                 return cu;
             }
         }

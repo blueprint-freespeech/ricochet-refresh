@@ -152,7 +152,7 @@ int main(int argc, char *argv[]) try
                 static_cast<size_t>(serviceIdRaw.size()),
                 tego::throw_on_error());
         } catch (std::runtime_error err) {
-            logger::println("could not parse {} as onion service id", serviceIdString);
+            
         }
 
         const auto& userData = it.value().toObject();
@@ -255,9 +255,6 @@ static bool initSettings(SettingsFile *settings, QLockFile **lockFile, QString &
         auto v3_0_10ConfigPath = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
         configPath = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
 
-        logger::println("configPath : {}", configPath);
-        logger::println("v3.0.10 configPath  :{}", v3_0_10ConfigPath);
-        logger::println("legacyConfigPath : {}", legacyConfigPath);
 
         // only put up migration UX when
         if (// old path differs from new path

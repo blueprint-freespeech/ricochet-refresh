@@ -1,105 +1,20 @@
 #pragma once
 
-// fmt
-#include <fmt/format.h>
-#include <fmt/ostream.h>
-#include <fmt/std.h>
-
 #define TEGO_STRINGIFY_IMPL(X) #X
 #define TEGO_STRINGIFY(X) TEGO_STRINGIFY_IMPL(X)
 
-#define TEGO_THROW_MSG(FMT, ...) throw std::runtime_error(fmt::format("runtime error " __FILE__ ":" TEGO_STRINGIFY(__LINE__) " " FMT __VA_OPT__(,) __VA_ARGS__));
+#define TEGO_THROW_MSG(...) throw std::runtime_error(std::string("runtime error " __FILE__ ":" TEGO_STRINGIFY(__LINE__) " " __VA_OPT__(,) __VA_ARGS__));
 
-#define TEGO_THROW_IF_FALSE_MSG(B, ...) if (!(B)) { TEGO_THROW_MSG(__VA_ARGS__); }
-#define TEGO_THROW_IF_FALSE(B) TEGO_THROW_IF_FALSE_MSG(B, "{} must be true", TEGO_STRINGIFY(B))
+#define TEGO_THROW_IF_FALSE(B) if (!(B)) { TEGO_THROW_MSG(TEGO_STRINGIFY(B) " must be true"); }
 
-#define TEGO_THROW_IF_TRUE_MSG(B, ...) if (B) { TEGO_THROW_MSG("{}", __VA_ARGS__); }
-#define TEGO_THROW_IF_TRUE(B) TEGO_THROW_IF_TRUE_MSG(B, "{} must be false", TEGO_STRINGIFY(B))
+#define TEGO_THROW_IF_TRUE(B) if (B) { TEGO_THROW_MSG(TEGO_STRINGIFY(B) " must be false"); }
 #define TEGO_THROW_IF TEGO_THROW_IF_TRUE
 
-#define TEGO_THROW_IF_NULL(PTR) TEGO_THROW_IF_FALSE_MSG((PTR != nullptr), "{} must not be null", TEGO_STRINGIFY(PTR))
-#define TEGO_THROW_IF_NOT_NULL(PTR) TEGO_THROW_IF_FALSE_MSG((PTR == nullptr), "{} must be null", TEGO_STRINGIFY(PTR))
+#define TEGO_THROW_IF_NULL(PTR) if ((PTR) == nullptr) { TEGO_THROW_MSG(TEGO_STRINGIFY(PTR) " must not be null"); }
 
-#define TEGO_THROW_IF_EQUAL(A, B) if((A) == (B)) { TEGO_THROW_MSG("{} and {} must not be equal", TEGO_STRINGIFY(A), TEGO_STRINGIFY(B)); }
+#define TEGO_THROW_IF_NOT_NULL(PTR) if ((PTR) != nullptr) { TEGO_THROW_MSG(TEGO_STRINGIFY(PTR) " must be null") }
 
-// always provide these overloads
-inline std::ostream& operator<<(std::ostream& out, const class QString& str)
-{
-    auto utf8str = str.toUtf8();
-    out << utf8str.constData();
-    return out;
-}
-inline std::ostream& operator<<(std::ostream& out, const class QByteArray& blob)
-{
-    constexpr size_t rowWidth = 32;
-    const size_t rowCount = static_cast<size_t>(blob.size()) / rowWidth;
-
-    const char* head = blob.data();
-    size_t address = 0;
-
-    out << '\n';
-
-    auto printRow = [&](size_t count) -> void
-    {
-        constexpr auto octetGrouping = 4;
-        fmt::print(out, "{:08x} : ", address);
-        for(size_t k = 0; k < count; k++)
-        {
-            if ((k % octetGrouping) == 0) {
-                fmt::print(out, " ");
-            }
-            fmt::print(out, "{:02x}", static_cast<uint8_t>(head[k]));
-        }
-        for(size_t k = count; k < rowWidth; k++)
-        {
-            if ((k % octetGrouping) == 0) {
-                fmt::print(out, " ");
-            }
-            fmt::print(out, "..");
-        }
-
-        fmt::print(out, " | ");
-        for(size_t k = 0; k < count; k++)
-        {
-            char c = head[k];
-            if (std::isprint(c))
-            {
-                fmt::print(out, "{}", c);
-            }
-            else
-            {
-                fmt::print(out, ".");
-            }
-        }
-
-        out << '\n';
-
-        address += rowWidth;
-        head += rowWidth;
-    };
-
-    // foreach row
-    for(size_t i = 0; i < rowCount; i++)
-    {
-        printRow(rowWidth);
-
-    }
-
-    // remainder
-    const size_t remainder = (static_cast<size_t>(blob.size()) % rowWidth);
-    if (remainder > 0)
-    {
-        printRow(remainder);
-    }
-
-    return out;
-}
-
-namespace fmt
-{
-    template <> struct formatter<class QString> : ostream_formatter {};
-    template <> struct formatter<class QByteArray> : ostream_formatter {};
-}
+#define TEGO_THROW_IF_EQUAL(A, B) if((A) == (B)) { TEGO_THROW_MSG(TEGO_STRINGIFY(A) " and " TEGO_STRINGIFY(B) " must not be equal"); }
 
 namespace tego
 {

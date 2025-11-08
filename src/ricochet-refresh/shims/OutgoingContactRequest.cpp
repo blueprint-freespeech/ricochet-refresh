@@ -4,7 +4,6 @@ namespace shims
 {
     OutgoingContactRequest::Status OutgoingContactRequest::getStatus() const
     {
-        logger::trace();
         return this->status;
     }
 

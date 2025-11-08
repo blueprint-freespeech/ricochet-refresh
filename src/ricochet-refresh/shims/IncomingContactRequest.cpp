@@ -32,7 +32,6 @@ namespace shims
 
     void IncomingContactRequest::setNickname(const QString& newNickname)
     {
-        logger::println("setNickname : '{}'", newNickname);
         this->nickname = newNickname;
         emit this->nicknameChanged();
     }

@@ -33,7 +33,6 @@ namespace shims
 
     QList<QObject*> UserIdentity::getRequests() const
     {
-        logger::trace();
         QList<QObject*> retval;
         retval.reserve(requests.size());
         for(auto currentRequest: requests)
@@ -66,7 +65,6 @@ namespace shims
 
     shims::ContactsManager* UserIdentity::getContacts()
     {
-        logger::trace();
         return &contacts;
     }
 

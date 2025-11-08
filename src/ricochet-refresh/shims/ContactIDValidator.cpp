@@ -11,7 +11,6 @@ namespace shims
 
     void ContactIDValidator::fixup(QString &text) const
     {
-        logger::trace();
         text = text.trimmed().toLower();
     }
 
@@ -25,20 +24,16 @@ namespace shims
             if(isValidID(text)) {
                 if (auto contact = matchingContact(text); contact != nullptr) {
                     emit matchesContact(contact->getNickname());
-                    logger::println(" - matches contact");
                     return QValidator::Invalid;
                 }
                 if (matchesIdentity(text)) {
                     emit matchesSelf();
-                    logger::println(" - matches self");
                     return QValidator::Invalid;
                 }
                 emit acceptable();
-                logger::println(" - valid service id!");
                 return QValidator::Acceptable;
             } else {
                 emit invalidServiceId();
-                logger::println(" - invalid service id!");
                 return QValidator::Invalid;
             }
         case QValidator::Intermediate:
