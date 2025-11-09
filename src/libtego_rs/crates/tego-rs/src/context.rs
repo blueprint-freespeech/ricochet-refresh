@@ -46,9 +46,10 @@ pub(crate) struct Context {
     tor_logs: Arc<Mutex<String>>,
     // flags
     connect_complete: Arc<AtomicBool>,
-    event_loop_complete: Promise<()>,
     // command queue
     command_queue: CommandQueue,
+    // event loop thread handle
+    event_loop_thread_handle: Option<std::thread::JoinHandle<()>>,
     // ricochet-refresh data
     private_key: Option<Ed25519PrivateKey>,
     users: BTreeMap<V3OnionServiceId, tego_user_type>,
@@ -99,7 +100,6 @@ impl Context {
         let tor_logs = Arc::downgrade(&self.tor_logs);
 
         let connect_complete = Arc::downgrade(&self.connect_complete);
-        let event_loop_complete = self.event_loop_complete.clone();
 
         let command_queue = self.command_queue.downgrade();
 
@@ -112,10 +112,9 @@ impl Context {
             private_key,
             users,
             command_queue,
-            event_loop_complete,
         );
 
-        std::thread::Builder::new()
+        self.event_loop_thread_handle = Some(std::thread::Builder::new()
             .name("event-loop".to_string())
             .spawn(move || {
                 // start event loop
@@ -123,22 +122,23 @@ impl Context {
                     // todo: proper error handling/logging
                     println!("ERROR: {err:?}");
                 }
-            })?;
+            })?);
 
         Ok(())
     }
 
     pub fn end(&mut self) {
-        self.push_command(CommandData::EndEventLoop);
-        let complete = self.event_loop_complete.get_future();
-        complete.wait();
+        if let Some(join_handle) = std::mem::take(&mut self.event_loop_thread_handle) {
+            self.push_command(CommandData::EndEventLoop);
+            let _ = join_handle.join();
+        }
 
         self.tor_version_cstring = Default::default();
         self.tor_version = Default::default();
         self.tor_logs = Default::default();
         self.connect_complete = Default::default();
-        self.event_loop_complete = Default::default();
         self.command_queue = Default::default();
+        self.event_loop_thread_handle = Default::default();
         self.private_key = Default::default();
         self.users = Default::default();
     }
@@ -340,7 +340,6 @@ struct EventLoopTask {
     connections: BTreeMap<ConnectionHandle, Connection>,
     callback_queue: Vec<CallbackData>,
     task_complete: bool,
-    event_loop_complete: Promise<()>,
     // file reader buffer for uploads
     file_read_buffer: [u8; Self::FILE_READ_BUFFER_SIZE],
     users: BTreeMap<V3OnionServiceId, UserData>,
@@ -361,7 +360,6 @@ impl EventLoopTask {
         private_key: Ed25519PrivateKey,
         users: BTreeMap<V3OnionServiceId, tego_user_type>,
         command_queue: CommandQueue,
-        event_loop_complete: Promise<()>,
     ) -> Self {
         // create our list of known contacts from our users
         // and our UserData structs
@@ -403,7 +401,6 @@ impl EventLoopTask {
             connections: Default::default(),
             callback_queue: Default::default(),
             task_complete: false,
-            event_loop_complete,
             file_read_buffer: [0u8; Self::FILE_READ_BUFFER_SIZE],
             users: user_data,
             to_remove: Default::default(),
@@ -436,9 +433,6 @@ impl EventLoopTask {
             // trigger callbacks for frontend
             self.handle_callbacks()?;
         }
-
-        // signal task completion
-        self.event_loop_complete.resolve(());
 
         // TODO: we should trigger exit callback here?
 
