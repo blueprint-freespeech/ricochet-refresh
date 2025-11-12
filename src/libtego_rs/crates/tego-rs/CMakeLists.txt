@@ -32,6 +32,14 @@ file(CREATE_LINK ${CMAKE_CURRENT_SOURCE_DIR}/include/tego/tego.hpp ${tego_rs_inc
 file(CREATE_LINK ${CMAKE_CURRENT_SOURCE_DIR}/include/tego/utilities.hpp ${tego_rs_include_dir}/tego/utilities.hpp)
 
 #
+# tego-rs crate feature flags
+#
+option(ENABLE_RICOCHET_REFRESH_LOGGING "Enable RICOCHET_REFRESH_LOG_LEVEL-gated logging" OFF)
+if (ENABLE_RICOCHET_REFRESH_LOGGING)
+    set(TEGO_RS_FEATURES "--features;logging")
+endif()
+
+#
 # build tego-rs static lib
 #
 
@@ -39,7 +47,7 @@ add_custom_command(
     DEPENDS ${tego_rs_sources}
     OUTPUT ${tego_rs_outputs}
     COMMAND ${CMAKE_COMMAND} -E touch build.rs
-    COMMAND env CARGO_TARGET_DIR=${CARGO_TARGET_DIR} RUSTFLAGS=${RUSTFLAGS} cargo build ${CARGO_FLAGS}
+    COMMAND env CARGO_TARGET_DIR=${CARGO_TARGET_DIR} RUSTFLAGS=${RUSTFLAGS} cargo build ${CARGO_FLAGS} ${TEGO_RS_FEATURES}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
 

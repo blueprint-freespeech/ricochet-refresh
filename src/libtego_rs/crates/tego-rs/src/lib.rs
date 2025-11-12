@@ -2,6 +2,7 @@ pub(crate) mod command_queue;
 #[allow(clippy::too_many_arguments)]
 pub(crate) mod context;
 pub(crate) mod error;
+#[cfg(feature = "logging")]
 pub(crate) mod logger;
 pub(crate) mod macros;
 pub(crate) mod object_map;

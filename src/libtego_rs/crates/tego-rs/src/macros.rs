@@ -52,9 +52,13 @@ macro_rules! bail_if_not_equal {
 }
 pub(crate) use bail_if_not_equal;
 
+//
 // logging macros
+//
+
 macro_rules! log_error {
     ($($arg:tt)*) => {{
+        #[cfg(feature = "logging")]
         crate::logger::Logger::log(crate::logger::LogLevel::Error, format!($($arg)*))
     }};
 }
@@ -62,6 +66,7 @@ pub(crate) use log_error;
 
 macro_rules! log_info {
     ($($arg:tt)*) => {{
+        #[cfg(feature = "logging")]
         crate::logger::Logger::log(crate::logger::LogLevel::Info, format!($($arg)*))
     }};
 }
@@ -83,9 +88,11 @@ pub(crate) use func;
 
 macro_rules! log_trace {
     () => {{
+        #[cfg(feature = "logging")]
         crate::logger::Logger::log(crate::logger::LogLevel::Trace, format!("{} in {}:{}", func!(), std::file!(), std::line!()))
     }};
     ($($arg:tt)*) => {{
+        #[cfg(feature = "logging")]
         crate::logger::Logger::log(crate::logger::LogLevel::Trace, format!("{} in {}:{} {}", func!(), std::file!(), std::line!(), format!($($arg)*)))
     }};
 }
@@ -93,6 +100,7 @@ pub(crate) use log_trace;
 
 macro_rules! log_packet {
     ($($arg:tt)*) => {{
+        #[cfg(feature = "logging")]
         crate::logger::Logger::log(crate::logger::LogLevel::Packet, format!($($arg)*))
     }};
 }
