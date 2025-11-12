@@ -30,8 +30,6 @@ use crate::user_id::UserId;
 
 const RICOCHET_PORT: u16 = 9878u16;
 
-// TODO: replace println!s with a configurable logger
-
 #[derive(Default)]
 pub(crate) struct Context {
     tego_key: TegoKey,
@@ -57,10 +55,14 @@ pub(crate) struct Context {
 
 impl Context {
     pub fn set_tego_key(&mut self, tego_key: TegoKey) {
+        log_trace!();
+
         self.tego_key = tego_key;
     }
 
     pub fn tor_version_string(&mut self) -> Option<&CString> {
+        log_trace!();
+
         if self.tor_version_cstring.is_none() {
             let tor_version = self.tor_version.lock().expect("tor_version mutex poisoned");
             if let Some(tor_version) = &*tor_version {
@@ -72,16 +74,22 @@ impl Context {
     }
 
     pub fn tor_logs_size(&self) -> usize {
+        log_trace!();
+
         let tor_logs = self.tor_logs.lock().expect("tor_logs mutex poisoned");
         tor_logs.len() + 1usize
     }
 
     pub fn tor_logs(&self) -> String {
+        log_trace!();
+
         let tor_logs = self.tor_logs.lock().expect("tor_logs mutex poisoned");
         tor_logs.clone()
     }
 
     pub fn host_service_id(&self) -> Option<V3OnionServiceId> {
+        log_trace!();
+
         self.private_key
             .as_ref()
             .map(V3OnionServiceId::from_private_key)
@@ -93,6 +101,8 @@ impl Context {
         private_key: Ed25519PrivateKey,
         users: BTreeMap<V3OnionServiceId, tego_user_type>,
     ) -> Result<()> {
+        log_trace!();
+
         self.private_key = Some(private_key.clone());
         let tego_key = self.tego_key;
         let callbacks = Arc::downgrade(&self.callbacks);
@@ -114,20 +124,24 @@ impl Context {
             command_queue,
         );
 
-        self.event_loop_thread_handle = Some(std::thread::Builder::new()
-            .name("event-loop".to_string())
-            .spawn(move || {
-                // start event loop
-                if let Err(err) = task.run(tor_config) {
-                    // todo: proper error handling/logging
-                    println!("ERROR: {err:?}");
-                }
-            })?);
+        self.event_loop_thread_handle = Some(
+            std::thread::Builder::new()
+                .name("event-loop".to_string())
+                .spawn(move || {
+                    // start event loop
+                    if let Err(_err) = task.run(tor_config) {
+                        log_error!("{_err:?}");
+                        panic!();
+                    }
+                })?,
+        );
 
         Ok(())
     }
 
     pub fn end(&mut self) {
+        log_trace!();
+
         if let Some(join_handle) = std::mem::take(&mut self.event_loop_thread_handle) {
             self.push_command(CommandData::EndEventLoop);
             let _ = join_handle.join();
@@ -145,6 +159,8 @@ impl Context {
 
     // todo: remove need for this
     pub fn connect_complete(&self) -> bool {
+        log_trace!();
+
         self.connect_complete.load(Ordering::Relaxed)
     }
 
@@ -157,6 +173,8 @@ impl Context {
     }
 
     pub fn forget_user(&mut self, service_id: V3OnionServiceId) -> Result<()> {
+        log_trace!();
+
         self.users.remove(&service_id);
         let result: Promise<Result<()>> = Default::default();
         let result_future = result.get_future();
@@ -170,6 +188,8 @@ impl Context {
         service_id: V3OnionServiceId,
         message: rico_protocol::v3::message::contact_request_channel::MessageText,
     ) {
+        log_trace!();
+
         let contact_request_message = Some(message);
         self.push_command(CommandData::ConnectContact {
             service_id,
@@ -182,6 +202,8 @@ impl Context {
         service_id: V3OnionServiceId,
         response: tego_chat_acknowledge,
     ) {
+        log_trace!();
+
         self.push_command(CommandData::AcknowledgeContactRequest {
             service_id,
             response,
@@ -193,6 +215,8 @@ impl Context {
         service_id: V3OnionServiceId,
         message_text: rico_protocol::v3::message::chat_channel::MessageText,
     ) -> Result<tego_message_id> {
+        log_trace!();
+
         let message_id: Promise<Result<tego_message_id>> = Default::default();
         let message_id_future = message_id.get_future();
         let cmd = CommandData::SendMessage {
@@ -210,6 +234,8 @@ impl Context {
         service_id: V3OnionServiceId,
         file_path: PathBuf,
     ) -> Result<(tego_file_transfer_id, tego_file_size)> {
+        log_trace!();
+
         let result: Promise<Result<(tego_file_transfer_id, tego_file_size)>> = Default::default();
         let result_future = result.get_future();
         let cmd = CommandData::SendFileTransferRequest {
@@ -228,7 +254,7 @@ impl Context {
         file_transfer_id: tego_file_transfer_id,
         dest_path: PathBuf,
     ) -> Result<()> {
-        println!("--- called accept_file_transfer_requesst");
+        log_trace!();
 
         // verify absolute path
         bail_if!(!dest_path.is_absolute());
@@ -259,7 +285,7 @@ impl Context {
         service_id: V3OnionServiceId,
         file_transfer_id: tego_file_transfer_id,
     ) -> Result<()> {
-        println!("--- called reject_file_transfer_requesst");
+        log_trace!();
 
         let result: Promise<Result<()>> = Default::default();
         let result_future = result.get_future();
@@ -279,7 +305,7 @@ impl Context {
         service_id: V3OnionServiceId,
         file_transfer_id: tego_file_transfer_id,
     ) -> Result<()> {
-        println!("--- called cancel_file_transfer_requesst");
+        log_trace!();
 
         let result: Promise<Result<()>> = Default::default();
         let result_future = result.get_future();
@@ -295,6 +321,8 @@ impl Context {
     }
 
     pub fn tor_bin_path() -> Result<PathBuf> {
+        log_trace!();
+
         let bin_name = format!("tor{}", std::env::consts::EXE_SUFFIX);
 
         // get the path of the current running exe
@@ -531,7 +559,7 @@ impl EventLoopTask {
                             let message_text = pending_connection.message_text;
 
                             if !self.packet_handler.has_verified_connection(&service_id) {
-                                println!("--- connected to {service_id:?}");
+                                log_info!("connected to {service_id:?}");
                                 let mut replies: Vec<Packet> = Default::default();
                                 let handle = self.packet_handler.new_outgoing_connection(
                                     service_id.clone(),
@@ -551,7 +579,7 @@ impl EventLoopTask {
 
                                 self.connections.insert(handle, connection);
                             } else {
-                                println!("--- connected to {service_id:?} but verified connection already exists, dropping");
+                                log_info!("connected to {service_id:?} but verified connection already exists, dropping");
                             }
                         }
                         Ok(())
@@ -568,7 +596,7 @@ impl EventLoopTask {
                             // delay before trying to connect in seconds
                             let delay = Self::retry_delay(failure_count);
 
-                            println!("--- connect attempt {failure_count} to {service_id:?} failed; try again in {delay:?}");
+                            log_info!("connect attempt {failure_count} to {service_id:?} failed; try again in {delay:?}");
 
                             let contact_request_message = pending_connection.message_text;
                             let command_data = CommandData::ConnectContact {
@@ -634,7 +662,7 @@ impl EventLoopTask {
                             file_uploads: Default::default(),
                         };
 
-                        println!("begin server handshake: {connection:?}");
+                        log_info!("begin server handshake: {connection:?}");
 
                         self.connections.insert(handle, connection);
                         Ok(())
@@ -681,7 +709,7 @@ impl EventLoopTask {
                     // only open new connection if there is no existing verified
                     // connection already
                     if !self.packet_handler.has_verified_connection(&service_id) {
-                        println!("--- connecting to {service_id}");
+                        log_info!("connecting to {service_id}");
                         let target_addr: tor_interface::tor_provider::TargetAddr =
                             (service_id.clone(), RICOCHET_PORT).into();
 
@@ -694,7 +722,7 @@ impl EventLoopTask {
                         self.pending_connections
                             .insert(connect_handle, pending_connection);
                     } else {
-                        println!("--- skipping connection attempt, verified connection already exists to {service_id}");
+                        log_info!("skipping connection attempt, verified connection already exists to {service_id}");
                     }
                 }
                 CommandData::SendMessage {
@@ -936,7 +964,7 @@ impl EventLoopTask {
                     ErrorKind::WouldBlock | ErrorKind::TimedOut => (),
                     _ => {
                         // some error
-                        println!("stream read err: {err:?}");
+                        log_error!("stream read err: {err:?}");
                         self.to_remove.insert(handle);
                         if let Some(service_id) = &connection.service_id {
                             to_retry.insert(service_id.clone());
@@ -945,7 +973,7 @@ impl EventLoopTask {
                 },
                 Ok(0) => {
                     // end of stream
-                    println!("stream read err: end of stream");
+                    log_error!("stream read err: end of stream");
                     self.to_remove.insert(handle);
                     if let Some(service_id) = &connection.service_id {
                         to_retry.insert(service_id.clone());
@@ -973,7 +1001,7 @@ impl EventLoopTask {
                 'packet_parse: loop {
                     match self.packet_handler.try_parse_packet(handle, read_bytes) {
                         Ok((packet, size)) => {
-                            println!("<< read packet: {packet:?}");
+                            log_packet!("read {packet:?}");
                             // move slice up by number of handled bytes
                             read_bytes = &read_bytes[size..];
                             trim_count += size;
@@ -983,10 +1011,8 @@ impl EventLoopTask {
                         Err(Error::NeedMoreBytes) => {
                             break 'packet_parse;
                         }
-                        Err(err) => {
-                            // TODO: report error somewhere?
-                            println!("parse packet error: {err:?}");
-                            println!("- read_bytes: {read_bytes:?}");
+                        Err(_err) => {
+                            log_error!("parse packet error: {_err:?}, read_bytes: {read_bytes:?}");
                             // drop connection
                             self.to_remove.insert(handle);
                             break 'packet_parse;
@@ -1004,20 +1030,20 @@ impl EventLoopTask {
                         .handle_packet(handle, packet, write_packets)
                     {
                         Ok(Event::IntroductionReceived) => {
-                            println!("--- introduction received ---");
+                            log_info!("introduction received");
                         }
                         Ok(Event::IntroductionResponseReceived) => {
-                            println!("--- introduction response received ---");
+                            log_info!("introduction response received");
                         }
                         Ok(Event::OpenChannelAuthHiddenServiceReceived) => {
-                            println!("--- open auth hidden service received ---");
+                            log_info!("open auth hidden service received");
                         }
                         Ok(Event::ClientAuthenticated {
                             service_id,
                             duplicate_connection,
                         }) => {
                             // todo: handle closed connection
-                            println!("--- client authenticated: peer: {service_id:?}, duplicate_connection: {duplicate_connection:?} ---");
+                            log_info!("client authenticated: peer: {service_id:?}, duplicate_connection: {duplicate_connection:?}");
                             if let Some(user_data) = self.users.get_mut(&service_id) {
                                 user_data.connection_failures = 0usize;
                             }
@@ -1028,9 +1054,9 @@ impl EventLoopTask {
                                 self.to_remove.insert(connection_handle);
                             }
                         }
-                        Ok(Event::BlockedClientAuthenticationAttempted { service_id }) => {
-                            println!(
-                                "--- blocked client attempted authentication, peer: {service_id}"
+                        Ok(Event::BlockedClientAuthenticationAttempted { service_id: _service_id }) => {
+                            log_info!(
+                                "blocked client attempted authentication, peer: {_service_id}"
                             );
                             self.to_remove.insert(handle);
                         }
@@ -1056,7 +1082,7 @@ impl EventLoopTask {
                                 }
                             }
                             // todo: handle closed connection
-                            println!("--- host authenticated: peer: {service_id:?}, duplicate_connection: {duplicate_connection:?} ---");
+                            log_info!("host authenticated: peer: {service_id:?}, duplicate_connection: {duplicate_connection:?}");
                             if let Some(connection_handle) = duplicate_connection {
                                 self.to_remove.insert(connection_handle);
                             }
@@ -1065,7 +1091,7 @@ impl EventLoopTask {
                             duplicate_connection,
                         }) => {
                             // todo: handle closed connection
-                            println!("--- duplicate connection dropped: {duplicate_connection}");
+                            log_info!("duplicate connection dropped: {duplicate_connection}");
                             self.to_remove.insert(duplicate_connection);
                         }
                         Ok(Event::ContactRequestReceived {
@@ -1073,17 +1099,17 @@ impl EventLoopTask {
                             nickname: _,
                             message_text,
                         }) => {
-                            println!("--- contact request received, peer: {service_id:?}, message_text: \"{message_text}\"");
+                            log_info!("contact request received, peer: {service_id:?}, message_text: \"{message_text}\"");
                             self.callback_queue.push(CallbackData::ChatRequestReceived {
                                 service_id,
                                 message: message_text,
                             });
                         }
-                        Ok(Event::ContactRequestResultPending { service_id }) => {
-                            println!("--- contact request result pending, peer: {service_id:?}");
+                        Ok(Event::ContactRequestResultPending { service_id: _service_id }) => {
+                            log_info!("contact request result pending, peer: {_service_id:?}");
                         }
                         Ok(Event::ContactRequestResultAccepted { service_id }) => {
-                            println!("--- contact request result accepted, peer: {service_id:?}");
+                            log_info!("contact request result accepted, peer: {service_id:?}");
                             self.callback_queue
                                 .push(CallbackData::ChatRequestResponseReceived {
                                     service_id,
@@ -1091,7 +1117,7 @@ impl EventLoopTask {
                                 });
                         }
                         Ok(Event::ContactRequestResultRejected { service_id }) => {
-                            println!("--- contact request result rejected, peer: {service_id:?}");
+                            log_info!("contact request result rejected, peer: {service_id:?}");
                             self.to_remove.insert(handle);
                             to_retry.insert(service_id.clone());
                             self.callback_queue
@@ -1100,24 +1126,28 @@ impl EventLoopTask {
                                     accepted_request: false,
                                 });
                         }
-                        Ok(Event::IncomingChatChannelOpened { service_id }) => {
-                            println!("--- incoming chat channel opened, peer: {service_id:?} ---");
+                        Ok(Event::IncomingChatChannelOpened { service_id: _service_id }) => {
+                            log_info!("incoming chat channel opened, peer: {_service_id:?}");
                         }
-                        Ok(Event::IncomingFileTransferChannelOpened { service_id }) => {
-                            println!("--- incoming file transfer channel opened, peer: {service_id:?} ---");
+                        Ok(Event::IncomingFileTransferChannelOpened { service_id: _service_id }) => {
+                            log_info!(
+                                "incoming file transfer channel opened, peer: {_service_id:?}"
+                            );
                         }
-                        Ok(Event::OutgoingAuthHiddenServiceChannelOpened { service_id }) => {
-                            println!("--- outgoing auth hidden service channel opened, peer: {service_id:?} ---");
+                        Ok(Event::OutgoingAuthHiddenServiceChannelOpened { service_id: _service_id }) => {
+                            log_info!("outgoing auth hidden service channel opened, peer: {_service_id:?}");
                         }
                         Ok(Event::OutgoingChatChannelOpened { service_id }) => {
-                            println!("--- outgoing chat channel opened, peer: {service_id:?} ---");
+                            log_info!("outgoing chat channel opened, peer: {service_id:?}");
                             self.callback_queue.push(CallbackData::UserStatusChanged {
                                 service_id,
                                 status: tego_user_status::tego_user_status_online,
                             });
                         }
-                        Ok(Event::OutgoingFileTransferChannelOpened { service_id }) => {
-                            println!("--- outgoing file transfer channel opened, peer: {service_id:?} ---");
+                        Ok(Event::OutgoingFileTransferChannelOpened { service_id: _service_id }) => {
+                            log_info!(
+                                "outgoing file transfer channel opened, peer: {_service_id:?}"
+                            );
                         }
                         Ok(Event::ChatMessageReceived {
                             service_id,
@@ -1125,7 +1155,7 @@ impl EventLoopTask {
                             message_handle,
                             time_delta,
                         }) => {
-                            println!("--- chat message receved, peer: {service_id:?}, message: \"{message_text}, message_handle: {message_handle:?}, time_delta: {time_delta:?}");
+                            log_info!("chat message receved, peer: {service_id:?}, message: \"{message_text}, message_handle: {message_handle:?}, time_delta: {time_delta:?}");
                             let now = std::time::SystemTime::now();
                             let timestamp = now.checked_sub(time_delta).unwrap();
                             let message_id: tego_message_id = message_handle.into();
@@ -1142,7 +1172,7 @@ impl EventLoopTask {
                             message_handle,
                             accepted,
                         }) => {
-                            println!("--- chat ack received, peer: {service_id:?}, message_handle: {message_handle:?}, accepted: {accepted}");
+                            log_info!("chat ack received, peer: {service_id:?}, message_handle: {message_handle:?}, accepted: {accepted}");
                             let message_id: tego_message_id = message_handle.into();
                             self.callback_queue.push(CallbackData::MessageAcknowledged {
                                 service_id,
@@ -1156,7 +1186,7 @@ impl EventLoopTask {
                             file_name,
                             file_size,
                         }) => {
-                            println!("--- file transfer request received, peer: {service_id:?}, file_transfer_handle: {file_transfer_handle:?}, file_name: {file_name}, file_size: {file_size}");
+                            log_info!("file transfer request received, peer: {service_id:?}, file_transfer_handle: {file_transfer_handle:?}, file_name: {file_name}, file_size: {file_size}");
 
                             // the protocol handler *shouldn't* be returning duplicate handles but we get them
                             // from the other party so really we have no control here :(
@@ -1193,7 +1223,7 @@ impl EventLoopTask {
                             file_transfer_handle,
                             accepted,
                         }) => {
-                            println!("--- file transfer request ack received, peer: {service_id:?}, file_transfer_handle: {file_transfer_handle:?}, accepted: {accepted}");
+                            log_info!("file transfer request ack received, peer: {service_id:?}, file_transfer_handle: {file_transfer_handle:?}, accepted: {accepted}");
                             self.callback_queue.push(
                                 CallbackData::FileTransferRequestAcknowledged {
                                     service_id,
@@ -1206,7 +1236,7 @@ impl EventLoopTask {
                             service_id,
                             file_transfer_handle,
                         }) => {
-                            println!("--- file transfer request accepted, peer: {service_id:?}, file_transfer_handle: {file_transfer_handle:?}");
+                            log_info!("file transfer request accepted, peer: {service_id:?}, file_transfer_handle: {file_transfer_handle:?}");
 
                             let file_transfer_id: tego_file_transfer_id =
                                 file_transfer_handle.into();
@@ -1254,7 +1284,7 @@ impl EventLoopTask {
                             service_id,
                             file_transfer_handle,
                         }) => {
-                            println!("--- file transfer request rejected, peer: {service_id:?}, file_transfer_handle: {file_transfer_handle:?}");
+                            log_info!("file transfer request rejected, peer: {service_id:?}, file_transfer_handle: {file_transfer_handle:?}");
 
                             let file_transfer_id: tego_file_transfer_id =
                                 file_transfer_handle.into();
@@ -1273,7 +1303,7 @@ impl EventLoopTask {
                             last_chunk,
                             hash_matches,
                         }) => {
-                            println!("--- file chunk received, peer: {service_id:?}, file_transfer_handle: {file_transfer_handle:?}, data: [u8; {}], last_chunk: {last_chunk}, hash_matches: {hash_matches:?}", data.len());
+                            log_info!("file chunk received, peer: {service_id:?}, file_transfer_handle: {file_transfer_handle:?}, data: [u8; {}], last_chunk: {last_chunk}, hash_matches: {hash_matches:?}", data.len());
 
                             let file_transfer_id: tego_file_transfer_id =
                                 file_transfer_handle.into();
@@ -1351,7 +1381,7 @@ impl EventLoopTask {
                             file_transfer_handle,
                             offset,
                         }) => {
-                            println!("--- file chunk ack received, peer: {service_id:?}, file_transfer_handle: {file_transfer_handle:?}, offset: {offset}");
+                            log_info!("file chunk ack received, peer: {service_id:?}, file_transfer_handle: {file_transfer_handle:?}, offset: {offset}");
 
                             let file_transfer_id: tego_file_transfer_id =
                                 file_transfer_handle.into();
@@ -1397,7 +1427,7 @@ impl EventLoopTask {
                             service_id,
                             file_transfer_handle,
                         }) => {
-                            println!("--- file transfer succeeded, peer: {service_id}, file_transfer_handle: {file_transfer_handle:?}");
+                            log_info!("file transfer succeeded, peer: {service_id}, file_transfer_handle: {file_transfer_handle:?}");
 
                             let file_transfer_id: tego_file_transfer_id =
                                 file_transfer_handle.into();
@@ -1412,7 +1442,7 @@ impl EventLoopTask {
                             service_id,
                             file_transfer_handle,
                         }) => {
-                            println!("--- file transfer failed, peer: {service_id}, file_transfer_handle: {file_transfer_handle:?}");
+                            log_info!("file transfer failed, peer: {service_id}, file_transfer_handle: {file_transfer_handle:?}");
 
                             let file_transfer_id: tego_file_transfer_id =
                                 file_transfer_handle.into();
@@ -1427,7 +1457,7 @@ impl EventLoopTask {
                             service_id,
                             file_transfer_handle,
                         }) => {
-                            println!("--- file transfer cancelled, peer: {service_id}, file_transfer_handle: {file_transfer_handle:?}");
+                            log_info!("file transfer cancelled, peer: {service_id}, file_transfer_handle: {file_transfer_handle:?}");
 
                             let file_transfer_id: tego_file_transfer_id =
                                 file_transfer_handle.into();
@@ -1438,15 +1468,15 @@ impl EventLoopTask {
                                 result: tego_file_transfer_result::tego_file_transfer_result_cancelled
                             });
                         }
-                        Ok(Event::ChannelClosed { id }) => {
-                            println!("--- channel closed: {id} ---");
+                        Ok(Event::ChannelClosed { id: _id }) => {
+                            log_info!("channel closed: {_id}");
                         }
                         // errors
-                        Ok(Event::ProtocolFailure { message }) => {
-                            println!("--- non-fatal protocol failure: {message} ---");
+                        Ok(Event::ProtocolFailure { message: _message }) => {
+                            log_error!("non-fatal protocol failure: {_message}");
                         }
-                        Ok(Event::FatalProtocolFailure) => {
-                            println!("--- fatal protocol error, removing connection ---");
+                        Ok(Event::FatalProtocolFailure{ message: _message }) => {
+                            log_error!("fatal protocol error, removing connection: {_message}");
                             self.to_remove.insert(handle);
                             break 'packet_handle;
                         }
@@ -1460,10 +1490,10 @@ impl EventLoopTask {
                 // serialise out packets to bytes
                 let mut write_bytes: Vec<u8> = Default::default();
                 for packet in write_packets.drain(..) {
-                    println!(">> write packet: {packet:?}");
+                    log_packet!("write {packet:?}");
                     packet
                         .write_to_vec(&mut write_bytes)
-                        .expect("packet write failed");
+                        .expect("packet failed");
                 }
 
                 // send bytes
@@ -1486,9 +1516,8 @@ impl EventLoopTask {
                 .expect("removed non-existing connection");
             // signal user offline status to frontend
             if let Some(service_id) = connection.service_id {
-                println!("--- dropping connection; handle: {handle}, service_id: {service_id}");
+                log_info!("dropping connection; handle: {handle}, service_id: {service_id}");
                 // signal user offline status if there is not another connection
-                // todo: only signal for allowed users
                 if !self.packet_handler.has_verified_connection(&service_id) {
                     if let Some(user_data) = self.users.get(&service_id) {
                         if matches!(
@@ -1504,7 +1533,7 @@ impl EventLoopTask {
                     }
                 }
             } else {
-                println!("--- dropping connection; handle: {handle}");
+                log_info!("dropping connection; handle: {handle}");
             }
         }
         self.to_remove.clear();
@@ -1524,7 +1553,7 @@ impl EventLoopTask {
                     };
                     let delay = Self::retry_delay(user_data.connection_failures);
 
-                    println!("--- retry connecting to {service_id} in {delay:?}");
+                    log_info!("retry connecting to {service_id} in {delay:?}");
 
                     self.command_queue.push(command_data, delay);
                 }
@@ -1546,7 +1575,7 @@ impl EventLoopTask {
                     if let Some(on_tor_network_status_changed) =
                         callbacks.on_tor_network_status_changed
                     {
-                        println!("-- invoke on_tor_network_status_changed");
+                        log_trace!("invoke on_tor_network_status_changed");
                         on_tor_network_status_changed(context, status);
                     }
                 }
@@ -1554,7 +1583,7 @@ impl EventLoopTask {
                     if let Some(on_tor_bootstrap_status_changed) =
                         callbacks.on_tor_bootstrap_status_changed
                     {
-                        println!("-- invoke on_tor_bootstrap_status_changed");
+                        log_trace!("invoke on_tor_bootstrap_status_changed");
                         on_tor_bootstrap_status_changed(
                             context,
                             progress as i32,
@@ -1564,7 +1593,7 @@ impl EventLoopTask {
                 }
                 CallbackData::TorLogReceived { line } => {
                     if let Some(on_tor_log_received) = callbacks.on_tor_log_received {
-                        println!("-- invoke on_tor_log_received");
+                        log_trace!("invoke on_tor_log_received");
                         let line = CString::new(line.as_str()).unwrap();
                         let line_len = line.as_bytes().len();
                         on_tor_log_received(context, line.as_c_str().as_ptr(), line_len);
@@ -1574,7 +1603,7 @@ impl EventLoopTask {
                     if let Some(on_host_onion_service_state_changed) =
                         callbacks.on_host_onion_service_state_changed
                     {
-                        println!("-- invoke on_host_onion_service_state_changed");
+                        log_trace!("invoke on_host_onion_service_state_changed");
                         on_host_onion_service_state_changed(context, state);
                     }
                 }
@@ -1583,7 +1612,7 @@ impl EventLoopTask {
                     message,
                 } => {
                     if let Some(on_chat_request_received) = callbacks.on_chat_request_received {
-                        println!("-- invoke on_chat_request_received");
+                        log_trace!("invoke on_chat_request_received");
                         let sender =
                             get_object_map().insert(TegoObject::UserId(UserId { service_id }));
                         let message = CString::new(message.as_str()).unwrap();
@@ -1604,7 +1633,7 @@ impl EventLoopTask {
                     if let Some(on_chat_request_response_received) =
                         callbacks.on_chat_request_response_received
                     {
-                        println!("-- invoke on_chat_request_response_received");
+                        log_trace!("invoke on_chat_request_response_received");
                         let sender =
                             get_object_map().insert(TegoObject::UserId(UserId { service_id }));
                         let accepted_request = if accepted_request {
@@ -1622,7 +1651,7 @@ impl EventLoopTask {
                 }
                 CallbackData::UserStatusChanged { service_id, status } => {
                     if let Some(on_user_status_changed) = callbacks.on_user_status_changed {
-                        println!("-- invoke on_user_status_changed");
+                        log_trace!("invoke on_user_status_changed");
                         let user =
                             get_object_map().insert(TegoObject::UserId(UserId { service_id }));
                         on_user_status_changed(context, user as *const tego_user_id, status);
@@ -1636,7 +1665,7 @@ impl EventLoopTask {
                     message,
                 } => {
                     if let Some(on_message_received) = callbacks.on_message_received {
-                        println!("-- invoke on_message_received");
+                        log_trace!("invoke on_message_received");
                         let user =
                             get_object_map().insert(TegoObject::UserId(UserId { service_id }));
                         let timestamp = timestamp.duration_since(std::time::UNIX_EPOCH).unwrap();
@@ -1663,7 +1692,7 @@ impl EventLoopTask {
                     accepted,
                 } => {
                     if let Some(on_message_acknowledged) = callbacks.on_message_acknowledged {
-                        println!("-- invoke on_message_acknowledged");
+                        log_trace!("invoke on_message_acknowledged");
                         let user =
                             get_object_map().insert(TegoObject::UserId(UserId { service_id }));
                         let accepted = if accepted { TEGO_TRUE } else { TEGO_FALSE };
@@ -1685,7 +1714,7 @@ impl EventLoopTask {
                     if let Some(on_file_transfer_request_received) =
                         callbacks.on_file_transfer_request_received
                     {
-                        println!("-- invoke on_file_transfer_request_received");
+                        log_trace!("invoke on_file_transfer_request_received");
 
                         let sender = get_object_map()
                             .insert(TegoObject::UserId(UserId { service_id: sender }));
@@ -1712,7 +1741,7 @@ impl EventLoopTask {
                     if let Some(on_file_transfer_request_acknowledged) =
                         callbacks.on_file_transfer_request_acknowledged
                     {
-                        println!("-- invoke on_file_transfer_request_acknowledged");
+                        log_trace!("invoke on_file_transfer_request_acknowledged");
                         let user =
                             get_object_map().insert(TegoObject::UserId(UserId { service_id }));
                         let accepted = if accepted { TEGO_TRUE } else { TEGO_FALSE };
@@ -1733,7 +1762,7 @@ impl EventLoopTask {
                     if let Some(on_file_transfer_request_response_received) =
                         callbacks.on_file_transfer_request_response_received
                     {
-                        println!("-- invoke on_file_transfer_request_response_received");
+                        log_trace!("invoke on_file_transfer_request_response_received");
                         let user =
                             get_object_map().insert(TegoObject::UserId(UserId { service_id }));
 
@@ -1754,7 +1783,7 @@ impl EventLoopTask {
                     bytes_total,
                 } => {
                     if let Some(on_file_transfer_progress) = callbacks.on_file_transfer_progress {
-                        println!("-- invoke on_file_transfer_progress");
+                        log_trace!("invoke on_file_transfer_progress");
                         let user_id = get_object_map().insert(TegoObject::UserId(UserId {
                             service_id: user_id,
                         }));
@@ -1778,7 +1807,7 @@ impl EventLoopTask {
                     result,
                 } => {
                     if let Some(on_file_transfer_complete) = callbacks.on_file_transfer_complete {
-                        println!("-- invoke on_file_transfer_complete");
+                        log_trace!("invoke on_file_transfer_complete");
                         let user_id = get_object_map().insert(TegoObject::UserId(UserId {
                             service_id: user_id,
                         }));
@@ -1816,7 +1845,7 @@ impl ListenerTask {
         while let Ok(stream) = listener.accept() {
             if let Some(stream) = stream {
                 stream.set_nonblocking(true)?;
-                println!("stream: {stream:?}");
+                log_info!("new stream accepted: {stream:?}");
                 command_queue.push(CommandData::BeginServerHandshake { stream }, Duration::ZERO);
             }
         }
