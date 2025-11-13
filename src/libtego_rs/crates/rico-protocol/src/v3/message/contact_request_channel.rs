@@ -92,7 +92,7 @@ impl From<&MessageText> for String {
 impl TryFrom<String> for MessageText {
     type Error = Error;
     fn try_from(value: String) -> Result<Self, Self::Error> {
-        // TODO: message_text requirements are NOT defined in the spec:
+        // Per message_text requirements are defined in the spec:
         // - must contain no more than 2000 utf16 code units
 
         const MAX_MESSAGE_SIZE: usize = 2000;
@@ -122,8 +122,7 @@ impl From<&Nickname> for String {
 impl TryFrom<String> for Nickname {
     type Error = Error;
     fn try_from(value: String) -> Result<Self, Self::Error> {
-        // TODO: nickname requirements are NOT defined in the spec
-        // from Ricochet-Refresh's isAcceptableNickname() function:
+        // Per nickname requirements are defined in the spec:
         // - must contain no more than 30 utf16 code units
         // - must not contain "\"", "<", ">", "&"
         // - must not contain 'other, format' code units (Cf)
@@ -213,7 +212,6 @@ pub struct Response {
     pub status: Status,
 }
 
-// TODO: spec says 'Undefined' is "Not valid in transmitted messages" and we should clarify what that actually means
 #[derive(Debug, PartialEq)]
 pub enum Status {
     Undefined,

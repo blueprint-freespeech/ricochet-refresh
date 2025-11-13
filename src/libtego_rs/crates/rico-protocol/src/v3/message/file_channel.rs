@@ -1,9 +1,7 @@
 use crate::v3::Error;
 
 pub(crate) const CHANNEL_TYPE: &str = "im.ricochet.file-transfer";
-// TODO: protocol specificaiton does not define what hash is used to verify transferred file contents
 
-// TODO: make FILE_HASH_SIZE also pub(crate)
 pub const FILE_HASH_SIZE: usize = 64;
 pub(crate) const MAX_FILE_CHUNK_SIZE: usize = 63 * 1024;
 
@@ -263,14 +261,14 @@ impl TryFrom<&Packet> for Vec<u8> {
 #[derive(Debug, PartialEq)]
 pub struct FileHeader {
     file_id: u32,
-    // TODO: file_size requirements are not defined in spec
+    // Per file_size requirements defined in spec:
     // - must be theoretically writable to target disk
     file_size: u64,
-    // TODO: name requirements are NOT defined in spec
+    // Per name requirements defined in spec:
     // - must not contain "..' substring
     // - must not contain '/' characters
     name: String,
-    // TODO: file_hash requirements are NOT defined in spec
+    // Per file_hash requirements are defined in spec:
     // - file_hash algorithm is SHA3_512
     // - file_hash therefore must be 64 bytes
     file_hash: [u8; FILE_HASH_SIZE],
@@ -317,7 +315,7 @@ impl FileHeader {
 #[derive(Debug, PartialEq)]
 pub struct FileHeaderAck {
     file_id: u32,
-    accepted: bool, // TODO: can this ever be false in practice?
+    accepted: bool,
 }
 
 impl FileHeaderAck {
@@ -453,7 +451,6 @@ impl TryFrom<Vec<u8>> for ChunkData {
 #[derive(Debug, PartialEq)]
 pub struct FileChunkAck {
     file_id: u32,
-    // TODO: bytes_received param is not defined in spec
     bytes_received: u64,
 }
 

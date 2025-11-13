@@ -481,7 +481,6 @@ pub struct PacketHandler {
     // set of known contacts which have been approved by host
     known_contacts: BTreeSet<V3OnionServiceId>,
     // set of blocked contacts which the host does not want to chat with
-    // TODO: specify blocked contact behaviour in the spec
     blocked_contacts: BTreeSet<V3OnionServiceId>,
 }
 
@@ -605,7 +604,7 @@ impl PacketHandler {
                         let packet = chat_channel::Packet::try_from(bytes)?;
                         Packet::ChatChannelPacket { channel, packet }
                     }
-                    // todo: why does IncomingContactRequest rueturn an error?
+                    // A client only replies on an incoming contact request channel, should never receive a packet on this channel
                     Some(ChannelData::IncomingContactRequest) => return Err(Error::BadDataStream),
                     Some(ChannelData::OutgoingContactRequest) => {
                         let packet = contact_request_channel::Packet::try_from(bytes)?;
@@ -1039,15 +1038,15 @@ impl PacketHandler {
                     ) => {
                         use contact_request_channel::Status;
                         match response.status {
-                            Status::Undefined => Err(Error::NotImplemented),
+                            Status::Undefined => Ok(Event::FatalProtocolFailure{message: "received unexpected channel result response: Undefined".to_string()}),
                             Status::Pending => Ok(Event::ContactRequestResultPending {
                                 service_id: service_id.clone(),
                             }),
-                            Status::Accepted => Err(Error::NotImplemented),
+                            Status::Accepted => Ok(Event::FatalProtocolFailure{message: "received unexpected channel result response: Accepted".to_string()}),
                             Status::Rejected => Ok(Event::ContactRequestResultRejected {
                                 service_id: service_id.clone(),
                             }),
-                            Status::Error => Err(Error::NotImplemented),
+                            Status::Error => Ok(Event::FatalProtocolFailure{message: "received unexpected channel result response: Error".to_string()}),
                         }
                     }
                     (ChannelData::OutgoingChat, Some(service_id), true, None, None) => {
@@ -1139,12 +1138,12 @@ impl PacketHandler {
                         self.known_contacts.insert(service_id.clone());
                         replies.append(&mut pending_replies);
                         Ok(Event::ContactRequestResultAccepted { service_id })
-                    }
+                    },
                     (Status::Rejected, Some(service_id)) => {
                         connection.close_channel(channel_id, Some(replies));
                         Ok(Event::ContactRequestResultRejected { service_id })
-                    }
-                    _ => todo!(),
+                    },
+                    _ => unreachable!()
                 }
             }
         }
@@ -1337,9 +1336,6 @@ impl PacketHandler {
 
                     let service_id = client_service_id.clone();
 
-                    // TODO: protocol specification does not describe this logic
-                    // equivalent lives in ContactUser.cpp
-                    // handle existence of duplicate existing connection
                     let event = match self.service_id_to_connection_handle(&service_id) {
                         Ok(duplicate_connection) => {
                             let connection = self.connection(duplicate_connection).unwrap();
@@ -1491,9 +1487,6 @@ impl PacketHandler {
 
                         let service_id = server_service_id.clone();
 
-                        // TODO: protocol specification does not describe this logic
-                        // equivalent lives in ContactUser.cpp
-                        // handle existence of duplicate existing connection
                         let event = match self.service_id_to_connection_handle(&service_id) {
                             Ok(duplicate_connection) => {
                                 let connection = self.connection(duplicate_connection).unwrap();
@@ -1642,7 +1635,7 @@ impl PacketHandler {
                             message: "Received orphaned FileChunk packet".to_string(),
                         });
                     }
-                    _ => todo!(),
+                    _ => unreachable!(),
                 };
 
                 // update the partial download state
@@ -1672,7 +1665,7 @@ impl PacketHandler {
                         let file_download =
                             match connection.file_transfers.remove(&file_transfer_handle) {
                                 Some(FileTransfer::FileDownload(file_download)) => file_download,
-                                _ => todo!(),
+                                _ => unreachable!(),
                             };
 
                         match ordering {
@@ -1760,9 +1753,9 @@ impl PacketHandler {
                         let connection = self.connection_mut(connection_handle)?;
                         match connection.file_transfers.remove(&file_transfer_handle) {
                             Some(FileTransfer::FileUpload(_)) => (),
-                            Some(FileTransfer::FileDownload(_)) => todo!(),
-                            None => todo!(),
+                            _ => unreachable!(),
                         }
+
                         Ok(Event::FileTransferRequestRejected {
                             service_id,
                             file_transfer_handle,
@@ -1941,23 +1934,15 @@ impl PacketHandler {
         service_id: V3OnionServiceId,
         replies: &mut Vec<Packet>,
     ) -> Result<ConnectionHandle, Error> {
-        // todo: we can probably remove these checks and specific errors
-        // in favor of checking for an IncomingContactRequest channel
         if self.known_contacts.contains(&service_id) {
             return Err(Error::PeerAlreadyKnownContact(service_id));
         }
 
         let connection_handle = self.service_id_to_connection_handle(&service_id)?;
         let connection = self.connection_mut(connection_handle)?;
-        let channel_identifier = if let Some(channel_identifier) = connection
+        let channel_identifier = connection
             .channel_map
-            .channel_type_to_id(&ChannelType::IncomingContactRequest)
-        {
-            channel_identifier
-        } else {
-            // properly handle this error
-            todo!();
-        };
+            .channel_type_to_id(&ChannelType::IncomingContactRequest).unwrap();
 
         let mut pending_replies: Vec<Packet> = Vec::with_capacity(4);
 
@@ -2016,15 +2001,9 @@ impl PacketHandler {
     ) -> Result<ConnectionHandle, Error> {
         let connection_handle = self.service_id_to_connection_handle(&service_id)?;
         let connection = self.connection_mut(connection_handle)?;
-        let channel_identifier = if let Some(channel_identifier) = connection
+        let channel_identifier = connection
             .channel_map
-            .channel_type_to_id(&ChannelType::IncomingContactRequest)
-        {
-            channel_identifier
-        } else {
-            // properly handle this error
-            todo!();
-        };
+            .channel_type_to_id(&ChannelType::IncomingContactRequest).unwrap();
 
         let mut pending_replies: Vec<Packet> = Vec::with_capacity(3);
 
@@ -2170,9 +2149,9 @@ impl PacketHandler {
         let connection_handle = self.service_id_to_connection_handle(service_id)?;
         let connection = self.connection_mut(connection_handle)?;
 
-        // ensure we're deling with an inc=oming request
+        // ensure we're dealing with an incoming request
         if file_transfer_handle.direction != Direction::Incoming {
-            todo!();
+            return Err(Error::FileUploadCannotBeRejected(file_transfer_handle));
         }
 
         // remove the pending file transfer
@@ -2184,9 +2163,7 @@ impl PacketHandler {
             ))?;
         match file_transfer {
             FileTransfer::FileDownload(_) => (),
-            FileTransfer::FileUpload(_) => {
-                return Err(Error::FileUploadCannotBeRejected(file_transfer_handle))
-            }
+            FileTransfer::FileUpload(_) => unreachable!(),
         }
 
         let channel_type = ChannelType::IncomingFileTransfer;

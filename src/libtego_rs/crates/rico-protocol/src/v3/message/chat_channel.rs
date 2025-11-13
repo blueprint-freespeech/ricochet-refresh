@@ -120,12 +120,7 @@ impl TryFrom<&Packet> for Vec<u8> {
 #[derive(Debug, PartialEq)]
 pub struct ChatMessage {
     message_text: MessageText,
-    // TODO: in practice message id is always set
     message_id: u32,
-    // TODO: time_delta is the number of second this message sat in the send queue
-    // before it was sent. In practice this value must be:
-    // - 0 or negative
-    // - if not present, assumed to be 0
     time_delta: Option<std::time::Duration>,
 }
 
@@ -177,7 +172,7 @@ impl From<&MessageText> for String {
 impl TryFrom<String> for MessageText {
     type Error = Error;
     fn try_from(value: String) -> Result<Self, Self::Error> {
-        // TODO: message_text requirements are NOT defined in the spec:
+        // per message_text requirements are defined in the spec:
         // - must contain at least 1 utf16 code unit
         // - must contain no more than 2000 utf16 code units
 
@@ -199,9 +194,6 @@ impl TryFrom<String> for MessageText {
 
 #[derive(Debug, PartialEq)]
 pub struct ChatAcknowledge {
-    // TODO: behaviour undefined in spec
-    // - acking without a message_id results in closing the associated channel
-    // - in practice, it is always set
     message_id: u32,
     accepted: bool,
 }

@@ -334,7 +334,6 @@ impl TryFrom<&Packet> for Vec<u8> {
 
 #[derive(Debug, PartialEq)]
 pub struct OpenChannel {
-    // TODO: spec needs updating, channel_identifier must be positive and non-zero, and less than or equal to u16::MAX
     channel_identifier: u16,
     channel_type: ChannelType,
     extension: Option<OpenChannelExtension>,
@@ -342,7 +341,7 @@ pub struct OpenChannel {
 
 impl OpenChannel {
     pub fn new(
-        channel_identifier: i32, // TODO: this should be a u16
+        channel_identifier: i32,
         channel_type: ChannelType,
         extension: Option<OpenChannelExtension>,
     ) -> Result<Self, Error> {
@@ -436,7 +435,6 @@ pub enum OpenChannelExtension {
 
 #[derive(Debug, PartialEq)]
 pub struct ChannelResult {
-    // TODO: spec needs updating, channel_identifier must be positive and non-zero, and less than or equal to u16::MAX
     channel_identifier: u16,
     opened: bool,
     common_error: Option<CommonError>,

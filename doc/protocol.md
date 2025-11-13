@@ -361,9 +361,12 @@ message ChatMessage {
     optional int64 time_delta = 3;                 // Delta in seconds between now and when message was written
 }
 ```
+The *message_text* parameter must:
 
-A *message_id* of zero (or omitted) indicates that the recipient doesn't expect
-acknowledgement.
+  * contain at least 1 UTF-16 code unit
+  * contain no more than 2000 UTF-16 code unit
+
+In practice *message_id* is always set, despite being marked "optional".
 
 If *message_id* is non-zero, the recipient should acknowledge receiving this
 message by sending *ChatAcknowledge*. Unacknowledged messages may be re-sent
@@ -382,7 +385,7 @@ immediately, it should be 0 or omitted. If a message was written and couldn't
 be sent immediately (due to a connection failure, for example), the
 *time_delta* should be an approximation of when it was composed. A positive
 value does not make any sense, as it would indicate a message composed in the
-future.
+future so in practice this value is either 0 or negative.
 
 ##### ChatAcknowledge
 ```protobuf
@@ -393,6 +396,8 @@ message ChatAcknowledge {
 ```
 
 Acknowledge receipt of a *ChatMessage*.
+
+If *message_id* is not present, the associated chat channel is closed. In practice, this value is always set.
 
 The *accepted* parameter indicates whether or not the message is to be
 considered delivered to the client. If it is false, then the message delivery
@@ -439,6 +444,8 @@ If the response finishes the request, the channel will be closed immediately.
 Otherwise, the channel remains open to wait for another *Response* message
 (e.g. going from Pending to Accepted).
 
+If the requesting client has been blocked by the recipient, the recipient will reply with a `ChannelResult` packet with a `Rejected` *response*, close the channel and terminate the connection.
+
 ##### ContactRequest
 ```protobuf
 // Sent only as an attachment to OpenChannel
@@ -453,6 +460,18 @@ Deliver a contact request, usually with a message and nickname attached. The
 authentication.
 
 The request is sent as an extension on the *OpenChannel* message.
+
+The *message_text* member must:
+
+  * contain no more than 2000 UTF-16 code units
+
+The *nickname* member must:
+
+  * contain no more than 30 UTF-16 code units
+  * not contain `"`, `<`, `>`, or `&` characters
+  * not contain 'other, format' (`Cf`) code units
+  * not contain 'other, control' (`Cf`) code units
+  * not contain 'non-character' code units (i.e. `0xFDD0..=0xFDEF` or `0x0FFFE..=0x0FFFF`, `0x1FFFE..=0x1FFFF`, `0x2FFFE..=0x2FFFF`, ..., `0x10FFFE..=0x10FFFF`)
 
 ##### Response
 ```protobuf
@@ -477,7 +496,7 @@ example, the recipient may decide to time out the connection while it is
 waiting in the *Pending* state.
 
 The initial *Response* is sent as an extension to the *ChannelResult* message
-when the channel is opened. If that response is final, the channel is closed
+when the channel is opened and must be one of either `Pending` or `Rejected`. If that response is final, the channel is closed
 immediately after. Otherwise, the channel remains open, and the only valid
 message is another *Response*.
 
@@ -537,7 +556,7 @@ message Proof {
 }
 ```
 
-The proof is calculated as:
+The 64-byte proof is calculated as:
 
 ```
 // + represents concatenation, and function is HMAC-SHA256(key, message)
@@ -573,6 +592,13 @@ must be set as true. If this flag is not set, the authenticating client should
 assume that it is not authorized (except e.g. to send a contact request).
 
 After sending *Result*, the channel should be closed.
+
+A race condition exists in the event that two peers attempt to authenticate with each other simultaneously. In this case, we drop the previous connection in favor of the new if at least one of the following is true:
+  * the new connection is the same direction as the previous connection (e.g. if a remote peer authenticates twice, the newer one takes precedent)
+  * the previous connection has been open for more than 30 seconds
+  * the remote service id is less than our own (i.e. when compared lexicographically)
+s
+This final lexicographical comparison ensures both peers agree on which  connection to drop if the first two conditions are not met.
 
 ### File channel
 
@@ -627,6 +653,12 @@ expected that the recipient will always send a FileHeaderAck response, if they
 are able. The FileHeader message includes a per-peer unique identifier, and
 some meta-data about the file the initiator wishes to send the recipient.
 
+The *file_size* must be sufficiently small to fit on disk.
+
+The *name* must not contain `".."` substring or the `'/'` character.
+
+The *file_hash* is a 64-byte SHA3-512 hash of the file.
+
 ##### FileHeaderAck
 ```protobuf
 message FileHeaderAck {
@@ -678,6 +710,8 @@ message FileChunkAck {
 
 The *FileChunkAck* message is sent by the recipient immediately upon receiving
 and writing a chunk to disk.
+
+The *bytes_received* member is the total number of bytes received as after recieving the previous *FileChunk* for the given *file_id*.
 
 ##### FileTransferCompleteNotification
 ```protobuf

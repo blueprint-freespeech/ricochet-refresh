@@ -139,7 +139,6 @@ impl ChannelResult {
 
 #[derive(Debug, PartialEq)]
 pub struct Proof {
-    // TODO: spec doesn't explicitly say how many bytes the proof's signature is
     signature: [u8; PROOF_SIGNATURE_SIZE],
     service_id: tor_interface::tor_crypto::V3OnionServiceId,
 }
@@ -163,7 +162,6 @@ impl Proof {
         &self.service_id
     }
 
-    // todo: Maybe this function should be up a layer in the packet_handler itself
     pub fn message(
         client_cookie: &[u8; CLIENT_COOKIE_SIZE],
         server_cookie: &[u8; SERVER_COOKIE_SIZE],
@@ -197,7 +195,6 @@ impl Proof {
 #[derive(Debug, PartialEq)]
 pub struct Result {
     accepted: bool,
-    // TODO: is_known_contact must be present if accepted is true
     is_known_contact: Option<bool>,
 }
 
