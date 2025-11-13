@@ -266,9 +266,9 @@ namespace shims
 
                 this->addEventFromMessage(indexOfOutgoingMessage(id));
             }
-            catch(const std::runtime_error& err)
+            catch(const std::exception& ex)
             {
-                qWarning() << err.what();
+                LOG_ERROR(ex.what());
             }
         }
     }
@@ -426,9 +426,9 @@ namespace shims
                     static_cast<size_t>(destination.size()),
                     tego::throw_on_error());
             }
-            catch(const std::runtime_error& err)
+            catch(const std::exception& ex)
             {
-                qWarning() << err.what();
+                LOG_ERROR(ex.what());
             }
 
             data.transferStatus = Accepted;
@@ -466,9 +466,9 @@ namespace shims
                     id,
                     tego::throw_on_error());
             }
-            catch(const std::runtime_error& err)
+            catch(const std::exception& ex)
             {
-                qWarning() << err.what();
+                LOG_ERROR(ex.what());
             }
         }
     }
@@ -498,9 +498,9 @@ namespace shims
                 0,
                 tego::throw_on_error());
         }
-        catch(const std::runtime_error& err)
+        catch(const std::exception& ex)
         {
-            qWarning() << err.what();
+            LOG_ERROR(ex.what());
         }
 
         data.transferStatus = Rejected;

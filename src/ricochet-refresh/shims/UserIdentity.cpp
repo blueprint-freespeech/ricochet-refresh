@@ -59,7 +59,7 @@ namespace shims
 
         return contactId;
     } catch (const std::exception& ex){
-        qDebug() << "Exception:" << ex.what();
+        LOG_ERROR(ex.what());
         return QString("<null>");
     }
 

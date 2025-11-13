@@ -151,8 +151,8 @@ int main(int argc, char *argv[]) try
                 serviceIdRaw.data(),
                 static_cast<size_t>(serviceIdRaw.size()),
                 tego::throw_on_error());
-        } catch (std::runtime_error err) {
-            
+        } catch (std::exception& ex) {
+            LOG_ERROR(ex.what());
         }
 
         const auto& userData = it.value().toObject();
@@ -187,9 +187,9 @@ int main(int argc, char *argv[]) try
 
     return a.exec();
 }
-catch(std::exception& re)
+catch(std::exception& ex)
 {
-    qDebug() << "Caught Exception: " << re.what();
+    LOG_ERROR(ex.what());
     return -1;
 }
 

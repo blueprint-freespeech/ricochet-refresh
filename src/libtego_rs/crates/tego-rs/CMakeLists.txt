@@ -30,6 +30,7 @@ make_directory(${tego_rs_include_dir}/tego)
 # hard-link our authord tego headers to tego-rs' include directory
 file(CREATE_LINK ${CMAKE_CURRENT_SOURCE_DIR}/include/tego/tego.hpp ${tego_rs_include_dir}/tego/tego.hpp)
 file(CREATE_LINK ${CMAKE_CURRENT_SOURCE_DIR}/include/tego/utilities.hpp ${tego_rs_include_dir}/tego/utilities.hpp)
+file(CREATE_LINK ${CMAKE_CURRENT_SOURCE_DIR}/include/tego/logger.hpp ${tego_rs_include_dir}/tego/logger.hpp)
 
 #
 # tego-rs crate feature flags
@@ -64,6 +65,9 @@ add_dependencies(tego_rs tego_rs_target)
 set_target_properties(tego_rs PROPERTIES
     IMPORTED_LOCATION ${tego_rs_static})
 target_include_directories(tego_rs INTERFACE ${tego_rs_include_dir})
+if (ENABLE_RICOCHET_REFRESH_LOGGING)
+    target_compile_definitions(tego_rs INTERFACE RICOCHET_REFRESH_LOGGING)
+endif()
 
 # Windows
 if (WIN32)

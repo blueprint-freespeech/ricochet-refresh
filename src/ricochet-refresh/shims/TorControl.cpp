@@ -31,6 +31,7 @@ namespace shims
         SettingsObject settings;
         settings.write("tor", tor);
     } catch (std::exception& ex) {
+        LOG_ERROR(ex.what());
     }
 
     void TorControl::settings_to_tor_config(const QJsonObject &config, tego_tor_daemon_config** out_config) {
@@ -404,12 +405,14 @@ namespace shims
         shims::TorManager::torManager->setRunning("Yes");
 
     } catch (std::exception& ex) {
+        LOG_ERROR(ex.what());
     }
 
     void TorControl::cancelBootstrap() try
     {
         tego_context_end(context, tego::throw_on_error());
     } catch (std::exception& ex) {
+        LOG_ERROR(ex.what());
     }
 
     QList<QString> TorControl::getBridgeTypes()

@@ -110,7 +110,9 @@ namespace
             }
             catch(std::exception& ex)
             {
-                qDebug() << "Exception thrown from task: " << ex.what();
+                std::stringstream ss;
+                ss << "exception thrown from task: " << ex.what();
+                LOG_ERROR(ss.str());
             }
         }
 

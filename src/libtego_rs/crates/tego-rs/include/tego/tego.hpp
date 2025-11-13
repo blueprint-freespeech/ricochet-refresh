@@ -15,6 +15,7 @@
 
 // libtego
 #include <tego/utilities.hpp>
+#include <tego/logger.hpp>
 
 namespace tego
 {
