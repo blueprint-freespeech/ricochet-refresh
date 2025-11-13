@@ -7,7 +7,6 @@ pub(crate) mod logger;
 pub(crate) mod macros;
 pub(crate) mod object_map;
 pub(crate) mod promise;
-pub(crate) mod user_id;
 
 #[allow(non_camel_case_types)]
 #[allow(clippy::too_many_arguments)]

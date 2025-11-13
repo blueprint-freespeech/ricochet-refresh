@@ -19,7 +19,6 @@ use crate::context::Context;
 use crate::error::{translate_failures, Error};
 use crate::macros::*;
 use crate::object_map::ObjectMap;
-use crate::user_id::UserId;
 
 pub const TEGO_TRUE: i32 = 1;
 pub const TEGO_FALSE: i32 = 0;
@@ -45,8 +44,7 @@ pub(crate) enum TegoObject {
     Context(Box<Context>),
     Ed25519PrivateKey(Ed25519PrivateKey),
     V3OnionServiceId(V3OnionServiceId),
-    // TODO: UserId can just be a V3OnionServiceId
-    UserId(UserId),
+    UserId(V3OnionServiceId),
     PluggableTransportConfig(PluggableTransportConfig),
     TorDaemonConfig(LegacyTorClientConfig),
 }
@@ -428,7 +426,7 @@ pub unsafe extern "C" fn tego_user_id_from_v3_onion_service_id(
             None => bail!("not a valid pointer: {:?}", key as *const c_void),
         };
 
-        let user_id = get_object_map().insert(TegoObject::UserId(UserId { service_id }));
+        let user_id = get_object_map().insert(TegoObject::UserId(service_id));
 
         unsafe { *out_user_id = user_id as *mut tego_user_id };
 
@@ -457,7 +455,7 @@ pub unsafe extern "C" fn tego_user_id_get_v3_onion_service_id(
 
         let key = user_id as TegoKey;
         let service_id = match get_object_map().get(&key) {
-            Some(TegoObject::UserId(user_id)) => user_id.service_id.clone(),
+            Some(TegoObject::UserId(user_id)) => user_id.clone(),
             Some(_) => bail!(
                 "not a tego_v3_onion_service_id pointer: {:?}",
                 key as *const c_void
@@ -507,7 +505,7 @@ pub unsafe extern "C" fn tego_context_get_host_user_id(
             None => bail!("not a valid pointer: {:?}", key as *const c_void),
         };
 
-        let host_user = get_object_map().insert(TegoObject::UserId(UserId { service_id }));
+        let host_user = get_object_map().insert(TegoObject::UserId(service_id));
 
         unsafe { *out_host_user = host_user as *mut tego_user_id };
         Ok(())
@@ -1196,7 +1194,7 @@ pub unsafe extern "C" fn tego_context_begin(
         for (user_id, user_type) in user_buffer.iter().zip(user_type_buffer.iter()) {
             let key = *user_id as TegoKey;
             let user_id = match get_object_map().get(&key) {
-                Some(TegoObject::UserId(UserId { service_id })) => service_id.clone(),
+                Some(TegoObject::UserId(service_id)) => service_id.clone(),
                 Some(_) => bail!("not a tego_user_id pointer: {:?}", key as *const c_void),
                 None => bail!("not a valid pointer: {:?}", key as *const c_void),
             };
@@ -1578,7 +1576,7 @@ pub unsafe extern "C" fn tego_context_send_message(
 
         let user = user as TegoKey;
         let user = match get_object_map().get(&user) {
-            Some(TegoObject::UserId(user)) => user.service_id.clone(),
+            Some(TegoObject::UserId(user)) => user.clone(),
             Some(_) => bail!("not a tego_user_id pointer: {:?}", user as *const c_void),
             None => bail!("not a valid pointer: {:?}", user as *const c_void),
         };
@@ -1642,7 +1640,7 @@ pub unsafe extern "C" fn tego_context_send_file_transfer_request(
 
         let user = user as TegoKey;
         let user = match object_map.get(&user) {
-            Some(TegoObject::UserId(user)) => user.service_id.clone(),
+            Some(TegoObject::UserId(user)) => user.clone(),
             Some(_) => bail!("not a tego_user_id pointer: {:?}", user as *const c_void),
             None => bail!("not a valid pointer: {:?}", user as *const c_void),
         };
@@ -1714,7 +1712,7 @@ pub unsafe extern "C" fn tego_context_respond_file_transfer_request(
 
         let user = user as TegoKey;
         let user = match object_map.get(&user) {
-            Some(TegoObject::UserId(user)) => user.service_id.clone(),
+            Some(TegoObject::UserId(user)) => user.clone(),
             Some(_) => bail!("not a tego_user_id pointer: {:?}", user as *const c_void),
             None => bail!("not a valid pointer: {:?}", user as *const c_void),
         };
@@ -1774,7 +1772,7 @@ pub unsafe extern "C" fn tego_context_cancel_file_transfer(
 
         let user = user as TegoKey;
         let user = match object_map.get(&user) {
-            Some(TegoObject::UserId(user)) => user.service_id.clone(),
+            Some(TegoObject::UserId(user)) => user.clone(),
             Some(_) => bail!("not a tego_user_id pointer: {:?}", user as *const c_void),
             None => bail!("not a valid pointer: {:?}", user as *const c_void),
         };
@@ -1807,7 +1805,7 @@ pub unsafe extern "C" fn tego_context_send_chat_request(
     translate_failures((), error, || -> Result<()> {
         let key = user as TegoKey;
         let service_id = match get_object_map().get(&key) {
-            Some(TegoObject::UserId(user_id)) => user_id.service_id.clone(),
+            Some(TegoObject::UserId(user_id)) => user_id.clone(),
             Some(_) => bail!("not a tego_user_id pointer: {:?}", key as *const c_void),
             None => bail!("not a valid pointer: {:?}", key as *const c_void),
         };
@@ -1861,7 +1859,7 @@ pub unsafe extern "C" fn tego_context_acknowledge_chat_request(
     translate_failures((), error, || -> Result<()> {
         let key = user as TegoKey;
         let service_id = match get_object_map().get(&key) {
-            Some(TegoObject::UserId(user_id)) => user_id.service_id.clone(),
+            Some(TegoObject::UserId(user_id)) => user_id.clone(),
             Some(_) => bail!("not a tego_user_id pointer: {:?}", key as *const c_void),
             None => bail!("not a valid pointer: {:?}", key as *const c_void),
         };
@@ -1899,7 +1897,7 @@ pub unsafe extern "C" fn tego_context_forget_user(
     translate_failures((), error, || -> Result<()> {
         let key = user as TegoKey;
         let service_id = match get_object_map().get(&key) {
-            Some(TegoObject::UserId(user_id)) => user_id.service_id.clone(),
+            Some(TegoObject::UserId(user_id)) => user_id.clone(),
             Some(_) => bail!("not a tego_user_id pointer: {:?}", key as *const c_void),
             None => bail!("not a valid pointer: {:?}", key as *const c_void),
         };

@@ -26,7 +26,6 @@ use crate::command_queue::*;
 use crate::ffi::*;
 use crate::macros::*;
 use crate::promise::Promise;
-use crate::user_id::UserId;
 
 const RICOCHET_PORT: u16 = 9878u16;
 
@@ -1614,7 +1613,7 @@ impl EventLoopTask {
                     if let Some(on_chat_request_received) = callbacks.on_chat_request_received {
                         log_trace!("invoke on_chat_request_received");
                         let sender =
-                            get_object_map().insert(TegoObject::UserId(UserId { service_id }));
+                            get_object_map().insert(TegoObject::UserId(service_id));
                         let message = CString::new(message.as_str()).unwrap();
                         let message_len = message.as_bytes().len();
                         on_chat_request_received(
@@ -1635,7 +1634,7 @@ impl EventLoopTask {
                     {
                         log_trace!("invoke on_chat_request_response_received");
                         let sender =
-                            get_object_map().insert(TegoObject::UserId(UserId { service_id }));
+                            get_object_map().insert(TegoObject::UserId(service_id));
                         let accepted_request = if accepted_request {
                             TEGO_TRUE
                         } else {
@@ -1653,7 +1652,7 @@ impl EventLoopTask {
                     if let Some(on_user_status_changed) = callbacks.on_user_status_changed {
                         log_trace!("invoke on_user_status_changed");
                         let user =
-                            get_object_map().insert(TegoObject::UserId(UserId { service_id }));
+                            get_object_map().insert(TegoObject::UserId(service_id));
                         on_user_status_changed(context, user as *const tego_user_id, status);
                         get_object_map().remove(&user);
                     }
@@ -1667,7 +1666,7 @@ impl EventLoopTask {
                     if let Some(on_message_received) = callbacks.on_message_received {
                         log_trace!("invoke on_message_received");
                         let user =
-                            get_object_map().insert(TegoObject::UserId(UserId { service_id }));
+                            get_object_map().insert(TegoObject::UserId(service_id));
                         let timestamp = timestamp.duration_since(std::time::UNIX_EPOCH).unwrap();
                         let timestamp = timestamp.as_millis() as tego_time;
                         assert!(timestamp > 0);
@@ -1694,7 +1693,7 @@ impl EventLoopTask {
                     if let Some(on_message_acknowledged) = callbacks.on_message_acknowledged {
                         log_trace!("invoke on_message_acknowledged");
                         let user =
-                            get_object_map().insert(TegoObject::UserId(UserId { service_id }));
+                            get_object_map().insert(TegoObject::UserId(service_id));
                         let accepted = if accepted { TEGO_TRUE } else { TEGO_FALSE };
                         on_message_acknowledged(
                             context,
@@ -1717,7 +1716,7 @@ impl EventLoopTask {
                         log_trace!("invoke on_file_transfer_request_received");
 
                         let sender = get_object_map()
-                            .insert(TegoObject::UserId(UserId { service_id: sender }));
+                            .insert(TegoObject::UserId(sender));
                         let file_name = CString::new(file_name.as_str()).unwrap();
                         let file_name_length = file_name.as_bytes().len();
 
@@ -1743,7 +1742,7 @@ impl EventLoopTask {
                     {
                         log_trace!("invoke on_file_transfer_request_acknowledged");
                         let user =
-                            get_object_map().insert(TegoObject::UserId(UserId { service_id }));
+                            get_object_map().insert(TegoObject::UserId(service_id));
                         let accepted = if accepted { TEGO_TRUE } else { TEGO_FALSE };
                         on_file_transfer_request_acknowledged(
                             context,
@@ -1764,7 +1763,7 @@ impl EventLoopTask {
                     {
                         log_trace!("invoke on_file_transfer_request_response_received");
                         let user =
-                            get_object_map().insert(TegoObject::UserId(UserId { service_id }));
+                            get_object_map().insert(TegoObject::UserId(service_id));
 
                         on_file_transfer_request_response_received(
                             context,
@@ -1784,9 +1783,7 @@ impl EventLoopTask {
                 } => {
                     if let Some(on_file_transfer_progress) = callbacks.on_file_transfer_progress {
                         log_trace!("invoke on_file_transfer_progress");
-                        let user_id = get_object_map().insert(TegoObject::UserId(UserId {
-                            service_id: user_id,
-                        }));
+                        let user_id = get_object_map().insert(TegoObject::UserId(user_id));
 
                         on_file_transfer_progress(
                             context,
@@ -1808,9 +1805,7 @@ impl EventLoopTask {
                 } => {
                     if let Some(on_file_transfer_complete) = callbacks.on_file_transfer_complete {
                         log_trace!("invoke on_file_transfer_complete");
-                        let user_id = get_object_map().insert(TegoObject::UserId(UserId {
-                            service_id: user_id,
-                        }));
+                        let user_id = get_object_map().insert(TegoObject::UserId(user_id));
 
                         on_file_transfer_complete(
                             context,
