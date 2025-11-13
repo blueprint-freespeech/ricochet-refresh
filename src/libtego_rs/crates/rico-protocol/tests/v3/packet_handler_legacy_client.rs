@@ -28,7 +28,8 @@ fn test_legacy_client_interop() -> Result<()> {
     let new_service_id = V3OnionServiceId::from_private_key(&new_private_key);
     let server_service_id = &new_service_id;
 
-    let mut packet_handler = PacketHandler::new(new_private_key, Default::default(), Default::default());
+    let mut packet_handler =
+        PacketHandler::new(new_private_key, Default::default(), Default::default());
     let connection_handle = packet_handler.new_incoming_connection()?;
 
     // introduction handshake

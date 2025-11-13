@@ -465,7 +465,7 @@ pub enum Event {
         message: String,
     },
     FatalProtocolFailure {
-        message: String
+        message: String,
     },
 }
 
@@ -684,7 +684,9 @@ impl PacketHandler {
 
         if protocol_failure {
             let _ = self.connections.remove(&connection_handle);
-            Ok(Event::FatalProtocolFailure{message: "received unexpected introductin packet".to_string()})
+            Ok(Event::FatalProtocolFailure {
+                message: "received unexpected introductin packet".to_string(),
+            })
         } else {
             let version = if packet.versions().contains(&Version::RicochetRefresh3) {
                 let connection = self.connection_mut(connection_handle)?;
@@ -721,7 +723,9 @@ impl PacketHandler {
 
         if protocol_failure {
             let _ = self.connections.remove(&connection_handle);
-            return Ok(Event::FatalProtocolFailure{message: "received unexpected introduction response packet".to_string()});
+            return Ok(Event::FatalProtocolFailure {
+                message: "received unexpected introduction response packet".to_string(),
+            });
         }
 
         if let Some(Version::RicochetRefresh3) = packet.version {
@@ -763,7 +767,9 @@ impl PacketHandler {
         } else {
             // version not supported
             let _ = self.connections.remove(&connection_handle);
-            Ok(Event::FatalProtocolFailure{message: format!("unsupported protocl version: {:?}", packet.version)})
+            Ok(Event::FatalProtocolFailure {
+                message: format!("unsupported protocl version: {:?}", packet.version),
+            })
         }
     }
 
@@ -790,7 +796,10 @@ impl PacketHandler {
                 };
                 if protocol_failure {
                     let _ = self.connections.remove(&connection_handle);
-                    return Ok(Event::FatalProtocolFailure{message: "received unexpected control channel open channel packet".to_string()});
+                    return Ok(Event::FatalProtocolFailure {
+                        message: "received unexpected control channel open channel packet"
+                            .to_string(),
+                    });
                 }
 
                 use control_channel::{
@@ -920,7 +929,11 @@ impl PacketHandler {
                                 service_id.clone()
                             }
                         } else {
-                            return Ok(Event::FatalProtocolFailure{message: "received chat open channel request before client authenticated".to_string()});
+                            return Ok(Event::FatalProtocolFailure {
+                                message:
+                                    "received chat open channel request before client authenticated"
+                                        .to_string(),
+                            });
                         };
 
                         let connection = self.connection_mut(connection_handle)?;
@@ -1038,15 +1051,24 @@ impl PacketHandler {
                     ) => {
                         use contact_request_channel::Status;
                         match response.status {
-                            Status::Undefined => Ok(Event::FatalProtocolFailure{message: "received unexpected channel result response: Undefined".to_string()}),
+                            Status::Undefined => Ok(Event::FatalProtocolFailure {
+                                message: "received unexpected channel result response: Undefined"
+                                    .to_string(),
+                            }),
                             Status::Pending => Ok(Event::ContactRequestResultPending {
                                 service_id: service_id.clone(),
                             }),
-                            Status::Accepted => Ok(Event::FatalProtocolFailure{message: "received unexpected channel result response: Accepted".to_string()}),
+                            Status::Accepted => Ok(Event::FatalProtocolFailure {
+                                message: "received unexpected channel result response: Accepted"
+                                    .to_string(),
+                            }),
                             Status::Rejected => Ok(Event::ContactRequestResultRejected {
                                 service_id: service_id.clone(),
                             }),
-                            Status::Error => Ok(Event::FatalProtocolFailure{message: "received unexpected channel result response: Error".to_string()}),
+                            Status::Error => Ok(Event::FatalProtocolFailure {
+                                message: "received unexpected channel result response: Error"
+                                    .to_string(),
+                            }),
                         }
                     }
                     (ChannelData::OutgoingChat, Some(service_id), true, None, None) => {
@@ -1095,7 +1117,12 @@ impl PacketHandler {
                 // chat messags should only come in on the incoming chat channel
                 match channel_type {
                     Some(ChannelType::OutgoingContactRequest) => (),
-                    _ => return Ok(Event::FatalProtocolFailure{message: "received unexpected contact request channel packet".to_string()}),
+                    _ => {
+                        return Ok(Event::FatalProtocolFailure {
+                            message: "received unexpected contact request channel packet"
+                                .to_string(),
+                        })
+                    }
                 }
 
                 let connection = self.connection_mut(connection_handle)?;
@@ -1138,12 +1165,12 @@ impl PacketHandler {
                         self.known_contacts.insert(service_id.clone());
                         replies.append(&mut pending_replies);
                         Ok(Event::ContactRequestResultAccepted { service_id })
-                    },
+                    }
                     (Status::Rejected, Some(service_id)) => {
                         connection.close_channel(channel_id, Some(replies));
                         Ok(Event::ContactRequestResultRejected { service_id })
-                    },
-                    _ => unreachable!()
+                    }
+                    _ => unreachable!(),
                 }
             }
         }
@@ -1164,7 +1191,12 @@ impl PacketHandler {
                 // chat messags should only come in on the incoming chat channel
                 match channel_type {
                     Some(ChannelType::IncomingChat) => (),
-                    _ => return Ok(Event::FatalProtocolFailure{message: "received unexpected chat channel chat message packet".to_string()}),
+                    _ => {
+                        return Ok(Event::FatalProtocolFailure {
+                            message: "received unexpected chat channel chat message packet"
+                                .to_string(),
+                        })
+                    }
                 }
 
                 let connection = self.connection(connection_handle)?;
@@ -1203,7 +1235,12 @@ impl PacketHandler {
                 // chat ack messsages should only come in on the outgoing chat channel
                 match channel_type {
                     Some(ChannelType::OutgoingChat) => (),
-                    _ => return Ok(Event::FatalProtocolFailure{message: "received unexpected chat channel chat acknowledge packet".to_string()}),
+                    _ => {
+                        return Ok(Event::FatalProtocolFailure {
+                            message: "received unexpected chat channel chat acknowledge packet"
+                                .to_string(),
+                        })
+                    }
                 }
 
                 let connection = self.connection(connection_handle)?;
@@ -1246,24 +1283,28 @@ impl PacketHandler {
                 };
                 if protocol_failure {
                     let _ = self.connections.remove(&connection_handle);
-                    return Ok(Event::FatalProtocolFailure{message: "received unexpected auth hidden service channel proof packet".to_string()});
+                    return Ok(Event::FatalProtocolFailure {
+                        message: "received unexpected auth hidden service channel proof packet"
+                            .to_string(),
+                    });
                 }
 
                 let server_service_id = self.service_id.clone();
 
-                let (client_cookie, server_cookie) =
-                    if let Some(ChannelData::IncomingAuthHiddenService {
+                let (client_cookie, server_cookie) = if let Some(
+                    ChannelData::IncomingAuthHiddenService {
                         client_cookie,
                         server_cookie,
-                    }) = self
-                        .connection_mut(connection_handle)?
-                        .channel_map
-                        .get_by_id(&channel)
-                    {
-                        (*client_cookie, *server_cookie)
-                    } else {
-                        return Ok(Event::FatalProtocolFailure{message: "received auth hidden service channel proof packet before cookies exchanged".to_string()});
-                    };
+                    },
+                ) = self
+                    .connection_mut(connection_handle)?
+                    .channel_map
+                    .get_by_id(&channel)
+                {
+                    (*client_cookie, *server_cookie)
+                } else {
+                    return Ok(Event::FatalProtocolFailure{message: "received auth hidden service channel proof packet before cookies exchanged".to_string()});
+                };
 
                 let client_service_id = proof.service_id();
 
@@ -1388,7 +1429,10 @@ impl PacketHandler {
                     Ok(event)
                 } else {
                     let _ = self.connections.remove(&connection_handle);
-                    Ok(Event::FatalProtocolFailure{message: "received invalid proof signature, possible impersonation attempt".to_string()})
+                    Ok(Event::FatalProtocolFailure {
+                        message: "received invalid proof signature, possible impersonation attempt"
+                            .to_string(),
+                    })
                 }
             }
             auth_hidden_service::Packet::Result(result) => {
@@ -1402,7 +1446,10 @@ impl PacketHandler {
                 };
                 if protocol_failure {
                     let _ = self.connections.remove(&connection_handle);
-                    return Ok(Event::FatalProtocolFailure{message: "received unexpected auth hidden service channel result packet".to_string()});
+                    return Ok(Event::FatalProtocolFailure {
+                        message: "received unexpected auth hidden service channel result packet"
+                            .to_string(),
+                    });
                 }
 
                 let connection = self.connection_mut(connection_handle)?;
@@ -1541,7 +1588,9 @@ impl PacketHandler {
 
                         Ok(event)
                     }
-                    _ => Ok(Event::FatalProtocolFailure{message: "auth hidden service proof not accepted by peer".to_string()}),
+                    _ => Ok(Event::FatalProtocolFailure {
+                        message: "auth hidden service proof not accepted by peer".to_string(),
+                    }),
                 }
             }
         }
@@ -1566,7 +1615,12 @@ impl PacketHandler {
                 // file header should only come in on the incoming file channel
                 match channel_type {
                     Some(ChannelType::IncomingFileTransfer) => (),
-                    _ => return Ok(Event::FatalProtocolFailure{message: "received unexpected file channel file header packet".to_string()}),
+                    _ => {
+                        return Ok(Event::FatalProtocolFailure {
+                            message: "received unexpected file channel file header packet"
+                                .to_string(),
+                        })
+                    }
                 }
 
                 let file_id = file_header.file_id();
@@ -1595,7 +1649,9 @@ impl PacketHandler {
                     .is_some()
                 {
                     // peer initiated file transfer with duplicate id
-                    return Ok(Event::FatalProtocolFailure{message: "peer initiated transfer with duplicate id".to_string()});
+                    return Ok(Event::FatalProtocolFailure {
+                        message: "peer initiated transfer with duplicate id".to_string(),
+                    });
                 }
 
                 // build ack reply
@@ -1616,7 +1672,12 @@ impl PacketHandler {
                 // file chunks should only come in on the incoming file channel
                 match channel_type {
                     Some(ChannelType::IncomingFileTransfer) => (),
-                    _ => return Ok(Event::FatalProtocolFailure{message: "received unexpected file channel file chunk packet".to_string()}),
+                    _ => {
+                        return Ok(Event::FatalProtocolFailure {
+                            message: "received unexpected file channel file chunk packet"
+                                .to_string(),
+                        })
+                    }
                 }
 
                 let file_id = file_chunk.file_id();
@@ -1712,7 +1773,12 @@ impl PacketHandler {
                 // file header ack should only come in on the outgoing file channel
                 match channel_type {
                     Some(ChannelType::OutgoingFileTransfer) => (),
-                    _ => return Ok(Event::FatalProtocolFailure{message: "received unexpected file channel file header ack packet".to_string()}),
+                    _ => {
+                        return Ok(Event::FatalProtocolFailure {
+                            message: "received unexpected file channel file header ack packet"
+                                .to_string(),
+                        })
+                    }
                 }
 
                 let file_id = file_header_ack.file_id();
@@ -1732,7 +1798,12 @@ impl PacketHandler {
                 // file header response should only come in on the outgoing file channel
                 match channel_type {
                     Some(ChannelType::OutgoingFileTransfer) => (),
-                    _ => return Ok(Event::FatalProtocolFailure{message: "received unexpected file channel file header response packet".to_string()}),
+                    _ => {
+                        return Ok(Event::FatalProtocolFailure {
+                            message: "received unexpected file channel file header response packet"
+                                .to_string(),
+                        })
+                    }
                 }
 
                 let file_id = file_header_response.file_id();
@@ -1767,7 +1838,12 @@ impl PacketHandler {
                 // file chunk ack should only come in on the outgoing file channel
                 match channel_type {
                     Some(ChannelType::OutgoingFileTransfer) => (),
-                    _ => return Ok(Event::FatalProtocolFailure{message: "received unexpected file channel file chunk ack packet".to_string()}),
+                    _ => {
+                        return Ok(Event::FatalProtocolFailure {
+                            message: "received unexpected file channel file chunk ack packet"
+                                .to_string(),
+                        })
+                    }
                 }
 
                 let file_id = file_chunk_ack.file_id();
@@ -1802,7 +1878,9 @@ impl PacketHandler {
                     Ok(Event::FatalProtocolFailure{message: "local and peer disagree about how many bytes transferred in file transfer".to_string()})
                 // ensure we've sent no more bytes than the size of the file
                 } else if file_upload.file_size < bytes_sent {
-                    Ok(Event::FatalProtocolFailure{message: "somehow sent more bytes than the file upload size".to_string()})
+                    Ok(Event::FatalProtocolFailure {
+                        message: "somehow sent more bytes than the file upload size".to_string(),
+                    })
                 } else {
                     let offset = bytes_sent;
                     Ok(Event::FileChunkAckReceived {
@@ -1942,7 +2020,8 @@ impl PacketHandler {
         let connection = self.connection_mut(connection_handle)?;
         let channel_identifier = connection
             .channel_map
-            .channel_type_to_id(&ChannelType::IncomingContactRequest).unwrap();
+            .channel_type_to_id(&ChannelType::IncomingContactRequest)
+            .unwrap();
 
         let mut pending_replies: Vec<Packet> = Vec::with_capacity(4);
 
@@ -2003,7 +2082,8 @@ impl PacketHandler {
         let connection = self.connection_mut(connection_handle)?;
         let channel_identifier = connection
             .channel_map
-            .channel_type_to_id(&ChannelType::IncomingContactRequest).unwrap();
+            .channel_type_to_id(&ChannelType::IncomingContactRequest)
+            .unwrap();
 
         let mut pending_replies: Vec<Packet> = Vec::with_capacity(3);
 

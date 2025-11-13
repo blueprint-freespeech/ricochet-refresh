@@ -1053,7 +1053,9 @@ impl EventLoopTask {
                                 self.to_remove.insert(connection_handle);
                             }
                         }
-                        Ok(Event::BlockedClientAuthenticationAttempted { service_id: _service_id }) => {
+                        Ok(Event::BlockedClientAuthenticationAttempted {
+                            service_id: _service_id,
+                        }) => {
                             log_info!(
                                 "blocked client attempted authentication, peer: {_service_id}"
                             );
@@ -1104,7 +1106,9 @@ impl EventLoopTask {
                                 message: message_text,
                             });
                         }
-                        Ok(Event::ContactRequestResultPending { service_id: _service_id }) => {
+                        Ok(Event::ContactRequestResultPending {
+                            service_id: _service_id,
+                        }) => {
                             log_info!("contact request result pending, peer: {_service_id:?}");
                         }
                         Ok(Event::ContactRequestResultAccepted { service_id }) => {
@@ -1125,15 +1129,21 @@ impl EventLoopTask {
                                     accepted_request: false,
                                 });
                         }
-                        Ok(Event::IncomingChatChannelOpened { service_id: _service_id }) => {
+                        Ok(Event::IncomingChatChannelOpened {
+                            service_id: _service_id,
+                        }) => {
                             log_info!("incoming chat channel opened, peer: {_service_id:?}");
                         }
-                        Ok(Event::IncomingFileTransferChannelOpened { service_id: _service_id }) => {
+                        Ok(Event::IncomingFileTransferChannelOpened {
+                            service_id: _service_id,
+                        }) => {
                             log_info!(
                                 "incoming file transfer channel opened, peer: {_service_id:?}"
                             );
                         }
-                        Ok(Event::OutgoingAuthHiddenServiceChannelOpened { service_id: _service_id }) => {
+                        Ok(Event::OutgoingAuthHiddenServiceChannelOpened {
+                            service_id: _service_id,
+                        }) => {
                             log_info!("outgoing auth hidden service channel opened, peer: {_service_id:?}");
                         }
                         Ok(Event::OutgoingChatChannelOpened { service_id }) => {
@@ -1143,7 +1153,9 @@ impl EventLoopTask {
                                 status: tego_user_status::tego_user_status_online,
                             });
                         }
-                        Ok(Event::OutgoingFileTransferChannelOpened { service_id: _service_id }) => {
+                        Ok(Event::OutgoingFileTransferChannelOpened {
+                            service_id: _service_id,
+                        }) => {
                             log_info!(
                                 "outgoing file transfer channel opened, peer: {_service_id:?}"
                             );
@@ -1474,7 +1486,7 @@ impl EventLoopTask {
                         Ok(Event::ProtocolFailure { message: _message }) => {
                             log_error!("non-fatal protocol failure: {_message}");
                         }
-                        Ok(Event::FatalProtocolFailure{ message: _message }) => {
+                        Ok(Event::FatalProtocolFailure { message: _message }) => {
                             log_error!("fatal protocol error, removing connection: {_message}");
                             self.to_remove.insert(handle);
                             break 'packet_handle;
@@ -1612,8 +1624,7 @@ impl EventLoopTask {
                 } => {
                     if let Some(on_chat_request_received) = callbacks.on_chat_request_received {
                         log_trace!("invoke on_chat_request_received");
-                        let sender =
-                            get_object_map().insert(TegoObject::UserId(service_id));
+                        let sender = get_object_map().insert(TegoObject::UserId(service_id));
                         let message = CString::new(message.as_str()).unwrap();
                         let message_len = message.as_bytes().len();
                         on_chat_request_received(
@@ -1633,8 +1644,7 @@ impl EventLoopTask {
                         callbacks.on_chat_request_response_received
                     {
                         log_trace!("invoke on_chat_request_response_received");
-                        let sender =
-                            get_object_map().insert(TegoObject::UserId(service_id));
+                        let sender = get_object_map().insert(TegoObject::UserId(service_id));
                         let accepted_request = if accepted_request {
                             TEGO_TRUE
                         } else {
@@ -1651,8 +1661,7 @@ impl EventLoopTask {
                 CallbackData::UserStatusChanged { service_id, status } => {
                     if let Some(on_user_status_changed) = callbacks.on_user_status_changed {
                         log_trace!("invoke on_user_status_changed");
-                        let user =
-                            get_object_map().insert(TegoObject::UserId(service_id));
+                        let user = get_object_map().insert(TegoObject::UserId(service_id));
                         on_user_status_changed(context, user as *const tego_user_id, status);
                         get_object_map().remove(&user);
                     }
@@ -1665,8 +1674,7 @@ impl EventLoopTask {
                 } => {
                     if let Some(on_message_received) = callbacks.on_message_received {
                         log_trace!("invoke on_message_received");
-                        let user =
-                            get_object_map().insert(TegoObject::UserId(service_id));
+                        let user = get_object_map().insert(TegoObject::UserId(service_id));
                         let timestamp = timestamp.duration_since(std::time::UNIX_EPOCH).unwrap();
                         let timestamp = timestamp.as_millis() as tego_time;
                         assert!(timestamp > 0);
@@ -1692,8 +1700,7 @@ impl EventLoopTask {
                 } => {
                     if let Some(on_message_acknowledged) = callbacks.on_message_acknowledged {
                         log_trace!("invoke on_message_acknowledged");
-                        let user =
-                            get_object_map().insert(TegoObject::UserId(service_id));
+                        let user = get_object_map().insert(TegoObject::UserId(service_id));
                         let accepted = if accepted { TEGO_TRUE } else { TEGO_FALSE };
                         on_message_acknowledged(
                             context,
@@ -1715,8 +1722,7 @@ impl EventLoopTask {
                     {
                         log_trace!("invoke on_file_transfer_request_received");
 
-                        let sender = get_object_map()
-                            .insert(TegoObject::UserId(sender));
+                        let sender = get_object_map().insert(TegoObject::UserId(sender));
                         let file_name = CString::new(file_name.as_str()).unwrap();
                         let file_name_length = file_name.as_bytes().len();
 
@@ -1741,8 +1747,7 @@ impl EventLoopTask {
                         callbacks.on_file_transfer_request_acknowledged
                     {
                         log_trace!("invoke on_file_transfer_request_acknowledged");
-                        let user =
-                            get_object_map().insert(TegoObject::UserId(service_id));
+                        let user = get_object_map().insert(TegoObject::UserId(service_id));
                         let accepted = if accepted { TEGO_TRUE } else { TEGO_FALSE };
                         on_file_transfer_request_acknowledged(
                             context,
@@ -1762,8 +1767,7 @@ impl EventLoopTask {
                         callbacks.on_file_transfer_request_response_received
                     {
                         log_trace!("invoke on_file_transfer_request_response_received");
-                        let user =
-                            get_object_map().insert(TegoObject::UserId(service_id));
+                        let user = get_object_map().insert(TegoObject::UserId(service_id));
 
                         on_file_transfer_request_response_received(
                             context,

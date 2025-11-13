@@ -2368,14 +2368,14 @@ pub extern "C" fn tego_tor_daemon_config_delete(value: *mut tego_tor_daemon_conf
 /// All pointers must be properly initialised or NULL
 #[no_mangle]
 #[cfg(feature = "logging")]
-pub unsafe extern "C" fn tego_log_error(
-    message: *const c_char,
-    message_length: usize) {
+pub unsafe extern "C" fn tego_log_error(message: *const c_char, message_length: usize) {
     if message.is_null() && message_length > 0 {
         panic!("message pointer is null but has non-zero length");
     } else {
         let message = unsafe { std::slice::from_raw_parts(message as *const u8, message_length) };
-        let message = std::str::from_utf8(message).expect("message not utf8 encoded").to_string();
+        let message = std::str::from_utf8(message)
+            .expect("message not utf8 encoded")
+            .to_string();
 
         crate::logger::Logger::log(crate::logger::LogLevel::Error, message);
     }
@@ -2389,14 +2389,14 @@ pub unsafe extern "C" fn tego_log_error(
 /// All pointers must be properly initialised or NULL
 #[no_mangle]
 #[cfg(feature = "logging")]
-pub unsafe extern "C" fn tego_log_info(
-    message: *const c_char,
-    message_length: usize) {
+pub unsafe extern "C" fn tego_log_info(message: *const c_char, message_length: usize) {
     if message.is_null() && message_length > 0 {
         panic!("message pointer is null but has non-zero length");
     } else {
         let message = unsafe { std::slice::from_raw_parts(message as *const u8, message_length) };
-        let message = std::str::from_utf8(message).expect("message not utf8 encoded").to_string();
+        let message = std::str::from_utf8(message)
+            .expect("message not utf8 encoded")
+            .to_string();
 
         crate::logger::Logger::log(crate::logger::LogLevel::Info, message);
     }
@@ -2417,7 +2417,8 @@ pub unsafe extern "C" fn tego_log_trace(
     function_name_length: usize,
     source_path: *const c_char,
     source_path_length: usize,
-    line_number: usize) {
+    line_number: usize,
+) {
     if message.is_null() && message_length > 0 {
         panic!("message pointer is null but has non-zero length");
     } else if function_name.is_null() {
@@ -2426,18 +2427,28 @@ pub unsafe extern "C" fn tego_log_trace(
         panic!("function_name_length must be greater than 0");
     } else if source_path.is_null() {
         panic!("source_path pointer must not be null");
-    } if source_path_length == 0usize {
+    }
+    if source_path_length == 0usize {
         panic!("source_path_length must be greater than 0");
     } else {
         let message = unsafe { std::slice::from_raw_parts(message as *const u8, message_length) };
         let message = std::str::from_utf8(message).expect("message not utf8 encoded");
 
-        let function_name = unsafe { std::slice::from_raw_parts(function_name as *const u8, function_name_length) };
-        let function_name = std::str::from_utf8(function_name).expect("function_name not utf8 encoded").to_string();
+        let function_name =
+            unsafe { std::slice::from_raw_parts(function_name as *const u8, function_name_length) };
+        let function_name = std::str::from_utf8(function_name)
+            .expect("function_name not utf8 encoded")
+            .to_string();
 
-        let source_path = unsafe { std::slice::from_raw_parts(source_path as *const u8, source_path_length) };
-        let source_path = std::str::from_utf8(source_path).expect("source_path not utf8 encoded").to_string();
+        let source_path =
+            unsafe { std::slice::from_raw_parts(source_path as *const u8, source_path_length) };
+        let source_path = std::str::from_utf8(source_path)
+            .expect("source_path not utf8 encoded")
+            .to_string();
 
-        crate::logger::Logger::log(crate::logger::LogLevel::Trace, format!("{function_name} in {source_path}:{line_number} {message}"));
+        crate::logger::Logger::log(
+            crate::logger::LogLevel::Trace,
+            format!("{function_name} in {source_path}:{line_number} {message}"),
+        );
     }
 }

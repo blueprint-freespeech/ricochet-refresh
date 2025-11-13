@@ -31,7 +31,8 @@ fn test_legacy_host_interop() -> Result<()> {
     let new_service_id = V3OnionServiceId::from_public_key(&new_public_key);
     let client_service_id = &new_service_id;
 
-    let mut packet_handler = PacketHandler::new(new_private_key, Default::default(), Default::default());
+    let mut packet_handler =
+        PacketHandler::new(new_private_key, Default::default(), Default::default());
     let connection_handle = packet_handler.new_outgoing_connection(
         legacy_service_id.clone(),
         Some(contact_request_channel::MessageText::try_from(
