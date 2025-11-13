@@ -1676,9 +1676,9 @@ checksum = "5d99f8c9a7727884afe522e9bd5edbfc91a3312b36a77b5fb8926e4c31a41801"
 
 [[package]]
 name = "tor-interface"
-version = "0.6.1"
+version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "108828952fd1c7ba3a2e82e1b6cec825c46ffe060aafbbf8d328e5a0e7e1c50d"
+checksum = "6b84e7324a39202316f0ae469336b3ab69cd61c631df19bb88dab5baa74452b0"
 dependencies = [
  "curve25519-dalek",
  "data-encoding",

@@ -16,7 +16,7 @@ anyhow = "1.0"
 time = {version = "0.3", features = ["formatting", "macros"], optional = true}
 data-encoding = "2.0"
 rico-protocol = { path = "../rico-protocol" }
-tor-interface = {version = "0.6.1", features = ["legacy-tor-provider"]}
+tor-interface = {version = "0.6.2", features = ["legacy-tor-provider"]}
 which = "7.0"
 
 [lib]
