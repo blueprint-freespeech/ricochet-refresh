@@ -158,7 +158,7 @@ impl ChatMessage {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct MessageText {
     value: String,
 }

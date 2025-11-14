@@ -1,5 +1,5 @@
 // standard
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::ffi::{CString, OsString};
 use std::fs::File;
 use std::io::{ErrorKind, Read, Seek, Write};
@@ -344,13 +344,20 @@ impl Drop for Context {
         self.end();
     }
 }
+#[derive(Debug)]
+struct Message {
+    gui_id: tego_message_id,
+    network_handle: MessageHandle,
+    timestamp: std::time::Instant,
+    text: rico_protocol::v3::message::chat_channel::MessageText,
+}
 
 struct UserData {
     user_type: tego_user_type,
     pending_connection_handle: Option<tor_interface::tor_provider::ConnectHandle>,
     connection_handle: Option<ConnectionHandle>,
-    // todo: maybe we can queue messages here?
     connection_failures: usize,
+    queued_messages: VecDeque<Message>,
 }
 
 struct EventLoopTask {
@@ -410,6 +417,7 @@ impl EventLoopTask {
                     pending_connection_handle: None,
                     connection_handle: None,
                     connection_failures: 0usize,
+                    queued_messages: Default::default(),
                 },
             );
         }
@@ -731,14 +739,22 @@ impl EventLoopTask {
                 } => {
                     let mut replies: Vec<Packet> = Default::default();
                     let result = match self.packet_handler.send_message(
-                        service_id,
-                        message_text,
+                        service_id.clone(),
+                        message_text.clone(),
                         &mut replies,
                     ) {
                         Ok((connection_handle, message_handle)) => {
                             if let Some(connection) = self.connections.get_mut(&connection_handle) {
                                 connection.write_packets.append(&mut replies);
                             }
+                            // queue copies of messages to resend in event of reconnect
+                            let user_data = self.users.get_mut(&service_id).unwrap();
+                            user_data.queued_messages.push_back(Message {
+                                gui_id: message_handle.clone().into(),
+                                network_handle: message_handle.clone(),
+                                timestamp: std::time::Instant::now(),
+                                text: message_text,
+                            });
                             Ok(message_handle.into())
                         }
                         Err(err) => Err(err.into()),
@@ -1184,7 +1200,18 @@ impl EventLoopTask {
                             accepted,
                         }) => {
                             log_info!("chat ack received, peer: {service_id:?}, message_handle: {message_handle:?}, accepted: {accepted}");
+
+                            // find message in queue and remove as it has been acked by remove_connection
                             let message_id: tego_message_id = message_handle.into();
+                            let mut user_data = self.users.get_mut(&service_id).unwrap();
+                            let index = user_data
+                                .queued_messages
+                                .iter()
+                                .position(|m| m.gui_id == message_id)
+                                .unwrap();
+                            let _message = user_data.queued_messages.remove(index).unwrap();
+
+                            // then we need to send queued messages when a new connection is created
                             self.callback_queue.push(CallbackData::MessageAcknowledged {
                                 service_id,
                                 message_id,
