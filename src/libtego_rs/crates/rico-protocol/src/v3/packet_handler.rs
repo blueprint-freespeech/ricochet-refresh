@@ -2109,6 +2109,7 @@ impl PacketHandler {
         &mut self,
         service_id: V3OnionServiceId,
         message_text: chat_channel::MessageText,
+        time_delta: Option<std::time::Duration>,
         replies: &mut Vec<Packet>,
     ) -> Result<(ConnectionHandle, MessageHandle), Error> {
         let connection_handle = self.service_id_to_connection_handle(&service_id)?;
@@ -2132,7 +2133,8 @@ impl PacketHandler {
             // and increment counter
             connection.sent_message_counter += 1u64;
 
-            let chat_message = chat_channel::ChatMessage::new(message_text, message_id, None)?;
+            let chat_message =
+                chat_channel::ChatMessage::new(message_text, message_id, time_delta)?;
             let packet = chat_channel::Packet::ChatMessage(chat_message);
             let reply = Packet::ChatChannelPacket { channel, packet };
             replies.push(reply);

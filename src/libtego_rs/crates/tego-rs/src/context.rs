@@ -741,6 +741,7 @@ impl EventLoopTask {
                     let result = match self.packet_handler.send_message(
                         service_id.clone(),
                         message_text.clone(),
+                        None,
                         &mut replies,
                     ) {
                         Ok((connection_handle, message_handle)) => {
@@ -750,8 +751,8 @@ impl EventLoopTask {
                             // queue copies of messages to resend in event of reconnect
                             let user_data = self.users.get_mut(&service_id).unwrap();
                             user_data.queued_messages.push_back(Message {
-                                gui_id: message_handle.clone().into(),
-                                network_handle: message_handle.clone(),
+                                gui_id: message_handle.into(),
+                                network_handle: message_handle,
                                 timestamp: std::time::Instant::now(),
                                 text: message_text,
                             });
@@ -1164,6 +1165,31 @@ impl EventLoopTask {
                         }
                         Ok(Event::OutgoingChatChannelOpened { service_id }) => {
                             log_info!("outgoing chat channel opened, peer: {service_id:?}");
+
+                            // send queued messages
+                            let user_data = self.users.get_mut(&service_id).unwrap();
+                            user_data.connection_failures = 0usize;
+                            let queued_message_count = user_data.queued_messages.len();
+                            if queued_message_count > 0 {
+                                log_info!("re-sending {queued_message_count} un-acked messages");
+                                for message in user_data.queued_messages.iter_mut() {
+                                    let (_connection_handle, message_handle) = self
+                                        .packet_handler
+                                        .send_message(
+                                            service_id.clone(),
+                                            message.text.clone(),
+                                            Some(
+                                                std::time::Instant::now()
+                                                    .duration_since(message.timestamp),
+                                            ),
+                                            write_packets,
+                                        )
+                                        .unwrap();
+                                    // update the queued message with new message handle
+                                    message.network_handle = message_handle;
+                                }
+                            }
+
                             self.callback_queue.push(CallbackData::UserStatusChanged {
                                 service_id,
                                 status: tego_user_status::tego_user_status_online,
@@ -1202,14 +1228,14 @@ impl EventLoopTask {
                             log_info!("chat ack received, peer: {service_id:?}, message_handle: {message_handle:?}, accepted: {accepted}");
 
                             // find message in queue and remove as it has been acked by remove_connection
-                            let message_id: tego_message_id = message_handle.into();
-                            let mut user_data = self.users.get_mut(&service_id).unwrap();
+                            let user_data = self.users.get_mut(&service_id).unwrap();
                             let index = user_data
                                 .queued_messages
                                 .iter()
-                                .position(|m| m.gui_id == message_id)
+                                .position(|m| m.network_handle == message_handle)
                                 .unwrap();
-                            let _message = user_data.queued_messages.remove(index).unwrap();
+                            let message = user_data.queued_messages.remove(index).unwrap();
+                            let message_id = message.gui_id;
 
                             // then we need to send queued messages when a new connection is created
                             self.callback_queue.push(CallbackData::MessageAcknowledged {

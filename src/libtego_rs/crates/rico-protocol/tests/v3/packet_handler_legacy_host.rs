@@ -307,6 +307,7 @@ fn test_legacy_host_interop() -> Result<()> {
     let (dest, message_handle) = packet_handler.send_message(
         legacy_service_id.clone(),
         chat_channel::MessageText::try_from("hello!".to_string())?,
+        None,
         &mut to_legacy,
     )?;
     assert_eq!(dest, connection_handle);
