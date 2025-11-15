@@ -14,6 +14,20 @@ use crate::v3::file_hasher::{FileHash, FileHasher};
 use crate::v3::message::*;
 use crate::v3::Error;
 
+// todo: the current architecture adds some complications for
+// embedders, in the future:
+// - internal event queues for each connection
+// - handle_packet should not return events or populate packets, instead:
+//  - queue events internally
+//  - queue packets internally
+// - send_message, send_file_chunk, etc should do likewise as
+//   handle_packet
+// - add a seperate event pump method to consume events
+// - either return packets to send via events, or a separate
+//   function to get the packets
+// this way, all of the error handling should be more consistent
+// and in one place
+
 //
 // Ricochet-Refresh Protocol Packet
 //
@@ -2269,6 +2283,7 @@ impl PacketHandler {
         &mut self,
         service_id: &V3OnionServiceId,
         file_transfer_handle: FileTransferHandle,
+        io_failure: bool,
         replies: &mut Vec<Packet>,
     ) -> Result<ConnectionHandle, Error> {
         let connection_handle = self.service_id_to_connection_handle(service_id)?;
@@ -2304,7 +2319,11 @@ impl PacketHandler {
         let file_transfer_complete_notification =
             file_channel::FileTransferCompleteNotification::new(
                 file_id,
-                file_channel::FileTransferResult::Cancelled,
+                if io_failure {
+                    file_channel::FileTransferResult::Failure
+                } else {
+                    file_channel::FileTransferResult::Cancelled
+                },
             )?;
         let packet = file_channel::Packet::FileTransferCompleteNotification(
             file_transfer_complete_notification,
