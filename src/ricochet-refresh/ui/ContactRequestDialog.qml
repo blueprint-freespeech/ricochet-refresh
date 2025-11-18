@@ -125,12 +125,12 @@ ApplicationWindow {
 
     Action {
         shortcut: StandardKey.Close
-        onTriggered: contactRequestDialog.close()
+        onTriggered: contactRequestDialog.reject()
     }
 
     Action {
         shortcut: "Escape"
-        onTriggered: contactRequestDialog.close()
+        onTriggered: contactRequestDialog.reject()
     }
 }
 
