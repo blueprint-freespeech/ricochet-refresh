@@ -357,7 +357,6 @@ struct Message {
 
 struct UserData {
     user_type: tego_user_type,
-    pending_connection_handle: Option<tor_interface::tor_provider::ConnectHandle>,
     connection_handle: Option<ConnectionHandle>,
     connection_failures: usize,
     queued_messages: VecDeque<Message>,
@@ -417,7 +416,6 @@ impl EventLoopTask {
                 user_id,
                 UserData {
                     user_type,
-                    pending_connection_handle: None,
                     connection_handle: None,
                     connection_failures: 0usize,
                     queued_messages: Default::default(),
@@ -644,13 +642,6 @@ impl EventLoopTask {
                     let mut handle_forget_user = || -> Result<()> {
                         // remove from our set of users
                         if let Some(user_data) = self.users.remove(&service_id) {
-                            // ignore any pending connection
-                            if let Some(pending_connection_handle) =
-                                user_data.pending_connection_handle
-                            {
-                                self.pending_connections.remove(&pending_connection_handle);
-                            }
-
                             // kill open connection
                             if let Some(connection_handle) = user_data.connection_handle {
                                 self.connections.remove(&connection_handle);
@@ -693,13 +684,12 @@ impl EventLoopTask {
                     let (result, remove) = match response {
                         tego_chat_acknowledge_accept => (
                             self.packet_handler
-                                .accept_contact_request(service_id, &mut replies),
+                                .accept_contact_request(service_id.clone(), &mut replies),
                             false,
                         ),
-                        // todo: add user to our user_data list
                         tego_chat_acknowledge_reject => (
                             self.packet_handler
-                                .reject_contact_request(service_id, &mut replies),
+                                .reject_contact_request(service_id.clone(), &mut replies),
                             true,
                         ),
                         tego_chat_acknowledge_block => todo!(),
@@ -709,18 +699,40 @@ impl EventLoopTask {
                         Ok(connection_handle) => {
                             if let Some(connection) = self.connections.get_mut(&connection_handle) {
                                 connection.write_packets.append(&mut replies);
-                                if remove {
+                                if let tego_chat_acknowledge_accept = response {
+                                    self.users.insert(
+                                        service_id,
+                                        UserData {
+                                            user_type: tego_user_type::tego_user_type_allowed,
+                                            connection_handle: Some(connection_handle),
+                                            connection_failures: 0,
+                                            queued_messages: Default::default(),
+                                        },
+                                    );
+                                } else if remove {
                                     self.to_remove.insert(connection_handle);
                                 }
                             }
                         }
-                        Err(_err) => todo!(),
+                        Err(_err) => log_error!("failure ack'ing contact request: {_err}"),
                     }
                 }
                 CommandData::ConnectContact {
                     service_id,
                     contact_request_message: message_text,
                 } => {
+                    if !self.users.contains_key(&service_id) {
+                        self.users.insert(
+                            service_id.clone(),
+                            UserData {
+                                user_type: tego_user_type::tego_user_type_pending,
+                                connection_handle: None,
+                                connection_failures: 0usize,
+                                queued_messages: Default::default(),
+                            },
+                        );
+                    }
+
                     // only open new connection if there is no existing verified
                     // connection already
                     if !self.packet_handler.has_verified_connection(&service_id) {
@@ -1163,7 +1175,9 @@ impl EventLoopTask {
                         Ok(Event::ContactRequestResultRejected { service_id }) => {
                             log_info!("contact request result rejected, peer: {service_id:?}");
                             self.to_remove.insert(handle);
-                            to_retry.insert(service_id.clone());
+                            if let Some(user_data) = self.users.get_mut(&service_id) {
+                                user_data.user_type = tego_user_type::tego_user_type_rejected;
+                            }
                             self.callback_queue
                                 .push(CallbackData::ChatRequestResponseReceived {
                                     service_id,
