@@ -14,10 +14,6 @@ namespace shims
         std::unique_ptr<tego_v3_onion_service_id> serviceId;
         tego_v3_onion_service_id_from_string(tego::out(serviceId), serviceIdRaw.data(), static_cast<size_t>(serviceIdRaw.size()), tego::throw_on_error());
         tego_user_id_from_v3_onion_service_id(tego::out(userId), serviceId.get(), tego::throw_on_error());
-
-        // save our request to disk
-        SettingsObject settings(QString("users.%1").arg(serviceIdString));
-        settings.write<QString>("type", "requesting");
     }
 
     QString IncomingContactRequest::getHostname() const
