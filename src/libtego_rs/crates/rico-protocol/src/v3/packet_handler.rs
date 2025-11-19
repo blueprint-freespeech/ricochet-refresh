@@ -236,63 +236,10 @@ pub struct MessageHandle {
     direction: Direction,
 }
 
+#[cfg(feature = "test-features")]
 impl MessageHandle {
-    const MESSAGE_ID_BITS: u64 = 0x00000000ffffffffu64;
-    const MESSAGE_ID_SHIFT: u64 = 0u64;
-    const CONNECTION_HANDLE_BITS: u64 = 0x7fffffff00000000u64;
-    const CONNECTION_HANDLE_SHIFT: u64 = 32u64;
-    const DIRECTION_BITS: u64 = 0x8000000000000000u64;
-    const DIRECTION_SHIFT: u64 = 63u64;
-
-    #[cfg(feature = "test-features")]
     pub fn message_id(&self) -> u32 {
         self.message_id
-    }
-}
-
-impl From<MessageHandle> for u64 {
-    // bits:
-    // 0..32: message id from protoocl
-    // 32..63: connection handle (except the most significant bit)
-    // 63: direction (0 for incoming, 1 for outgoing)
-    fn from(message_handle: MessageHandle) -> u64 {
-        assert!(message_handle.connection_handle <= CONNECTION_HANDLE_MAX);
-
-        let message_id = (message_handle.message_id as u64) << MessageHandle::MESSAGE_ID_SHIFT;
-        let connection_handle =
-            (message_handle.connection_handle as u64) << MessageHandle::CONNECTION_HANDLE_SHIFT;
-        let direction = match message_handle.direction {
-            Direction::Incoming => 0u64,
-            Direction::Outgoing => 1u64,
-        } << MessageHandle::DIRECTION_SHIFT;
-
-        direction | connection_handle | message_id
-    }
-}
-
-impl From<u64> for MessageHandle {
-    fn from(message_handle_raw: u64) -> MessageHandle {
-        let message_id = message_handle_raw & MessageHandle::MESSAGE_ID_BITS;
-        let message_id = message_id >> MessageHandle::MESSAGE_ID_SHIFT;
-        let message_id = message_id as u32;
-
-        let connection_handle = message_handle_raw & MessageHandle::CONNECTION_HANDLE_BITS;
-        let connection_handle = connection_handle >> MessageHandle::CONNECTION_HANDLE_SHIFT;
-        let connection_handle = connection_handle as ConnectionHandle;
-
-        let direction = message_handle_raw & MessageHandle::DIRECTION_BITS;
-        let direction = direction >> MessageHandle::DIRECTION_SHIFT;
-        let direction = match direction {
-            0x0u64 => Direction::Incoming,
-            0x1u64 => Direction::Outgoing,
-            _ => unreachable!(),
-        };
-
-        MessageHandle {
-            message_id,
-            connection_handle,
-            direction,
-        }
     }
 }
 
@@ -303,64 +250,10 @@ pub struct FileTransferHandle {
     direction: Direction,
 }
 
+#[cfg(feature = "test-features")]
 impl FileTransferHandle {
-    const FILE_ID_BITS: u64 = 0x00000000ffffffffu64;
-    const FILE_ID_SHIFT: u64 = 0u64;
-    const CONNECTION_HANDLE_BITS: u64 = 0x7fffffff00000000u64;
-    const CONNECTION_HANDLE_SHIFT: u64 = 32u64;
-    const DIRECTION_BITS: u64 = 0x8000000000000000u64;
-    const DIRECTION_SHIFT: u64 = 63u64;
-
-    #[cfg(feature = "test-features")]
     pub fn file_id(&self) -> u32 {
         self.file_id
-    }
-}
-
-impl From<FileTransferHandle> for u64 {
-    // bits:
-    // 0..32: file id from protoocl
-    // 32..63: connection handle (except the most significant bit)
-    // 63: direction (0 for incoming, 1 for outgoing)
-    fn from(file_transfer_handle: FileTransferHandle) -> u64 {
-        assert!(file_transfer_handle.connection_handle <= CONNECTION_HANDLE_MAX);
-
-        let file_id = (file_transfer_handle.file_id as u64) << FileTransferHandle::FILE_ID_SHIFT;
-        let connection_handle = (file_transfer_handle.connection_handle as u64)
-            << FileTransferHandle::CONNECTION_HANDLE_SHIFT;
-        let direction = match file_transfer_handle.direction {
-            Direction::Incoming => 0u64,
-            Direction::Outgoing => 1u64,
-        } << FileTransferHandle::DIRECTION_SHIFT;
-
-        direction | connection_handle | file_id
-    }
-}
-
-impl From<u64> for FileTransferHandle {
-    fn from(file_transfer_handle_raw: u64) -> FileTransferHandle {
-        let file_id = file_transfer_handle_raw & FileTransferHandle::FILE_ID_BITS;
-        let file_id = file_id >> FileTransferHandle::FILE_ID_SHIFT;
-        let file_id = file_id as u32;
-
-        let connection_handle =
-            file_transfer_handle_raw & FileTransferHandle::CONNECTION_HANDLE_BITS;
-        let connection_handle = connection_handle >> FileTransferHandle::CONNECTION_HANDLE_SHIFT;
-        let connection_handle = connection_handle as ConnectionHandle;
-
-        let direction = file_transfer_handle_raw & FileTransferHandle::DIRECTION_BITS;
-        let direction = direction >> FileTransferHandle::DIRECTION_SHIFT;
-        let direction = match direction {
-            0x0u64 => Direction::Incoming,
-            0x1u64 => Direction::Outgoing,
-            _ => unreachable!(),
-        };
-
-        FileTransferHandle {
-            file_id,
-            connection_handle,
-            direction,
-        }
     }
 }
 

@@ -347,19 +347,53 @@ impl Drop for Context {
         self.end();
     }
 }
+
+// message enum is used for enqueueing chat and file uploads in case
+// the remote user goes offline
 #[derive(Debug)]
-struct Message {
-    gui_id: tego_message_id,
-    network_handle: MessageHandle,
-    timestamp: std::time::Instant,
-    text: rico_protocol::v3::message::chat_channel::MessageText,
+enum UnAckedMessage {
+    ChatMessage {
+        gui_id: tego_message_id,
+        network_handle: MessageHandle,
+        timestamp: std::time::Instant,
+        text: rico_protocol::v3::message::chat_channel::MessageText,
+    },
+    FileTransferRequest {
+        gui_id: tego_file_transfer_id,
+        network_handle: FileTransferHandle,
+        file_upload: FileUpload,
+    },
 }
 
 struct UserData {
     user_type: tego_user_type,
     connection_handle: Option<ConnectionHandle>,
     connection_failures: usize,
-    queued_messages: VecDeque<Message>,
+    queued_messages: VecDeque<UnAckedMessage>,
+    next_message_id: u64,
+
+    file_transfer_handle_to_id: BTreeMap<FileTransferHandle, tego_file_transfer_id>,
+    file_transfer_id_to_handle: BTreeMap<tego_file_transfer_id, FileTransferHandle>,
+}
+
+impl UserData {
+    fn new(user_type: tego_user_type) -> Self {
+        Self {
+            user_type,
+            connection_handle: None,
+            connection_failures: 0usize,
+            queued_messages: Default::default(),
+            next_message_id: 0u64,
+            file_transfer_handle_to_id: Default::default(),
+            file_transfer_id_to_handle: Default::default(),
+        }
+    }
+
+    fn next_message_id(&mut self) -> u64 {
+        let result = self.next_message_id;
+        self.next_message_id += 1;
+        result
+    }
 }
 
 struct EventLoopTask {
@@ -412,15 +446,7 @@ impl EventLoopTask {
                 tego_user_type_blocked => blocked_contacts.insert(user_id.clone()),
                 _ => false,
             };
-            user_data.insert(
-                user_id,
-                UserData {
-                    user_type,
-                    connection_handle: None,
-                    connection_failures: 0usize,
-                    queued_messages: Default::default(),
-                },
-            );
+            user_data.insert(user_id, UserData::new(user_type));
         }
 
         Self {
@@ -702,12 +728,7 @@ impl EventLoopTask {
                                 if let tego_chat_acknowledge_accept = response {
                                     self.users.insert(
                                         service_id,
-                                        UserData {
-                                            user_type: tego_user_type::tego_user_type_allowed,
-                                            connection_handle: Some(connection_handle),
-                                            connection_failures: 0,
-                                            queued_messages: Default::default(),
-                                        },
+                                        UserData::new(tego_user_type::tego_user_type_allowed),
                                     );
                                 } else if remove {
                                     self.to_remove.insert(connection_handle);
@@ -724,12 +745,7 @@ impl EventLoopTask {
                     if !self.users.contains_key(&service_id) {
                         self.users.insert(
                             service_id.clone(),
-                            UserData {
-                                user_type: tego_user_type::tego_user_type_pending,
-                                connection_handle: None,
-                                connection_failures: 0usize,
-                                queued_messages: Default::default(),
-                            },
+                            UserData::new(tego_user_type::tego_user_type_pending),
                         );
                     }
 
@@ -784,13 +800,16 @@ impl EventLoopTask {
                                     .users
                                     .get_mut(&service_id)
                                     .context(format!("no user data for service id {service_id}"))?;
-                                user_data.queued_messages.push_back(Message {
-                                    gui_id: message_handle.into(),
-                                    network_handle: message_handle,
-                                    timestamp: std::time::Instant::now(),
-                                    text: message_text,
-                                });
-                                Ok(message_handle.into())
+                                let message_id = user_data.next_message_id();
+                                user_data
+                                    .queued_messages
+                                    .push_back(UnAckedMessage::ChatMessage {
+                                        gui_id: message_id,
+                                        network_handle: message_handle,
+                                        timestamp: std::time::Instant::now(),
+                                        text: message_text,
+                                    });
+                                Ok(message_id)
                             }
                             Err(err) => Err(err.into()),
                         }
@@ -807,15 +826,8 @@ impl EventLoopTask {
                             // we only deal in absolute paths
                             bail_if!(!file_path.is_absolute());
 
-                            // get our filename
-                            let file_name: String = file_path
-                                .file_name()
-                                .context("path contains no file name")?
-                                .to_str()
-                                .context("file name not valid utf8")?
-                                .to_string();
-
                             let file_upload = FileUpload::new(file_path)?;
+                            let file_name = file_upload.name();
                             let file_size = file_upload.size();
 
                             let file_hash = file_upload.hash();
@@ -824,32 +836,41 @@ impl EventLoopTask {
                             let mut replies: Vec<Packet> = Vec::with_capacity(1);
                             let (connection_handle, file_transfer_handle) =
                                 self.packet_handler.send_file_transfer_request(
-                                    service_id,
-                                    file_name,
+                                    service_id.clone(),
+                                    file_name.clone(),
                                     file_size,
                                     file_hash,
                                     &mut replies,
                                 )?;
-
                             let connection = self
                                 .connections
                                 .get_mut(&connection_handle)
                                 .context("missing Connection struct")?;
 
-                            // save of file upload record
-                            connection
-                                .file_uploads
-                                .insert(file_transfer_handle, file_upload);
-
                             // queue packets for writing
                             connection.write_packets.append(&mut replies);
 
-                            let file_transfer_id: tego_file_transfer_id =
-                                file_transfer_handle.into();
-
+                            // queue copies of requests to resend in event of reconnect
+                            let user_data = self
+                                .users
+                                .get_mut(&service_id)
+                                .context(format!("no user data for service id {service_id}"))?;
+                            let file_transfer_id = user_data.next_message_id();
+                            user_data
+                                .file_transfer_id_to_handle
+                                .insert(file_transfer_id, file_transfer_handle);
+                            user_data
+                                .file_transfer_handle_to_id
+                                .insert(file_transfer_handle, file_transfer_id);
+                            user_data.queued_messages.push_back(
+                                UnAckedMessage::FileTransferRequest {
+                                    gui_id: file_transfer_id,
+                                    network_handle: file_transfer_handle,
+                                    file_upload,
+                                },
+                            );
                             Ok((file_transfer_id, file_size))
                         };
-
                     result.resolve(handle_send_file_transfer_request());
                 }
                 CommandData::AcceptFileTransferRequest {
@@ -859,7 +880,16 @@ impl EventLoopTask {
                     result,
                 } => {
                     let handle_accept_file_transfer_request = || -> Result<()> {
-                        let file_transfer_handle: FileTransferHandle = file_transfer_id.into();
+                        let user_data = self
+                            .users
+                            .get_mut(&service_id)
+                            .context(format!("no user data for service id {service_id}"))?;
+                        let file_transfer_handle = *user_data
+                            .file_transfer_id_to_handle
+                            .get(&file_transfer_id)
+                            .context(format!(
+                                "no file transfer associated with id {file_transfer_id}"
+                            ))?;
 
                         // construct reply packets
                         let mut replies: Vec<Packet> = Vec::with_capacity(1);
@@ -895,7 +925,16 @@ impl EventLoopTask {
                     result,
                 } => {
                     let handle_reject_file_transfer_request = || -> Result<()> {
-                        let file_transfer_handle: FileTransferHandle = file_transfer_id.into();
+                        let user_data = self
+                            .users
+                            .get_mut(&service_id)
+                            .context(format!("no user data for service id {service_id}"))?;
+                        let file_transfer_handle = *user_data
+                            .file_transfer_id_to_handle
+                            .get(&file_transfer_id)
+                            .context(format!(
+                                "no file transfer associated with id {file_transfer_id}"
+                            ))?;
 
                         // construct reply packets
                         let mut replies: Vec<Packet> = Vec::with_capacity(1);
@@ -941,7 +980,17 @@ impl EventLoopTask {
                     result,
                 } => {
                     let handle_cancel_file_transfer = || -> Result<()> {
-                        let file_transfer_handle: FileTransferHandle = file_transfer_id.into();
+                        let user_data = self
+                            .users
+                            .get_mut(&service_id)
+                            .context(format!("no user data for service id {service_id}"))?;
+
+                        let file_transfer_handle = *user_data
+                            .file_transfer_id_to_handle
+                            .get(&file_transfer_id)
+                            .context(format!(
+                                "no file transfer associated with id {file_transfer_id}"
+                            ))?;
 
                         // construct reply packets
                         let mut replies: Vec<Packet> = Vec::with_capacity(1);
@@ -958,6 +1007,26 @@ impl EventLoopTask {
                             .get_mut(&connection_handle)
                             .context("missing Connection struct")?;
 
+                        // remove our handle <-> id mappings
+                        let _ = user_data
+                            .file_transfer_handle_to_id
+                            .remove(&file_transfer_handle);
+                        let _ = user_data
+                            .file_transfer_id_to_handle
+                            .remove(&file_transfer_id);
+
+                        // remove un'ackd request if present
+                        for i in 0..user_data.queued_messages.len() {
+                            if let UnAckedMessage::FileTransferRequest { gui_id, .. } =
+                                user_data.queued_messages[i]
+                            {
+                                if gui_id == file_transfer_id {
+                                    let _ = user_data.queued_messages.remove(i);
+                                    break;
+                                }
+                            }
+                        }
+
                         let direction = if connection
                             .file_downloads
                             .remove(&file_transfer_handle)
@@ -965,10 +1034,10 @@ impl EventLoopTask {
                         {
                             tego_file_transfer_direction::tego_file_transfer_direction_receiving
                         } else {
-                            connection
-                                .file_uploads
-                                .remove(&file_transfer_handle)
-                                .context("missing FileDownload or FileUpload struct")?;
+                            // it's possible an upload never made it to the file_uploads list
+                            // if local user cancels before remote user accepts, so missing
+                            // file_upload is not an error
+                            let _ = connection.file_uploads.remove(&file_transfer_handle);
                             tego_file_transfer_direction::tego_file_transfer_direction_sending
                         };
 
@@ -1207,29 +1276,35 @@ impl EventLoopTask {
                             // send queued messages
                             if let Some(user_data) = self.users.get_mut(&service_id) {
                                 user_data.connection_failures = 0usize;
-                                let queued_message_count = user_data.queued_messages.len();
-                                if queued_message_count > 0 {
-                                    log_info!(
-                                        "re-sending {queued_message_count} un-acked messages"
-                                    );
+
+                                log_info!("re-sending un-acked messages");
+                                if !user_data.queued_messages.is_empty() {
                                     for message in user_data.queued_messages.iter_mut() {
-                                        match self.packet_handler.send_message(
-                                            service_id.clone(),
-                                            message.text.clone(),
-                                            Some(
-                                                std::time::Instant::now()
-                                                    .duration_since(message.timestamp),
-                                            ),
-                                            write_packets,
-                                        ) {
-                                            Ok((_connection_handle, message_handle)) => {
-                                                // update the queued message with new message handle
-                                                message.network_handle = message_handle;
-                                            }
-                                            Err(_err) => {
-                                                log_error!(
-                                                    "error re-sending queued message: {_err}"
-                                                )
+                                        if let UnAckedMessage::ChatMessage {
+                                            gui_id: _,
+                                            network_handle,
+                                            timestamp,
+                                            text,
+                                        } = message
+                                        {
+                                            match self.packet_handler.send_message(
+                                                service_id.clone(),
+                                                text.clone(),
+                                                Some(
+                                                    std::time::Instant::now()
+                                                        .duration_since(*timestamp),
+                                                ),
+                                                write_packets,
+                                            ) {
+                                                Ok((_connection_handle, message_handle)) => {
+                                                    // update the queued message with new message handle
+                                                    *network_handle = message_handle;
+                                                }
+                                                Err(_err) => {
+                                                    log_error!(
+                                                        "error re-sending queued message: {_err}"
+                                                    )
+                                                }
                                             }
                                         }
                                     }
@@ -1243,30 +1318,89 @@ impl EventLoopTask {
                                 log_error!("no user data for service id: {service_id}");
                             }
                         }
-                        Ok(Event::OutgoingFileTransferChannelOpened {
-                            service_id: _service_id,
-                        }) => {
+                        Ok(Event::OutgoingFileTransferChannelOpened { service_id }) => {
                             log_info!(
-                                "outgoing file transfer channel opened, peer: {_service_id:?}"
+                                "outgoing file transfer channel opened, peer: {service_id:?}"
                             );
+
+                            // send queued messages
+                            if let Some(user_data) = self.users.get_mut(&service_id) {
+                                log_info!("re-sending un-acked file transfer requests");
+                                if !user_data.queued_messages.is_empty() {
+                                    for message in user_data.queued_messages.iter_mut() {
+                                        if let UnAckedMessage::FileTransferRequest {
+                                            gui_id: file_transfer_id,
+                                            network_handle,
+                                            file_upload,
+                                        } = message
+                                        {
+                                            let file_transfer_id = *file_transfer_id;
+                                            match self.packet_handler.send_file_transfer_request(
+                                                service_id.clone(),
+                                                file_upload.name(),
+                                                file_upload.size(),
+                                                file_upload.hash(),
+                                                write_packets,
+                                            ) {
+                                                Ok((_connection_handle, file_transfer_handle)) => {
+                                                    // update the queued upload request with new file transfer handle handle
+                                                    *network_handle = file_transfer_handle;
+                                                    if let Some(old_file_transfer_handle) =
+                                                        user_data.file_transfer_id_to_handle.insert(
+                                                            file_transfer_id,
+                                                            file_transfer_handle,
+                                                        )
+                                                    {
+                                                        // remap ids and handles
+                                                        user_data
+                                                            .file_transfer_handle_to_id
+                                                            .remove(&old_file_transfer_handle);
+                                                        user_data
+                                                            .file_transfer_handle_to_id
+                                                            .insert(
+                                                                file_transfer_handle,
+                                                                file_transfer_id,
+                                                            );
+                                                    }
+                                                }
+                                                Err(_err) => {
+                                                    log_error!(
+                                                        "error re-sending queued file transfer request: {_err}"
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                         Ok(Event::ChatMessageReceived {
                             service_id,
                             message_text,
-                            message_handle,
+                            message_handle: _message_handle,
                             time_delta,
                         }) => {
-                            log_info!("chat message receved, peer: {service_id:?}, message: \"{message_text}, message_handle: {message_handle:?}, time_delta: {time_delta:?}");
-                            let now = std::time::SystemTime::now();
-                            let timestamp = now.checked_sub(time_delta).unwrap_or(now);
-                            let message_id: tego_message_id = message_handle.into();
-                            let message = message_text;
-                            self.callback_queue.push(CallbackData::MessageReceived {
-                                service_id,
-                                timestamp,
-                                message_id,
-                                message,
-                            });
+                            log_info!("chat message receved, peer: {service_id:?}, message: \"{message_text}, message_handle: {_message_handle:?}, time_delta: {time_delta:?}");
+                            let handle_chat_message_received = || -> Result<()> {
+                                let now = std::time::SystemTime::now();
+                                let timestamp = now.checked_sub(time_delta).unwrap_or(now);
+                                let user_data = self
+                                    .users
+                                    .get_mut(&service_id)
+                                    .context(format!("no user data for service id {service_id}"))?;
+                                let message_id = user_data.next_message_id();
+                                let message = message_text;
+                                self.callback_queue.push(CallbackData::MessageReceived {
+                                    service_id,
+                                    timestamp,
+                                    message_id,
+                                    message,
+                                });
+                                Ok(())
+                            };
+                            if let Err(_err) = handle_chat_message_received() {
+                                log_error!("error receiving chat message: {_err}");
+                            }
                         }
                         Ok(Event::ChatAcknowledgeReceived {
                             service_id,
@@ -1275,22 +1409,29 @@ impl EventLoopTask {
                         }) => {
                             log_info!("chat ack received, peer: {service_id:?}, message_handle: {message_handle:?}, accepted: {accepted}");
 
-                            // find message in queue and remove as it has been acked by remove_connection
+                            // find message in queue and remove as it has been acked
                             if let Some(user_data) = self.users.get_mut(&service_id) {
                                 let queued_messages = &mut user_data.queued_messages;
                                 for i in 0..queued_messages.len() {
-                                    if queued_messages[i].network_handle == message_handle {
-                                        let message_id = queued_messages[i].gui_id;
-                                        let _ = queued_messages.remove(i);
-                                        // then we need to send queued messages when a new connection is created
-                                        self.callback_queue.push(
-                                            CallbackData::MessageAcknowledged {
-                                                service_id,
-                                                message_id,
-                                                accepted,
-                                            },
-                                        );
-                                        break;
+                                    if let UnAckedMessage::ChatMessage {
+                                        gui_id,
+                                        network_handle,
+                                        timestamp: _,
+                                        text: _,
+                                    } = &mut queued_messages[i]
+                                    {
+                                        if *network_handle == message_handle {
+                                            let message_id = *gui_id;
+                                            let _ = queued_messages.remove(i);
+                                            self.callback_queue.push(
+                                                CallbackData::MessageAcknowledged {
+                                                    service_id,
+                                                    message_id,
+                                                    accepted,
+                                                },
+                                            );
+                                            break;
+                                        }
                                     }
                                 }
                             } else {
@@ -1305,10 +1446,21 @@ impl EventLoopTask {
                         }) => {
                             log_info!("file transfer request received, peer: {service_id:?}, file_transfer_handle: {file_transfer_handle:?}, file_name: {file_name}, file_size: {file_size}");
 
+                            let user_data = self
+                                .users
+                                .get_mut(&service_id)
+                                .context(format!("no user data for service id {service_id}"))?;
+
+                            let file_transfer_id = user_data.next_message_id();
+                            user_data
+                                .file_transfer_id_to_handle
+                                .insert(file_transfer_id, file_transfer_handle);
+                            user_data
+                                .file_transfer_handle_to_id
+                                .insert(file_transfer_handle, file_transfer_id);
+
                             // the protocol handler *shouldn't* be returning duplicate handles but we get them
                             // from the other party so really we have no control here :(
-                            let file_transfer_id: tego_file_transfer_id =
-                                file_transfer_handle.into();
                             if connection
                                 .file_downloads
                                 .contains_key(&file_transfer_handle)
@@ -1341,13 +1493,45 @@ impl EventLoopTask {
                             accepted,
                         }) => {
                             log_info!("file transfer request ack received, peer: {service_id:?}, file_transfer_handle: {file_transfer_handle:?}, accepted: {accepted}");
-                            self.callback_queue.push(
-                                CallbackData::FileTransferRequestAcknowledged {
-                                    service_id,
-                                    file_transfer_id: file_transfer_handle.into(),
-                                    accepted,
-                                },
-                            );
+
+                            // find file transfer request in queue and removeas it has been acked
+                            if let Some(user_data) = self.users.get_mut(&service_id) {
+                                let queued_messages = &mut user_data.queued_messages;
+                                for i in 0..queued_messages.len() {
+                                    if let UnAckedMessage::FileTransferRequest {
+                                        gui_id: _,
+                                        network_handle,
+                                        file_upload: _,
+                                    } = &mut queued_messages[i]
+                                    {
+                                        if *network_handle == file_transfer_handle {
+                                            if let Some(UnAckedMessage::FileTransferRequest {
+                                                gui_id,
+                                                network_handle,
+                                                file_upload,
+                                            }) = queued_messages.remove(i)
+                                            {
+                                                // save off file upload record
+                                                connection
+                                                    .file_uploads
+                                                    .insert(network_handle, file_upload);
+
+                                                let file_transfer_id = gui_id;
+                                                self.callback_queue.push(
+                                                    CallbackData::FileTransferRequestAcknowledged {
+                                                        service_id,
+                                                        file_transfer_id,
+                                                        accepted,
+                                                    },
+                                                );
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                            } else {
+                                log_error!("received file transfer request ack for unknown user {service_id}");
+                            }
                         }
                         Ok(Event::FileTransferRequestAccepted {
                             service_id,
@@ -1356,8 +1540,11 @@ impl EventLoopTask {
                             log_info!("file transfer request accepted, peer: {service_id:?}, file_transfer_handle: {file_transfer_handle:?}");
 
                             let handle_file_transfer_request_accepted = || -> Result<()> {
-                                let file_transfer_id: tego_file_transfer_id =
-                                    file_transfer_handle.into();
+                                let user_data = self
+                                    .users
+                                    .get_mut(&service_id)
+                                    .context(format!("no user data for service id {service_id}"))?;
+                                let file_transfer_id = *user_data.file_transfer_handle_to_id.get(&file_transfer_handle).context(format!("no file transfer associated with handle {file_transfer_handle:?}"))?;
 
                                 let file_upload = connection
                                     .file_uploads
@@ -1406,15 +1593,25 @@ impl EventLoopTask {
                         }) => {
                             log_info!("file transfer request rejected, peer: {service_id:?}, file_transfer_handle: {file_transfer_handle:?}");
 
-                            let file_transfer_id: tego_file_transfer_id =
-                                file_transfer_handle.into();
-                            self.callback_queue
-                                .push(CallbackData::FileTransferRequestResponseReceived {
-                                service_id,
-                                file_transfer_id,
-                                response:
-                                    tego_file_transfer_response::tego_file_transfer_response_reject,
-                            });
+                            let handle_file_transfer_request_rejected = || -> Result<()> {
+                                let user_data = self
+                                    .users
+                                    .get_mut(&service_id)
+                                    .context(format!("no user data for service id {service_id}"))?;
+                                let file_transfer_id = *user_data.file_transfer_handle_to_id.get(&file_transfer_handle).context(format!("no file transfer associated with handle {file_transfer_handle:?}"))?;
+
+                                self.callback_queue
+                                    .push(CallbackData::FileTransferRequestResponseReceived {
+                                    service_id,
+                                    file_transfer_id,
+                                    response:
+                                        tego_file_transfer_response::tego_file_transfer_response_reject,
+                                });
+                                Ok(())
+                            };
+                            if let Err(_err) = handle_file_transfer_request_rejected() {
+                                log_error!("error handling file transfer request rejected: {_err}");
+                            }
                         }
                         Ok(Event::FileChunkReceived {
                             service_id,
@@ -1425,15 +1622,18 @@ impl EventLoopTask {
                         }) => {
                             log_info!("file chunk received, peer: {service_id:?}, file_transfer_handle: {file_transfer_handle:?}, data: [u8; {}], last_chunk: {last_chunk}, hash_matches: {hash_matches:?}", data.len());
 
-                            let file_transfer_id: tego_file_transfer_id =
-                                file_transfer_handle.into();
+                            let handle_file_chunk_received = || -> Result<()> {
+                                let user_data = self
+                                    .users
+                                    .get_mut(&service_id)
+                                    .context(format!("no user data for service id {service_id}"))?;
+                                let file_transfer_id = *user_data.file_transfer_handle_to_id.get(&file_transfer_handle).context(format!("no file transfer associated with handle {file_transfer_handle:?}"))?;
 
-                            // these two last_chunk checks get us a Option<FileDownload&>
-                            // in both cases where we need to remove it and where we need to modify
-                            // it in-place
-                            if let Some(file_download) =
-                                connection.file_downloads.get_mut(&file_transfer_handle)
-                            {
+                                // these two last_chunk checks get us a Option<FileDownload&>
+                                // in both cases where we need to remove it and where we need to modify
+                                // it in-place
+                                let file_download = connection.file_downloads.get_mut(&file_transfer_handle).context(format!("no file download associated with handle {file_transfer_handle:?}"))?;
+
                                 // write chunk to disk
                                 match file_download.write(&data) {
                                     Ok(()) => {
@@ -1444,49 +1644,48 @@ impl EventLoopTask {
                                             bytes_complete: file_download.bytes_written,
                                             bytes_total: file_download.expected_size,
                                         });
+                                        // handle completed donwload
+                                        if last_chunk {
+                                            match hash_matches {
+                                                Some(true) => {
+                                                    let result = match file_download.finalize() {
+                                                        Ok(()) => tego_file_transfer_result::tego_file_transfer_result_success,
+                                                        Err(_) => tego_file_transfer_result::tego_file_transfer_result_filesystem_error,
+                                                    };
+                                                    self.callback_queue.push(CallbackData::FileTransferComplete{
+                                                        user_id: service_id,
+                                                        file_transfer_id,
+                                                        direction: tego_file_transfer_direction::tego_file_transfer_direction_receiving,
+                                                        result,
+                                                    });
+                                                }
+                                                Some(false) => {
+                                                    self.callback_queue.push(CallbackData::FileTransferComplete{
+                                                        user_id: service_id,
+                                                        file_transfer_id,
+                                                        direction: tego_file_transfer_direction::tego_file_transfer_direction_receiving,
+                                                        result: tego_file_transfer_result::tego_file_transfer_result_bad_hash,
+                                                    });
+                                                }
+                                                None => unreachable!(),
+                                            }
+                                            connection.file_downloads.remove(&file_transfer_handle);
+                                        }
+                                        Ok(())
                                     }
-                                    Err(_) => {
+                                    Err(err) => {
                                         self.callback_queue.push(CallbackData::FileTransferComplete{
                                             user_id: service_id,
                                             file_transfer_id,
                                             direction: tego_file_transfer_direction::tego_file_transfer_direction_receiving,
                                             result: tego_file_transfer_result::tego_file_transfer_result_filesystem_error,
                                         });
-                                        continue 'packet_handle;
+                                        Err(err)
                                     }
                                 }
-
-                                // handle completed donwload
-                                if last_chunk {
-                                    match hash_matches {
-                                        Some(true) => {
-                                            let result = match file_download.finalize() {
-                                                Ok(()) => tego_file_transfer_result::tego_file_transfer_result_success,
-                                                Err(_) => tego_file_transfer_result::tego_file_transfer_result_filesystem_error,
-                                            };
-                                            self.callback_queue.push(CallbackData::FileTransferComplete{
-                                                user_id: service_id,
-                                                file_transfer_id,
-                                                direction: tego_file_transfer_direction::tego_file_transfer_direction_receiving,
-                                                result,
-                                            });
-                                        }
-                                        Some(false) => {
-                                            self.callback_queue.push(CallbackData::FileTransferComplete{
-                                                user_id: service_id,
-                                                file_transfer_id,
-                                                direction: tego_file_transfer_direction::tego_file_transfer_direction_receiving,
-                                                result: tego_file_transfer_result::tego_file_transfer_result_bad_hash,
-                                            });
-                                        }
-                                        None => unreachable!(),
-                                    }
-                                    connection.file_downloads.remove(&file_transfer_handle);
-                                }
-                            } else {
-                                log_error!(
-                                    "unknown file transfer handle: {file_transfer_handle:?}"
-                                );
+                            };
+                            if let Err(_err) = handle_file_chunk_received() {
+                                log_error!("error handling file chunk received: {_err}");
                             }
                         }
                         Ok(Event::FileChunkAckReceived {
@@ -1496,11 +1695,15 @@ impl EventLoopTask {
                         }) => {
                             log_info!("file chunk ack received, peer: {service_id:?}, file_transfer_handle: {file_transfer_handle:?}, offset: {offset}");
 
-                            let file_transfer_id: tego_file_transfer_id =
-                                file_transfer_handle.into();
-                            if let Some(file_upload) =
-                                connection.file_uploads.get_mut(&file_transfer_handle)
-                            {
+                            let mut handle_file_chunk_ack_received = || -> Result<()> {
+                                let user_data = self
+                                    .users
+                                    .get_mut(&service_id)
+                                    .context(format!("no user data for service id {service_id}"))?;
+                                let file_transfer_id = *user_data.file_transfer_handle_to_id.get(&file_transfer_handle).context(format!("no file transfer associated with handle {file_transfer_handle:?}"))?;
+
+                                let file_upload = connection.file_uploads.get_mut(&file_transfer_handle).context(format!("no file upload associated with handle {file_transfer_handle:?}"))?;
+
                                 self.callback_queue.push(CallbackData::FileTransferProgress{
                                     user_id: service_id.clone(),
                                     file_transfer_id,
@@ -1519,37 +1722,30 @@ impl EventLoopTask {
                                             let chunk_data: Vec<u8> =
                                                 self.file_read_buffer[..bytes_read].to_vec();
 
-                                            match self.packet_handler.send_file_chunk(
+                                            let _ = self.packet_handler.send_file_chunk(
                                                 &service_id,
                                                 file_transfer_handle,
                                                 chunk_data,
                                                 write_packets,
-                                            ) {
-                                                Ok(_) => {
-                                                    file_upload.bytes_sent += bytes_read as u64
-                                                }
-                                                Err(_err) => {
-                                                    log_error!("failed to send file chunk: {_err}")
-                                                }
-                                            }
+                                            )?;
+                                            file_upload.bytes_sent += bytes_read as u64;
                                         }
                                         Err(_err) => {
                                             log_error!("failed to read next file chunk for fille transfer {file_transfer_handle:?}: {_err}");
                                             // disk error, terminate this file transfer
-                                            match self.packet_handler.cancel_file_transfer(
+                                            self.packet_handler.cancel_file_transfer(
                                                 &service_id,
                                                 file_transfer_handle,
                                                 true,
                                                 write_packets,
-                                            ) {
-                                                Ok(_) => (),
-                                                Err(_err) => log_error!(
-                                                    "failed to send file transfer result: {_err}"
-                                                ),
-                                            }
+                                            )?;
                                         }
                                     };
                                 }
+                                Ok(())
+                            };
+                            if let Err(_err) = handle_file_chunk_ack_received() {
+                                log_error!("error handling file chunk ack recieved: {_err}");
                             }
                         }
                         Ok(Event::FileTransferSucceeded {
@@ -1558,14 +1754,23 @@ impl EventLoopTask {
                         }) => {
                             log_info!("file transfer succeeded, peer: {service_id}, file_transfer_handle: {file_transfer_handle:?}");
 
-                            let file_transfer_id: tego_file_transfer_id =
-                                file_transfer_handle.into();
-                            self.callback_queue.push(CallbackData::FileTransferComplete{
-                                user_id: service_id,
-                                file_transfer_id,
-                                direction: tego_file_transfer_direction::tego_file_transfer_direction_sending,
-                                result: tego_file_transfer_result::tego_file_transfer_result_success
-                            });
+                            let handle_file_transfer_succeeded = || -> Result<()> {
+                                let user_data = self
+                                    .users
+                                    .get_mut(&service_id)
+                                    .context(format!("no user data for service id {service_id}"))?;
+                                let file_transfer_id = *user_data.file_transfer_handle_to_id.get(&file_transfer_handle).context(format!("no file transfer associated with handle {file_transfer_handle:?}"))?;
+                                self.callback_queue.push(CallbackData::FileTransferComplete{
+                                    user_id: service_id,
+                                    file_transfer_id,
+                                    direction: tego_file_transfer_direction::tego_file_transfer_direction_sending,
+                                    result: tego_file_transfer_result::tego_file_transfer_result_success
+                                });
+                                Ok(())
+                            };
+                            if let Err(_err) = handle_file_transfer_succeeded() {
+                                log_error!("error handling file transfer succeeded: {_err}");
+                            }
                         }
                         Ok(Event::FileTransferFailed {
                             service_id,
@@ -1573,14 +1778,23 @@ impl EventLoopTask {
                         }) => {
                             log_info!("file transfer failed, peer: {service_id}, file_transfer_handle: {file_transfer_handle:?}");
 
-                            let file_transfer_id: tego_file_transfer_id =
-                                file_transfer_handle.into();
-                            self.callback_queue.push(CallbackData::FileTransferComplete{
-                                user_id: service_id,
-                                file_transfer_id,
-                                direction: tego_file_transfer_direction::tego_file_transfer_direction_sending,
-                                result: tego_file_transfer_result::tego_file_transfer_result_failure
-                            });
+                            let handle_file_transfer_failed = || -> Result<()> {
+                                let user_data = self
+                                    .users
+                                    .get_mut(&service_id)
+                                    .context(format!("no user data for service id {service_id}"))?;
+                                let file_transfer_id = *user_data.file_transfer_handle_to_id.get(&file_transfer_handle).context(format!("no file transfer associated with handle {file_transfer_handle:?}"))?;
+                                self.callback_queue.push(CallbackData::FileTransferComplete{
+                                    user_id: service_id,
+                                    file_transfer_id,
+                                    direction: tego_file_transfer_direction::tego_file_transfer_direction_sending,
+                                    result: tego_file_transfer_result::tego_file_transfer_result_failure
+                                });
+                                Ok(())
+                            };
+                            if let Err(_err) = handle_file_transfer_failed() {
+                                log_error!("error handling file transfer failed: {_err}");
+                            }
                         }
                         Ok(Event::FileTransferCancelled {
                             service_id,
@@ -1588,14 +1802,23 @@ impl EventLoopTask {
                         }) => {
                             log_info!("file transfer cancelled, peer: {service_id}, file_transfer_handle: {file_transfer_handle:?}");
 
-                            let file_transfer_id: tego_file_transfer_id =
-                                file_transfer_handle.into();
-                            self.callback_queue.push(CallbackData::FileTransferComplete{
-                                user_id: service_id,
-                                file_transfer_id,
-                                direction: tego_file_transfer_direction::tego_file_transfer_direction_sending,
-                                result: tego_file_transfer_result::tego_file_transfer_result_cancelled
-                            });
+                            let handle_file_transfer_cancelled = || -> Result<()> {
+                                let user_data = self
+                                    .users
+                                    .get_mut(&service_id)
+                                    .context(format!("no user data for service id {service_id}"))?;
+                                let file_transfer_id = *user_data.file_transfer_handle_to_id.get(&file_transfer_handle).context(format!("no file transfer associated with handle {file_transfer_handle:?}"))?;
+                                self.callback_queue.push(CallbackData::FileTransferComplete{
+                                    user_id: service_id,
+                                    file_transfer_id,
+                                    direction: tego_file_transfer_direction::tego_file_transfer_direction_sending,
+                                    result: tego_file_transfer_result::tego_file_transfer_result_cancelled
+                                });
+                                Ok(())
+                            };
+                            if let Err(_err) = handle_file_transfer_cancelled() {
+                                log_error!("error handling file transfer cancelled: {_err}");
+                            }
                         }
                         Ok(Event::ChannelClosed { id: _id }) => {
                             log_info!("channel closed: {_id}");
@@ -2076,6 +2299,8 @@ impl FileDownload {
 #[derive(Debug)]
 struct FileUpload {
     file: File,
+    // the name of the file
+    name: String,
     // the numebr of bytes we have uploaded
     bytes_sent: u64,
     // the size of the file
@@ -2086,6 +2311,13 @@ struct FileUpload {
 
 impl FileUpload {
     pub fn new(file_path: PathBuf) -> Result<Self> {
+        let name: String = file_path
+            .file_name()
+            .context("path contains no file name")?
+            .to_str()
+            .context("file name not valid utf8")?
+            .to_string();
+
         // open file for reading
         let mut file = std::fs::OpenOptions::new().read(true).open(file_path)?;
 
@@ -2112,6 +2344,7 @@ impl FileUpload {
 
         Ok(Self {
             file,
+            name,
             bytes_sent,
             size,
             hash,
@@ -2120,6 +2353,10 @@ impl FileUpload {
 
     pub fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
         Ok(self.file.read(buf)?)
+    }
+
+    pub fn name(&self) -> String {
+        self.name.clone()
     }
 
     pub fn size(&self) -> u64 {
