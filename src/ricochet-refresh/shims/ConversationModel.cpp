@@ -5,6 +5,11 @@
 
 namespace shims
 {
+    // time format for log filenames
+    constexpr const char* FILENAME_TIME_FORMAT = "yyyy-MM-ddThhmmss";
+    // time format for chat log events
+    constexpr const char* LOG_TIME_FORMAT = "[yyyy-MM-dd hh:mm:ss]";
+
     ConversationModel::ConversationModel(QObject *parent)
     : QAbstractListModel(parent)
     , contactUser(nullptr)
@@ -276,15 +281,17 @@ namespace shims
     void ConversationModel::deserializeTextMessageEventToFile(const EventData &event, std::ofstream &ofile) const
     {
         auto &md = this->messages[this->messages.size() - safe_cast<int>(event.messageData.reverseIndex)];
+
+        ofile << md.time.toString(LOG_TIME_FORMAT).toStdString();
         switch (md.status)
         {
             case Received:
-                ofile << "[" << md.time.toString().toStdString() <<  "] <" << this->contact()->getNickname().toStdString() << ">: " << md.text.toStdString() << "\n"; break;
+                ofile << " <" << this->contact()->getNickname().toStdString() << ">: " << md.text.toStdString() << "\n"; break;
             case Delivered:
-                ofile << "[" << md.time.toString().toStdString() << "] <" << tr("me").toStdString() << ">: " << md.text.toStdString() << "\n"; break;
+                ofile << " <" << tr("me").toStdString() << ">: " << md.text.toStdString() << "\n"; break;
             default:
                 // messages we sent that weren't delivered
-                ofile << "[" << md.time.toString().toStdString() << "] <" << tr("me").toStdString() << "> (" << getMessageStatusString(md.status) << "): " << md.text.toStdString() << "\n"; break;
+                ofile << " <" << tr("me").toStdString() << "> (" << getMessageStatusString(md.status) << "): " << md.text.toStdString() << "\n"; break;
         }
     }
 
@@ -306,12 +313,12 @@ namespace shims
             case Rejected:          //FALLTHROUGH
             case Cancelled:         //FALLTHROUGH
             case Finished:
-                ofile << "[" << event.time.toString().toStdString() << "] file '" << md.fileName.toStdString() << "' from <" << sender << "> (size: " << md.fileSize << " bytes): " << getTransferStatusString(event.transferData.status) << "\n"; break;
+                ofile << event.time.toString(LOG_TIME_FORMAT).toStdString() << " file '" << md.fileName.toStdString() << "' from <" << sender << "> (size: " << md.fileSize << " bytes): " << getTransferStatusString(event.transferData.status) << "\n"; break;
             case UnknownFailure:    //FALLTHROUGH
             case BadFileHash:       //FALLTHROUGH
             case NetworkError:      //FALLTHROUGH
             case FileSystemError:
-                ofile << "[" << event.time.toString().toStdString() << "] file '" << md.fileName.toStdString() << "' from <" << sender << "> (size: " << md.fileSize << "bytes): Error: " << getTransferStatusString(event.transferData.status) << ", bytes transferred: " << event.transferData.bytesTransferred << "bytes\n"; break;
+                ofile << event.time.toString(LOG_TIME_FORMAT).toStdString() << " file '" << md.fileName.toStdString() << "' from <" << sender << "> (size: " << md.fileSize << "bytes): Error: " << getTransferStatusString(event.transferData.status) << ", bytes transferred: " << event.transferData.bytesTransferred << "bytes\n"; break;
             default:
                 qWarning() << "Invalid transfer status in events";
                 break;
@@ -330,13 +337,13 @@ namespace shims
         switch (event.userStatusData.status)
         {
             case ContactUser::Status::Online:
-                ofile << "[" << event.time.toString().toStdString() << "] <" << this->contact()->getNickname().toStdString() << "> is now online\n"; break;
+                ofile << event.time.toString(LOG_TIME_FORMAT).toStdString() << " <" << this->contact()->getNickname().toStdString() << "> is now online\n"; break;
             case ContactUser::Status::Offline:
-                ofile << "[" << event.time.toString().toStdString() << "] <" << this->contact()->getNickname().toStdString() << "> is now offline\n"; break;
+                ofile << event.time.toString(LOG_TIME_FORMAT).toStdString() << " <" << this->contact()->getNickname().toStdString() << "> is now offline\n"; break;
             case ContactUser::Status::RequestPending:
-                ofile << "[" << event.time.toString().toStdString() << "] New contacgt request to <" << this->contact()->getNickname().toStdString() << ">\n"; break;
+                ofile << event.time.toString(LOG_TIME_FORMAT).toStdString() << " New contacgt request to <" << this->contact()->getNickname().toStdString() << ">\n"; break;
             case ContactUser::Status::RequestRejected:
-                ofile << "[" << event.time.toString().toStdString() << "] Outgoing request to <" << this->contact()->getNickname().toStdString() << "> was rejected\n"; break;
+                ofile << event.time.toString(LOG_TIME_FORMAT).toStdString() << " Outgoing request to <" << this->contact()->getNickname().toStdString() << "> was rejected\n"; break;
             default:
                 break;
         }
@@ -364,7 +371,7 @@ namespace shims
 
     bool ConversationModel::exportConversation()
     {
-        const auto proposedDest = QString("%1/%2-%3.log").arg(QStandardPaths::writableLocation(QStandardPaths::DownloadLocation)).arg(this->contact()->getNickname()).arg(this->events.constFirst().time.toString(Qt::ISODate));
+        const auto proposedDest = QString("%1/%2-%3.log").arg(QStandardPaths::writableLocation(QStandardPaths::DownloadLocation)).arg(this->contact()->getNickname()).arg(this->events.constFirst().time.toString(FILENAME_TIME_FORMAT));
 
         auto filePath = QFileDialog::getSaveFileName(nullptr,
                                                         tr("Save File"),

@@ -989,71 +989,71 @@ Name of the button for launching the preferences window for accessibility tech l
 <context>
     <name>shims::ConversationModel</name>
     <message>
-        <location filename="../shims/ConversationModel.cpp" line="120"/>
+        <location filename="../shims/ConversationModel.cpp" line="125"/>
         <source>Pending</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../shims/ConversationModel.cpp" line="121"/>
+        <location filename="../shims/ConversationModel.cpp" line="126"/>
         <source>Accepted</source>
         <translation type="unfinished">Akzeptiert</translation>
     </message>
     <message>
-        <location filename="../shims/ConversationModel.cpp" line="122"/>
+        <location filename="../shims/ConversationModel.cpp" line="127"/>
         <source>Rejected</source>
         <translation type="unfinished">Abgewiesen</translation>
     </message>
     <message>
-        <location filename="../shims/ConversationModel.cpp" line="128"/>
+        <location filename="../shims/ConversationModel.cpp" line="133"/>
         <source>Cancelled</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../shims/ConversationModel.cpp" line="129"/>
+        <location filename="../shims/ConversationModel.cpp" line="134"/>
         <source>Complete</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../shims/ConversationModel.cpp" line="130"/>
+        <location filename="../shims/ConversationModel.cpp" line="135"/>
         <source>Unkown Failure</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../shims/ConversationModel.cpp" line="131"/>
+        <location filename="../shims/ConversationModel.cpp" line="136"/>
         <source>Bad File Hash</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../shims/ConversationModel.cpp" line="132"/>
+        <location filename="../shims/ConversationModel.cpp" line="137"/>
         <source>Network Error</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../shims/ConversationModel.cpp" line="133"/>
+        <location filename="../shims/ConversationModel.cpp" line="138"/>
         <source>File System Error</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../shims/ConversationModel.cpp" line="135"/>
+        <location filename="../shims/ConversationModel.cpp" line="140"/>
         <source>Invalid</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../shims/ConversationModel.cpp" line="228"/>
+        <location filename="../shims/ConversationModel.cpp" line="233"/>
         <source>Open File</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../shims/ConversationModel.cpp" line="284"/>
-        <location filename="../shims/ConversationModel.cpp" line="287"/>
-        <location filename="../shims/ConversationModel.cpp" line="299"/>
-        <location filename="../shims/ConversationModel.cpp" line="327"/>
+        <location filename="../shims/ConversationModel.cpp" line="291"/>
+        <location filename="../shims/ConversationModel.cpp" line="294"/>
+        <location filename="../shims/ConversationModel.cpp" line="306"/>
+        <location filename="../shims/ConversationModel.cpp" line="334"/>
         <source>me</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../shims/ConversationModel.cpp" line="370"/>
-        <location filename="../shims/ConversationModel.cpp" line="408"/>
+        <location filename="../shims/ConversationModel.cpp" line="377"/>
+        <location filename="../shims/ConversationModel.cpp" line="415"/>
         <source>Save File</source>
         <translation type="unfinished"></translation>
     </message>
