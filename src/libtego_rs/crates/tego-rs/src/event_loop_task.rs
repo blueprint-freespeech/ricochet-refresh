@@ -19,13 +19,14 @@ use tor_interface::legacy_tor_client::LegacyTorClientConfig;
 use tor_interface::legacy_tor_client::*;
 use tor_interface::legacy_tor_version::LegacyTorVersion;
 use tor_interface::tor_crypto::{Ed25519PrivateKey, V3OnionServiceId};
-use tor_interface::tor_provider::{OnionListener, OnionStream, TorEvent, TorProvider};
+use tor_interface::tor_provider::{OnionStream, TorEvent, TorProvider};
 
 // internal crates
 use crate::callbacks::*;
 use crate::command_queue::*;
 use crate::context::*;
 use crate::ffi::*;
+use crate::listener_task::*;
 use crate::macros::*;
 
 pub(crate) struct EventLoopTask {
@@ -176,10 +177,7 @@ impl EventLoopTask {
                         .spawn({
                             let command_queue = self.command_queue.downgrade();
                             move || {
-                                let task = ListenerTask {
-                                    listener,
-                                    command_queue,
-                                };
+                                let task = ListenerTask::new(listener, command_queue);
                                 let _ = task.run();
                             }
                         })?;
@@ -1804,30 +1802,6 @@ impl EventLoopTask {
                 _ => panic!("not implemented"),
             }
         }
-        Ok(())
-    }
-}
-
-struct ListenerTask {
-    listener: OnionListener,
-    command_queue: CommandQueue,
-}
-
-impl ListenerTask {
-    fn run(self) -> Result<()> {
-        // todo: try to open a new listener in the event of failure
-        let listener = self.listener;
-        let command_queue = self.command_queue;
-
-        listener.set_nonblocking(false)?;
-        while let Ok(stream) = listener.accept() {
-            if let Some(stream) = stream {
-                stream.set_nonblocking(true)?;
-                log_info!("new stream accepted: {stream:?}");
-                command_queue.push(CommandData::BeginServerHandshake { stream }, Duration::ZERO);
-            }
-        }
-
         Ok(())
     }
 }

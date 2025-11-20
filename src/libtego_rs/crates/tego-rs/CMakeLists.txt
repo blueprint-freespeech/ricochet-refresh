@@ -9,6 +9,7 @@ set(tego_rs_sources
     src/event_loop_task.rs
     src/ffi.rs
     src/lib.rs
+    src/listener_task.rs
     src/macros.rs
     src/object_map.rs
     src/promise.rs
