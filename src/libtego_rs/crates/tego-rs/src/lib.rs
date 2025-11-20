@@ -1,7 +1,8 @@
 pub(crate) mod command_queue;
-#[allow(clippy::too_many_arguments)]
 pub(crate) mod context;
 pub(crate) mod error;
+#[allow(clippy::too_many_arguments)]
+pub(crate) mod event_loop_task;
 #[cfg(feature = "logging")]
 pub(crate) mod logger;
 pub(crate) mod macros;

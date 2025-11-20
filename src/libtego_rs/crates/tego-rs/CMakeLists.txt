@@ -5,6 +5,7 @@ set(tego_rs_sources
     src/command_queue.rs
     src/context.rs
     src/error.rs
+    src/event_loop_task.rs
     src/ffi.rs
     src/lib.rs
     src/macros.rs
