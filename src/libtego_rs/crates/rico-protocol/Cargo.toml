@@ -4,7 +4,7 @@ authors = ["morgan@blueprintforfreespeech.net"]
 version = "0.1.0"
 edition = "2021"
 license = "BSD-3-Clause"
-description = "A library implementing the Ricochet-Refresh 3.0 chat protocol"
+description = "A sans-io implementation of the Ricochet-Refresh chat protocol"
 repository = "https://github.com/blueprint-freespeech/ricochet-refresh"
 
 [build-dependencies]
