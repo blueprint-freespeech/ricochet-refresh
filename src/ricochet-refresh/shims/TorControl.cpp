@@ -322,6 +322,9 @@ namespace shims
 
     void TorControl::beginBootstrap() try
     {
+        // reset bootstrap progress
+        setBootstrapStatus(0, tego_tor_bootstrap_tag_starting, "");
+
         //
         // Create Tor Config
         //
