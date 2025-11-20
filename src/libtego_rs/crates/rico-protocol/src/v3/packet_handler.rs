@@ -226,8 +226,6 @@ struct FileUpload {
 }
 
 pub type ConnectionHandle = u32;
-// todo: ensure ConnectionHandles are not reused
-pub const CONNECTION_HANDLE_MAX: u32 = 0x7fffffffu32;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct MessageHandle {
@@ -1851,9 +1849,6 @@ impl PacketHandler {
         self.known_contacts.insert(service_id.clone());
 
         let handle = self.next_connection_handle;
-        if handle > CONNECTION_HANDLE_MAX {
-            return Err(Error::ConnectionHandlesExhausted);
-        }
         self.next_connection_handle += 1u32;
 
         let connection = Connection::new_outgoing(service_id, message_text);
@@ -1869,9 +1864,6 @@ impl PacketHandler {
 
     pub fn new_incoming_connection(&mut self) -> Result<ConnectionHandle, Error> {
         let handle = self.next_connection_handle;
-        if handle > CONNECTION_HANDLE_MAX {
-            return Err(Error::ConnectionHandlesExhausted);
-        }
         self.next_connection_handle += 1u32;
 
         let connection = Connection::new_incoming();

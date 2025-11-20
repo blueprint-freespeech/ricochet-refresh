@@ -41,8 +41,6 @@ pub enum Error {
     TargetChannelDoesNotExist(u16),
     #[error("target channel type is not open: {0:?}")]
     TargetChannelTypeNotOpen(channel_map::ChannelType),
-    #[error("no more ConnectionHandles available")]
-    ConnectionHandlesExhausted,
     #[error("no more MessageHandles available")]
     MessageHandlesExhausted,
     #[error("no more FileTransferHandles available")]
