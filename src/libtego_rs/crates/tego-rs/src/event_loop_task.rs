@@ -22,6 +22,7 @@ use tor_interface::tor_crypto::{Ed25519PrivateKey, V3OnionServiceId};
 use tor_interface::tor_provider::{OnionListener, OnionStream, TorEvent, TorProvider};
 
 // internal crates
+use crate::callbacks::*;
 use crate::command_queue::*;
 use crate::context::*;
 use crate::ffi::*;

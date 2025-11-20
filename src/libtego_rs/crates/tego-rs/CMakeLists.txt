@@ -2,6 +2,7 @@ set(tego_rs_sources
     build.rs
     Cargo.toml
     cbindgen.toml
+    src/callbacks.rs
     src/command_queue.rs
     src/context.rs
     src/error.rs

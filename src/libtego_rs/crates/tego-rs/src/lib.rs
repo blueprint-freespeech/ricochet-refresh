@@ -1,3 +1,4 @@
+pub(crate) mod callbacks;
 pub(crate) mod command_queue;
 pub(crate) mod context;
 pub(crate) mod error;
