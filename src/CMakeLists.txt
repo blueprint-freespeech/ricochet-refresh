@@ -33,10 +33,9 @@ cmake_minimum_required(VERSION 3.18)
 
 project(tego)
 
-
+# ctest targets
+option(ENABLE_TESTS "Enable running tests" ON)
 if (ENABLE_TESTS)
-    # this needs to go in the root source folder because CTest expects the
-    # config in the root build folder
     enable_testing()
 endif ()
 
