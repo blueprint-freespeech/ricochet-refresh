@@ -31,6 +31,10 @@
 
 cmake_minimum_required(VERSION 3.16)
 
+# qt configuration
+set(STATIC_QT OFF CACHE BOOL "Enable if using a static build of QT" )
+set(STATIC_QT_ROOT_DIR "" CACHE STRING "Path to static build of QT (ignored if STATIC_QT is set to OFF)")
+
 project(ricochet-refresh LANGUAGES CXX)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)

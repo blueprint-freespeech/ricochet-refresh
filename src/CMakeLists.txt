@@ -33,13 +33,13 @@ cmake_minimum_required(VERSION 3.18)
 
 project(tego)
 
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/cmake)
+
 # ctest targets
 option(ENABLE_TESTS "Enable running tests" ON)
 if (ENABLE_TESTS)
     enable_testing()
 endif ()
-
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/cmake)
 
 # Run Rust's clippy for Rust targets and cppcheck for C++ targets
 option(ENABLE_LINTING "Enable lint make target" OFF)
@@ -60,10 +60,6 @@ if (ENABLE_FORMATTING)
         message(STATUS "Found cargo-fmt: ${CARGO_FMT_EXECUTABLE}")
     endif()
 endif()
-
-# qt configuration
-set(STATIC_QT OFF CACHE BOOL "Enable if using a static build of QT" )
-set(STATIC_QT_ROOT_DIR "" CACHE STRING "Path to static build of QT (ignored if STATIC_QT is set to OFF)")
 
 add_subdirectory(libtego_rs)
 add_subdirectory(ricochet-refresh)
