@@ -31,7 +31,7 @@
 
 cmake_minimum_required(VERSION 3.18)
 
-project(tego)
+project(ricochet-refresh)
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/cmake)
 
@@ -61,5 +61,10 @@ if (ENABLE_FORMATTING)
     endif()
 endif()
 
+option(BUILD_QT_FRONTEND "Build the Qt frontend" ON)
+
 add_subdirectory(libtego_rs)
-add_subdirectory(ricochet-refresh)
+
+if (BUILD_QT_FRONTEND)
+    add_subdirectory(ricochet-refresh)
+endif()

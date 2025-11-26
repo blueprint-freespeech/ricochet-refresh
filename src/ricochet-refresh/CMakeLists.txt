@@ -35,8 +35,6 @@ cmake_minimum_required(VERSION 3.16)
 set(STATIC_QT OFF CACHE BOOL "Enable if using a static build of QT" )
 set(STATIC_QT_ROOT_DIR "" CACHE STRING "Path to static build of QT (ignored if STATIC_QT is set to OFF)")
 
-project(ricochet-refresh LANGUAGES CXX)
-
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
@@ -113,29 +111,15 @@ if (APPLE)
         REQUIRED)
 endif ()
 
-if (APPLE)
-    add_executable(ricochet-refresh MACOSX_BUNDLE)
-    set_target_properties(ricochet-refresh PROPERTIES MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/resources/darwin/Info.plist.in)
-
-    # Set the icon in info.plist
-    set(MACOSX_BUNDLE_ICON_FILE "ricochet_refresh.icns")
-
-    # Tell cmake where to look for the actual icons
-    set(RICOCHET_ICNS_RES ${CMAKE_CURRENT_SOURCE_DIR}/resources/darwin/ricochet_refresh.icns)
-    set_source_files_properties(${RICOCHET_ICNS_RES} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
-
-    # And add it to the final app
-    target_sources(ricochet-refresh PRIVATE ${RICOCHET_ICNS_RES})
-elseif (WIN32) # Despite the naming, this also checks for win64 builds
-    add_executable(ricochet-refresh WIN32)
+if (WIN32)
+    add_executable(ricochet-refresh-qt WIN32)
 
     # Add the icon
-    target_sources(ricochet-refresh PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/resources/windows/resources.rc)
-elseif (UNIX)
-    # Linux or Cygwin (TODO: i'm not too familiar with cygwin, but i think we should build as if we're building for
-    # linux?)
-    add_executable(ricochet-refresh)
-endif ()
+    target_sources(ricochet-refresh-qt PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/resources/windows/resources.rc)
+else()
+    add_executable(ricochet-refresh-qt)
+endif()
+set_target_properties(ricochet-refresh-qt PROPERTIES OUTPUT_NAME "ricochet-refresh")
 
 option(ENABLE_PLUGGABLE_TRANSPORTS "Enable integrating pluggable-transports from the tor-expert-bundle" OFF)
 
@@ -174,11 +158,7 @@ if(ENABLE_PLUGGABLE_TRANSPORTS)
     set(PT_CONFIG_JSON "${TOR_EXPERT_BUNDLE_DIRECTORY}/tor/pluggable_transports/pt_config.json")
 
     # create a subdirectory for our deployed pluggable transport binaries
-    if (APPLE)
-        set(PLUGGABLE_TRANSPORTS_DEST "${CMAKE_CURRENT_BINARY_DIR}/ricochet-refresh/ricochet-refresh.app/Contents/MacOS/pluggable_transports")
-    else()
-        set(PLUGGABLE_TRANSPORTS_DEST "${CMAKE_CURRENT_BINARY_DIR}/ricochet-refresh/pluggable_transports")
-    endif()
+    set(PLUGGABLE_TRANSPORTS_DEST "${CMAKE_CURRENT_BINARY_DIR}/pluggable_transports")
     file(MAKE_DIRECTORY ${PLUGGABLE_TRANSPORTS_DEST})
 
     # extract tor-expert-bundle and deploy binaries
@@ -195,6 +175,7 @@ if(ENABLE_PLUGGABLE_TRANSPORTS)
         COMMAND ${CMAKE_COMMAND} -E copy "${TOR_EXPERT_BUNDLE_DIRECTORY}/tor/pluggable_transports/*" "${PLUGGABLE_TRANSPORTS_DEST}/."
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     )
+    install(DIRECTORY "${PLUGGABLE_TRANSPORTS_DEST}" TYPE BIN USE_SOURCE_PERMISSIONS)
 endif()
 
 # Generate pluggables.hpp file
@@ -213,7 +194,7 @@ add_custom_command(
 )
 add_custom_target(pluggables-hpp
     DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/pluggables.hpp)
-add_dependencies(ricochet-refresh pluggables-hpp)
+add_dependencies(ricochet-refresh-qt pluggables-hpp)
 
 set(RICOCHET_SOURCE
     shims/ContactIDValidator.cpp
@@ -319,9 +300,9 @@ add_custom_command(
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-add_custom_target(ricochet-refresh-translations
+add_custom_target(ricochet-refresh-qt-translations
      DEPENDS ${RICOCHET_TS})
-add_dependencies(ricochet-refresh ricochet-refresh-translations)
+add_dependencies(ricochet-refresh-qt ricochet-refresh-qt-translations)
 
 # Add the translations
 qt_add_translation(RICOCHET_QM_RES
@@ -339,8 +320,8 @@ qt_add_resources(
     icons/icons.qrc
     ui/qml.qrc)
 
-target_precompile_headers(ricochet-refresh PRIVATE precomp.hpp)
-target_sources(ricochet-refresh PRIVATE ${RICOCHET_SOURCE} ${RICOCHET_QM_RES} ${RICOCHET_QML_RES})
+target_precompile_headers(ricochet-refresh-qt PRIVATE precomp.hpp)
+target_sources(ricochet-refresh-qt PRIVATE ${RICOCHET_SOURCE} ${RICOCHET_QM_RES} ${RICOCHET_QML_RES})
 
 if (DEFINED ENV{RICOCHET_REFRESH_VERSION})
     add_compile_definitions(TEGO_VERSION=$ENV{RICOCHET_REFRESH_VERSION})
@@ -348,21 +329,21 @@ endif ()
 
 if (STATIC_QT)
     include(qmake_static)
-    target_generate_static_qml_plugins(ricochet-refresh)
-    target_generate_static_qt_plugins(ricochet-refresh)
+    target_generate_static_qml_plugins(ricochet-refresh-qt)
+    target_generate_static_qt_plugins(ricochet-refresh-qt)
 endif ()
 
 
 include(lto)
 include(compiler_opts)
 # enables compiler specific warnings/sanitizers if requested
-setup_compiler(ricochet-refresh)
+setup_compiler(ricochet-refresh-qt)
 
-target_compile_features(ricochet-refresh PRIVATE cxx_std_20)
+target_compile_features(ricochet-refresh-qt PRIVATE cxx_std_20)
 
-target_link_libraries(ricochet-refresh PUBLIC tego_rs)
+target_link_libraries(ricochet-refresh-qt PUBLIC tego_rs)
 target_link_libraries(
-    ricochet-refresh
+    ricochet-refresh-qt
     PRIVATE Qt${QT_VERSION_MAJOR}::Core
             Qt${QT_VERSION_MAJOR}::Widgets
             Qt${QT_VERSION_MAJOR}::Network
@@ -373,19 +354,17 @@ target_link_libraries(
             Qt${QT_VERSION_MAJOR}::MultimediaQuick
             Qt${QT_VERSION_MAJOR}::QuickControls2)
 if (APPLE)
-    target_link_libraries(ricochet-refresh PRIVATE Qt${QT_VERSION_MAJOR}::MacExtras)
+    target_link_libraries(ricochet-refresh-qt PRIVATE Qt${QT_VERSION_MAJOR}::MacExtras)
 endif ()
 
 if ("${CMAKE_BUILD_TYPE}" MATCHES "Rel.*" OR "${CMAKE_BUILD_TYPE}" STREQUAL "MinSizeRel")
-    target_compile_definitions(ricochet-refresh PRIVATE QT_NO_DEBUG_OUTPUT QT_NO_WARNING_OUTPUT)
+    target_compile_definitions(ricochet-refresh-qt PRIVATE QT_NO_DEBUG_OUTPUT QT_NO_WARNING_OUTPUT)
 endif ()
 
-# Linux / Cygwin
-if (UNIX)
-    # Again, not sure if this needs to be UNIX AND NOT WIN32, or if we should
-    # install to /bin on Cygwin like it does now
-    install(TARGETS ricochet-refresh DESTINATION bin)
-endif ()
+#
+# Install
+#
+install(TARGETS ricochet-refresh-qt)
 
 # Linux
 if (UNIX AND NOT WIN32)
@@ -396,10 +375,3 @@ if (UNIX AND NOT WIN32)
         install(FILES resources/linux/icons/scalable/ricochet-refresh.svg DESTINATION share/icons/hicolor/scalable/apps/)
     endif ()
 endif ()
-
-# Move our final binary to a bin dir inside the output dir. This makes it
-# easier for integration with ricochet-build
-set_target_properties(ricochet-refresh
-    PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/ricochet-refresh/"
-)
