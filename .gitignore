@@ -3,6 +3,7 @@ Makefile
 Makefile.*
 CMakeLists.txt.user
 build/
+dist/
 debug
 release
 
