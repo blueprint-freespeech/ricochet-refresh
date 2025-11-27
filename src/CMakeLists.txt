@@ -66,5 +66,5 @@ option(BUILD_QT_FRONTEND "Build the Qt frontend" ON)
 add_subdirectory(libtego_rs)
 
 if (BUILD_QT_FRONTEND)
-    add_subdirectory(ricochet-refresh)
+    add_subdirectory(ricochet-refresh-qt)
 endif()
