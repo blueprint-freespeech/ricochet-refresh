@@ -260,9 +260,11 @@ namespace shims
             std::vector<tego_pluggable_transport_config*> pt_configs;
             for(auto it = pluggableTransportConfigs.begin(); it != pluggableTransportConfigs.end(); ++it) {
                 // marshall binary_name
-                const auto binaryPath = qApp->applicationDirPath().toStdString() + "/pluggable_transports/" + it->binary_name;
-                const auto binaryPathLen = binaryPath.size();
-                const auto rawBinaryPath = binaryPath.c_str();
+                // Use toUtf8() instead of toStdString() to ensure proper UTF-8 encoding
+                // on non-UTF-8 locale systems (e.g., Chinese Windows uses GBK by default)
+                const auto binaryPathUtf8 = (qApp->applicationDirPath() + QStringLiteral("/pluggable_transports/") + QString::fromStdString(it->binary_name)).toUtf8();
+                const auto binaryPathLen = static_cast<size_t>(binaryPathUtf8.size());
+                const auto rawBinaryPath = binaryPathUtf8.constData();
 
                 // marshall transports
                 const auto transportCount = it->transports.size();
