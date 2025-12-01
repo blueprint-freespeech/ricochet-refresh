@@ -316,12 +316,14 @@ bool TorManagerPrivate::createDefaultTorrc(const QString &path)
     // tor's ClientTransportPlugin setting cannot handle PT paths which contain spaces
     // since we have no control over where PTs have been deployed, and the working
     // directory is a different location from the binary location, we create a
-    // symlink in the working directory to the actual deployed location
-    const auto ptDir = fmt::format("{}/pluggable_transports", qApp->applicationDirPath());
+    // symlink in the working directory to the actual deployed locations
+
+    const auto ptDir = qApp->applicationDirPath() + QStringLiteral("/pluggable_transports");
+
     // remove previous symlink if it exists in case we are a portable install
     // and so the binary locations may have changed
     QFile::remove("pluggable_transports");
-    QFile::link(QString::fromStdString(ptDir), QString("pluggable_transports"));
+    QFile::link(ptDir, QString("pluggable_transports"));
 
     for (auto plugin : clientTransportPlugins) {
         defaultTorrcBuilder << plugin << "\n";
