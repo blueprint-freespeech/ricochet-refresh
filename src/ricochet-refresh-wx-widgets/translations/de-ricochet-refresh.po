@@ -1,0 +1,85 @@
+# German translations for Ricochet-Refresh.
+# Copyright (C) 2025 Blueprint for Free Speech
+# This file is distributed under the same license as Ricochet-Refresh.
+# Automatically generated, 2025.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Ricochet-Refresh 3.1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-12-20 02:04+0000\n"
+"PO-Revision-Date: 2025-12-19 17:56+0000\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"Language: de\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#. Titlebar String
+#: strings.hpp:13
+msgid "Ricochet-Refresh"
+msgstr ""
+
+#: strings.hpp:17
+msgid "&File"
+msgstr ""
+
+#: strings.hpp:21
+msgid "&Quit"
+msgstr ""
+
+#: strings.hpp:26
+msgid "Connect to Tor"
+msgstr ""
+
+#: strings.hpp:30
+msgid "Establishing a Connection"
+msgstr ""
+
+#: strings.hpp:34
+msgid "Connected"
+msgstr ""
+
+#: strings.hpp:39
+msgid ""
+"Ricochet-Refresh routes your traffic over the Tor network, run by thousands "
+"of volunteers from around the world."
+msgstr ""
+
+#: strings.hpp:44
+msgid "Always connect automatically"
+msgstr ""
+
+#: strings.hpp:48
+msgid "Configure…"
+msgstr ""
+
+#: strings.hpp:52
+msgid "Connect"
+msgstr ""
+
+#: strings.hpp:56
+msgid "View Logs…"
+msgstr ""
+
+#: strings.hpp:60
+msgid "Cancel"
+msgstr ""
+
+#: strings.hpp:64
+msgid "Create new profile…"
+msgstr ""
+
+#: strings.hpp:68
+msgid "Open existing profile…"
+msgstr ""
+
+#: strings.hpp:72
+msgid "Import legacy profile…"
+msgstr ""
+
+#: strings.hpp:76
+msgid "Recent profiles:"
+msgstr ""

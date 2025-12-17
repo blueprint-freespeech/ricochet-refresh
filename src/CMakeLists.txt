@@ -101,6 +101,7 @@ if (ENABLE_FORMATTING)
     function(add_clang_format_target target_name)
         get_target_property(target_sources ${target_name} SOURCES)
         add_custom_target(${target_name}_clang-format_target
+            DEPENDS ${target_sources}
             COMMAND ${CLANG_FORMAT_EXECUTABLE} -style=file:${CMAKE_SOURCE_DIR}/clang-format -i ${target_sources}
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         )
@@ -113,7 +114,12 @@ endif()
 
 
 add_subdirectory(libtego_rs)
-
+option(BUILD_QT_FRONTEND "Build the Qt frontend" ON)
 if (BUILD_QT_FRONTEND)
     add_subdirectory(ricochet-refresh-qt)
+endif()
+
+option(BUILD_WX_WIDGETS_FRONTEND "Build the wxWidgets frontend" OFF)
+if (BUILD_WX_WIDGETS_FRONTEND)
+    add_subdirectory(ricochet-refresh-wx-widgets)
 endif()
