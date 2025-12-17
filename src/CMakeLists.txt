@@ -60,22 +60,47 @@ if (ENABLE_LINTING)
     endif()
 
     add_custom_target(linting)
+
+    set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+    add_custom_target(cppcheck_target
+        DEPENDS
+            ${CMAKE_BINARY_DIR}/compile_commands.json
+        COMMAND cppcheck --enable=all --error-exitcode=1 --inline-suppr --suppressions-list="${CMAKE_CURRENT_SOURCE_DIR}/cppcheck-suppress" --project="${CMAKE_BINARY_DIR}/compile_commands.json"
+    )
+    add_dependencies(linting cppcheck_target)
+
 endif()
 
 option(ENABLE_FORMATTING "Enable format make target" OFF)
 if (ENABLE_FORMATTING)
-    # todo: add C++ support once we ove off of the Qt frontend
-    add_custom_target(format)
-
     find_program(CARGO_FMT_EXECUTABLE NAMES cargo-fmt)
+    find_program(CLANG_FORMAT_EXECUTABLE NAMES clang-format)
+
     if (NOT CARGO_FMT_EXECUTABLE)
         message(FATAL_ERROR "cargo-fmt not found; required to run format make target")
     else()
         message(STATUS "Found cargo-fmt: ${CARGO_FMT_EXECUTABLE}")
     endif()
+
+    if (NOT CLANG_FORMAT_EXECUTABLE)
+        message(FATAL_ERROR "clang-format not found; required to run format make target")
+    else()
+        message(STATUS "Found clang-format: ${CLANG_FORMAT_EXECUTABLE}")
+    endif()
+
+    function(add_clang_format_target target_name)
+        get_target_property(target_sources ${target_name} SOURCES)
+        add_custom_target(${target_name}_clang-format_target
+            COMMAND ${CLANG_FORMAT_EXECUTABLE} -style=file:${CMAKE_SOURCE_DIR}/clang-format -i ${target_sources}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        )
+        add_dependencies(format ${target_name}_clang-format_target)
+    endfunction()
+
+    add_custom_target(format)
+
 endif()
 
-option(BUILD_QT_FRONTEND "Build the Qt frontend" ON)
 
 add_subdirectory(libtego_rs)
 
