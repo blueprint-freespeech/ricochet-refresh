@@ -44,7 +44,21 @@ endif ()
 # Run Rust's clippy for Rust targets and cppcheck for C++ targets
 option(ENABLE_LINTING "Enable lint make target" OFF)
 if (ENABLE_LINTING)
-    # todo: add C++ support once we move off of the Qt frontend
+    find_program(CARGO_CLIPPY_EXECUTABLE NAMES cargo-clippy)
+    find_program(CPPCHECK_EXECUTABLE NAMES cppcheck)
+
+    if(NOT CARGO_CLIPPY_EXECUTABLE)
+        message(FATAL_ERROR "cargo-clippy not found; required for linting Rust")
+    else()
+        message(STATUS "Found cargo-clippy: ${CARGO_CLIPPY_EXECUTABLE}")
+    endif()
+
+    if(NOT CPPCHECK_EXECUTABLE)
+        message(FATAL_ERROR "cppcheck not found; required for linting C/C++")
+    else()
+        message(STATUS "Found cppcheck: ${CPPCHECK_EXECUTABLE}")
+    endif()
+
     add_custom_target(linting)
 endif()
 
