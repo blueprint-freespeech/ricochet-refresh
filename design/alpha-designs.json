@@ -21,7 +21,7 @@
                         "renderer": "Rectangle",
                         "transform": {
                             "x": 606.5,
-                            "y": 975.5,
+                            "y": 1178.5,
                             "w": 647,
                             "h": 273,
                             "r": 0
@@ -38,7 +38,7 @@
                         "renderer": "Heading",
                         "transform": {
                             "x": 606,
-                            "y": 892,
+                            "y": 1095,
                             "w": 170,
                             "h": 48,
                             "r": 0
@@ -55,7 +55,7 @@
                         "renderer": "Label",
                         "transform": {
                             "x": 357,
-                            "y": 1001,
+                            "y": 1204,
                             "w": 128,
                             "h": 30,
                             "r": 0
@@ -76,7 +76,7 @@
                         "renderer": "TextInput",
                         "transform": {
                             "x": 605,
-                            "y": 1036,
+                            "y": 1239,
                             "w": 626,
                             "h": 30,
                             "r": 0
@@ -93,7 +93,7 @@
                         "renderer": "Label",
                         "transform": {
                             "x": 606,
-                            "y": 936,
+                            "y": 1139,
                             "w": 184,
                             "h": 30,
                             "r": 0
@@ -114,7 +114,7 @@
                         "renderer": "Button",
                         "transform": {
                             "x": 866,
-                            "y": 1083,
+                            "y": 1286,
                             "w": 100,
                             "h": 30,
                             "r": 0
@@ -135,7 +135,7 @@
                         "renderer": "Button",
                         "transform": {
                             "x": 754,
-                            "y": 1083,
+                            "y": 1286,
                             "w": 100,
                             "h": 30,
                             "r": 0
@@ -153,7 +153,7 @@
                         "renderer": "Paragraph",
                         "transform": {
                             "x": 1115,
-                            "y": 1155,
+                            "y": 1358,
                             "w": 200,
                             "h": 140,
                             "r": 0
@@ -169,7 +169,7 @@
                         "renderer": "Window",
                         "transform": {
                             "x": 604,
-                            "y": 930,
+                            "y": 1133,
                             "w": 800,
                             "h": 600,
                             "r": 0
@@ -193,7 +193,7 @@
                         "renderer": "Tabs",
                         "transform": {
                             "x": 604,
-                            "y": 965,
+                            "y": 1168,
                             "w": 800,
                             "h": 530,
                             "r": 0
@@ -210,7 +210,7 @@
                         "renderer": "Label",
                         "transform": {
                             "x": 604,
-                            "y": 615,
+                            "y": 818,
                             "w": 44,
                             "h": 30,
                             "r": 0
@@ -234,32 +234,8 @@
                         "renderer": "Rectangle",
                         "transform": {
                             "x": 604,
-                            "y": 649,
+                            "y": 852,
                             "w": 800,
-                            "h": 38,
-                            "r": 0
-                        },
-                        "type": "Shape"
-                    },
-                    {
-                        "id": "1713060215506",
-                        "appearance": {
-                            "BORDER_RADIUS": 0,
-                            "FOREGROUND_COLOR": "#f0f0f0",
-                            "FONT_SIZE": 16,
-                            "BACKGROUND_COLOR": 0,
-                            "STROKE_COLOR": "#f0f0f0",
-                            "STROKE_THICKNESS": 1,
-                            "TEXT_ALIGNMENT": "center",
-                            "TEXT": "File",
-                            "PADDING_HORIZONTAL2": 10,
-                            "PADDING_VERTICAL2": 10
-                        },
-                        "renderer": "Rectangle",
-                        "transform": {
-                            "x": 226.5,
-                            "y": 649,
-                            "w": 45,
                             "h": 38,
                             "r": 0
                         },
@@ -281,8 +257,8 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 354,
-                            "y": 649,
+                            "x": 308,
+                            "y": 852,
                             "w": 86,
                             "h": 38,
                             "r": 0
@@ -305,8 +281,8 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 477.5,
-                            "y": 649,
+                            "x": 431.5,
+                            "y": 852,
                             "w": 59,
                             "h": 38,
                             "r": 0
@@ -329,8 +305,8 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 535.5,
-                            "y": 649,
+                            "x": 489.5,
+                            "y": 852,
                             "w": 57,
                             "h": 38,
                             "r": 0
@@ -354,7 +330,7 @@
                         "renderer": "Rectangle",
                         "transform": {
                             "x": 604,
-                            "y": 684,
+                            "y": 887,
                             "w": 800,
                             "h": 32,
                             "r": 0
@@ -377,8 +353,8 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 420,
-                            "y": 649,
+                            "x": 374,
+                            "y": 852,
                             "w": 58,
                             "h": 38,
                             "r": 0
@@ -401,8 +377,8 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 282.5,
-                            "y": 649,
+                            "x": 236.5,
+                            "y": 852,
                             "w": 65,
                             "h": 38,
                             "r": 0
@@ -518,14 +494,14 @@
                             "FONT_SIZE": 16,
                             "BACKGROUND_COLOR": 2434341,
                             "TEXT_ALIGNMENT": "left",
-                            "TEXT": "File:\n- New Profile\n- Open Profile...\n- Close Profile\n- Save Profile As...\n---\n- Logout\n- Logout All Profiles\n---\n- Quit"
+                            "TEXT": "Profile:\n- New Profile\n- Open Profile...\n- Save Profile As...\n- Edit Profile...\n---\n- Close Profile\n- Logout\n---\n- Copy Ricochet Id\n- Set Visibility \n⠀- Online\n⠀- Restricted\n⠀- Hidden\n---\n- Logout All \n- Quit"
                         },
                         "renderer": "Paragraph",
                         "transform": {
                             "x": 108.5,
-                            "y": 376.5,
+                            "y": 442.5,
                             "w": 183,
-                            "h": 285,
+                            "h": 417,
                             "r": 0
                         },
                         "type": "Shape"
@@ -540,7 +516,7 @@
                         },
                         "renderer": "Paragraph",
                         "transform": {
-                            "x": 395.5,
+                            "x": 247.5,
                             "y": 348,
                             "w": 157,
                             "h": 228,
@@ -558,7 +534,7 @@
                         },
                         "renderer": "Paragraph",
                         "transform": {
-                            "x": 684,
+                            "x": 536,
                             "y": 324,
                             "w": 148,
                             "h": 180,
@@ -576,7 +552,7 @@
                         },
                         "renderer": "Paragraph",
                         "transform": {
-                            "x": 838,
+                            "x": 690,
                             "y": 324,
                             "w": 194,
                             "h": 180,
@@ -594,28 +570,10 @@
                         },
                         "renderer": "Paragraph",
                         "transform": {
-                            "x": 573.5,
+                            "x": 425.5,
                             "y": 324,
                             "w": 157,
                             "h": 180,
-                            "r": 0
-                        },
-                        "type": "Shape"
-                    },
-                    {
-                        "id": "1713839317634",
-                        "appearance": {
-                            "FONT_SIZE": 16,
-                            "BACKGROUND_COLOR": 2434341,
-                            "TEXT_ALIGNMENT": "left",
-                            "TEXT": "Profile:\n- Set Visibility \n⠀- Online\n⠀- Restricted\n⠀- Hidden\n- Copy Ricochet Id\n- Edit Profile..."
-                        },
-                        "renderer": "Paragraph",
-                        "transform": {
-                            "x": 243,
-                            "y": 333,
-                            "w": 148,
-                            "h": 198,
                             "r": 0
                         },
                         "type": "Shape"
@@ -630,7 +588,7 @@
                         "renderer": "Label",
                         "transform": {
                             "x": 594,
-                            "y": 545,
+                            "y": 748,
                             "w": 1154,
                             "h": 26,
                             "r": 0
@@ -664,7 +622,7 @@
                         "renderer": "Heading",
                         "transform": {
                             "x": 70,
-                            "y": 510,
+                            "y": 713,
                             "w": 140,
                             "h": 44,
                             "r": 0
@@ -681,7 +639,7 @@
                         },
                         "renderer": "Paragraph",
                         "transform": {
-                            "x": 1068,
+                            "x": 920,
                             "y": 330.5,
                             "w": 200,
                             "h": 157,
@@ -703,7 +661,7 @@
                         "renderer": "Button",
                         "transform": {
                             "x": 493,
-                            "y": 684,
+                            "y": 887,
                             "w": 32,
                             "h": 32,
                             "r": 0
@@ -724,7 +682,7 @@
                         "renderer": "Button",
                         "transform": {
                             "x": 526,
-                            "y": 684,
+                            "y": 887,
                             "w": 32,
                             "h": 32,
                             "r": 0
@@ -742,7 +700,7 @@
                         "renderer": "Icon",
                         "transform": {
                             "x": 526,
-                            "y": 684,
+                            "y": 887,
                             "w": 28,
                             "h": 28,
                             "r": 0
@@ -763,7 +721,7 @@
                         "renderer": "Button",
                         "transform": {
                             "x": 357,
-                            "y": 684,
+                            "y": 887,
                             "w": 32,
                             "h": 32,
                             "r": 0
@@ -784,7 +742,7 @@
                         "renderer": "Button",
                         "transform": {
                             "x": 390,
-                            "y": 684,
+                            "y": 887,
                             "w": 32,
                             "h": 32,
                             "r": 0
@@ -805,7 +763,7 @@
                         "renderer": "Button",
                         "transform": {
                             "x": 423,
-                            "y": 684,
+                            "y": 887,
                             "w": 32,
                             "h": 32,
                             "r": 0
@@ -823,7 +781,7 @@
                         "renderer": "Icon",
                         "transform": {
                             "x": 357,
-                            "y": 685,
+                            "y": 888,
                             "w": 26,
                             "h": 26,
                             "r": 0
@@ -841,7 +799,7 @@
                         "renderer": "Icon",
                         "transform": {
                             "x": 389,
-                            "y": 685,
+                            "y": 888,
                             "w": 26,
                             "h": 26,
                             "r": 0
@@ -859,7 +817,7 @@
                         "renderer": "Icon",
                         "transform": {
                             "x": 423,
-                            "y": 685,
+                            "y": 888,
                             "w": 26,
                             "h": 26,
                             "r": 0
@@ -880,7 +838,7 @@
                         "renderer": "Button",
                         "transform": {
                             "x": 220,
-                            "y": 684,
+                            "y": 887,
                             "w": 32,
                             "h": 32,
                             "r": 0
@@ -901,7 +859,7 @@
                         "renderer": "Button",
                         "transform": {
                             "x": 286,
-                            "y": 684,
+                            "y": 887,
                             "w": 32,
                             "h": 32,
                             "r": 0
@@ -922,7 +880,7 @@
                         "renderer": "Button",
                         "transform": {
                             "x": 319,
-                            "y": 684,
+                            "y": 887,
                             "w": 32,
                             "h": 32,
                             "r": 0
@@ -940,7 +898,7 @@
                         "renderer": "Icon",
                         "transform": {
                             "x": 494,
-                            "y": 684,
+                            "y": 887,
                             "w": 28,
                             "h": 28,
                             "r": 0
@@ -958,7 +916,7 @@
                         "renderer": "Icon",
                         "transform": {
                             "x": 220,
-                            "y": 684,
+                            "y": 887,
                             "w": 26,
                             "h": 26,
                             "r": 0
@@ -976,7 +934,7 @@
                         "renderer": "Icon",
                         "transform": {
                             "x": 286,
-                            "y": 683,
+                            "y": 886,
                             "w": 28,
                             "h": 28,
                             "r": 0
@@ -993,7 +951,7 @@
                         "renderer": "VerticalLine",
                         "transform": {
                             "x": 338,
-                            "y": 684,
+                            "y": 887,
                             "w": 2,
                             "h": 32,
                             "r": 0
@@ -1010,7 +968,7 @@
                         "renderer": "VerticalLine",
                         "transform": {
                             "x": 474,
-                            "y": 684,
+                            "y": 887,
                             "w": 2,
                             "h": 32,
                             "r": 0
@@ -1028,7 +986,7 @@
                         "renderer": "Icon",
                         "transform": {
                             "x": 321,
-                            "y": 684,
+                            "y": 887,
                             "w": 30,
                             "h": 30,
                             "r": 0
@@ -1049,7 +1007,7 @@
                         "renderer": "Button",
                         "transform": {
                             "x": 253,
-                            "y": 684,
+                            "y": 887,
                             "w": 32,
                             "h": 32,
                             "r": 0
@@ -1067,7 +1025,7 @@
                         "renderer": "Icon",
                         "transform": {
                             "x": 255,
-                            "y": 685,
+                            "y": 888,
                             "w": 28,
                             "h": 28,
                             "r": 0
@@ -1084,7 +1042,7 @@
                         "renderer": "VerticalLine",
                         "transform": {
                             "x": 545,
-                            "y": 684,
+                            "y": 887,
                             "w": 2,
                             "h": 32,
                             "r": 0
@@ -1105,7 +1063,7 @@
                         "renderer": "Button",
                         "transform": {
                             "x": 564,
-                            "y": 684,
+                            "y": 887,
                             "w": 32,
                             "h": 32,
                             "r": 0
@@ -1126,7 +1084,7 @@
                         "renderer": "Button",
                         "transform": {
                             "x": 597,
-                            "y": 684,
+                            "y": 887,
                             "w": 32,
                             "h": 32,
                             "r": 0
@@ -1144,7 +1102,7 @@
                         "renderer": "Icon",
                         "transform": {
                             "x": 564,
-                            "y": 686,
+                            "y": 889,
                             "w": 28,
                             "h": 28,
                             "r": 0
@@ -1162,7 +1120,7 @@
                         "renderer": "Icon",
                         "transform": {
                             "x": 598,
-                            "y": 684,
+                            "y": 887,
                             "w": 28,
                             "h": 28,
                             "r": 0
@@ -1183,7 +1141,7 @@
                         "renderer": "Button",
                         "transform": {
                             "x": 456,
-                            "y": 684,
+                            "y": 887,
                             "w": 32,
                             "h": 32,
                             "r": 0
@@ -1201,27 +1159,9 @@
                         "renderer": "Icon",
                         "transform": {
                             "x": 457,
-                            "y": 685,
+                            "y": 888,
                             "w": 28,
                             "h": 28,
-                            "r": 0
-                        },
-                        "type": "Shape"
-                    },
-                    {
-                        "id": "1738075121460",
-                        "appearance": {
-                            "FONT_SIZE": 28,
-                            "BACKGROUND_COLOR": 2434341,
-                            "TEXT_ALIGNMENT": "left",
-                            "TEXT": "Blueprint For Free Speech\nNGI Zero Commons Fund"
-                        },
-                        "renderer": "Paragraph",
-                        "transform": {
-                            "x": 1072,
-                            "y": 51.5,
-                            "w": 336,
-                            "h": 103,
                             "r": 0
                         },
                         "type": "Shape"
@@ -1233,7 +1173,6 @@
                     "1713060215503",
                     "1713060215504",
                     "1713060215505",
-                    "1713060215506",
                     "1713060215507",
                     "1713060215508",
                     "1713060215509",
@@ -1258,7 +1197,6 @@
                     "1713839317631",
                     "1713839317632",
                     "1713839317633",
-                    "1713839317634",
                     "1713839317635",
                     "1713839317636",
                     "1713839317637",
@@ -1289,8 +1227,7 @@
                     "1734897878878",
                     "1734897878879",
                     "1734897878880",
-                    "1734897878881",
-                    "1738075121460"
+                    "1734897878881"
                 ],
                 "title": "Rico - Unlock Profile"
             },
@@ -1515,30 +1452,6 @@
                         "type": "Shape"
                     },
                     {
-                        "id": "1734805222166",
-                        "appearance": {
-                            "BORDER_RADIUS": 0,
-                            "FOREGROUND_COLOR": "#f0f0f0",
-                            "FONT_SIZE": 16,
-                            "BACKGROUND_COLOR": 0,
-                            "STROKE_COLOR": "#f0f0f0",
-                            "STROKE_THICKNESS": 1,
-                            "TEXT_ALIGNMENT": "center",
-                            "TEXT": "File",
-                            "PADDING_HORIZONTAL2": 10,
-                            "PADDING_VERTICAL2": 10
-                        },
-                        "renderer": "Rectangle",
-                        "transform": {
-                            "x": 321.5,
-                            "y": 349,
-                            "w": 45,
-                            "h": 38,
-                            "r": 0
-                        },
-                        "type": "Shape"
-                    },
-                    {
                         "id": "1734805222167",
                         "appearance": {
                             "BORDER_RADIUS": 0,
@@ -1554,7 +1467,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 449,
+                            "x": 403,
                             "y": 349,
                             "w": 86,
                             "h": 38,
@@ -1578,7 +1491,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 572.5,
+                            "x": 526.5,
                             "y": 349,
                             "w": 59,
                             "h": 38,
@@ -1602,7 +1515,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 630.5,
+                            "x": 584.5,
                             "y": 349,
                             "w": 57,
                             "h": 38,
@@ -1671,7 +1584,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 515,
+                            "x": 469,
                             "y": 349,
                             "w": 58,
                             "h": 38,
@@ -1695,7 +1608,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 377.5,
+                            "x": 331.5,
                             "y": 349,
                             "w": 65,
                             "h": 38,
@@ -2238,24 +2151,6 @@
                             "r": 0
                         },
                         "type": "Shape"
-                    },
-                    {
-                        "id": "1738075121276",
-                        "appearance": {
-                            "FONT_SIZE": 28,
-                            "BACKGROUND_COLOR": 2434341,
-                            "TEXT_ALIGNMENT": "left",
-                            "TEXT": "Blueprint For Free Speech\nNGI Zero Commons Fund"
-                        },
-                        "renderer": "Paragraph",
-                        "transform": {
-                            "x": 1072,
-                            "y": 51.5,
-                            "w": 336,
-                            "h": 103,
-                            "r": 0
-                        },
-                        "type": "Shape"
                     }
                 ],
                 "rootIds": [
@@ -2265,7 +2160,6 @@
                     "1734805222163",
                     "1734805222164",
                     "1734805222165",
-                    "1734805222166",
                     "1734805222167",
                     "1734805222168",
                     "1734805222169",
@@ -2305,8 +2199,7 @@
                     "1734897870738",
                     "1734897870739",
                     "1734897870740",
-                    "1734897870741",
-                    "1738075121276"
+                    "1734897870741"
                 ],
                 "title": "Rico - Settings (General)"
             },
@@ -2401,13 +2294,13 @@
                         "appearance": {
                             "FONT_SIZE": 20,
                             "BACKGROUND_COLOR": 2434341,
-                            "TEXT": "Tray Icon"
+                            "TEXT": "Window"
                         },
                         "renderer": "Heading",
                         "transform": {
-                            "x": 289,
+                            "x": 283,
                             "y": 733,
-                            "w": 104,
+                            "w": 92,
                             "h": 44,
                             "r": 0
                         },
@@ -2422,13 +2315,13 @@
                             "STROKE_COLOR": "#525252",
                             "STROKE_THICKNESS": 1,
                             "TEXT_ALIGNMENT": "left",
-                            "TEXT": "Minimize to system tray",
+                            "TEXT": "Show system tray icon",
                             "STATE": "Checked"
                         },
                         "renderer": "Checkbox",
                         "transform": {
                             "x": 513,
-                            "y": 768,
+                            "y": 804,
                             "w": 536,
                             "h": 36,
                             "r": 0
@@ -2444,13 +2337,13 @@
                             "STROKE_COLOR": "#525252",
                             "STROKE_THICKNESS": 1,
                             "TEXT_ALIGNMENT": "left",
-                            "TEXT": "Close to system tray",
+                            "TEXT": "Minimize to system tray",
                             "STATE": "Checked"
                         },
                         "renderer": "Checkbox",
                         "transform": {
-                            "x": 513,
-                            "y": 804,
+                            "x": 525,
+                            "y": 840,
                             "w": 536,
                             "h": 36,
                             "r": 0
@@ -2715,9 +2608,9 @@
                         "renderer": "Window",
                         "transform": {
                             "x": 510,
-                            "y": 571,
+                            "y": 589,
                             "w": 800,
-                            "h": 600,
+                            "h": 636,
                             "r": 0
                         },
                         "type": "Shape"
@@ -2764,30 +2657,6 @@
                         "type": "Shape"
                     },
                     {
-                        "id": "1734805232054",
-                        "appearance": {
-                            "BORDER_RADIUS": 0,
-                            "FOREGROUND_COLOR": "#f0f0f0",
-                            "FONT_SIZE": 16,
-                            "BACKGROUND_COLOR": 0,
-                            "STROKE_COLOR": "#f0f0f0",
-                            "STROKE_THICKNESS": 1,
-                            "TEXT_ALIGNMENT": "center",
-                            "TEXT": "File",
-                            "PADDING_HORIZONTAL2": 10,
-                            "PADDING_VERTICAL2": 10
-                        },
-                        "renderer": "Rectangle",
-                        "transform": {
-                            "x": 132.5,
-                            "y": 290,
-                            "w": 45,
-                            "h": 38,
-                            "r": 0
-                        },
-                        "type": "Shape"
-                    },
-                    {
                         "id": "1734805232055",
                         "appearance": {
                             "BORDER_RADIUS": 0,
@@ -2803,7 +2672,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 260,
+                            "x": 214,
                             "y": 290,
                             "w": 86,
                             "h": 38,
@@ -2827,7 +2696,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 383.5,
+                            "x": 337.5,
                             "y": 290,
                             "w": 59,
                             "h": 38,
@@ -2851,7 +2720,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 441.5,
+                            "x": 395.5,
                             "y": 290,
                             "w": 57,
                             "h": 38,
@@ -2872,8 +2741,8 @@
                         },
                         "renderer": "Button",
                         "transform": {
-                            "x": 851,
-                            "y": 846,
+                            "x": 850,
+                            "y": 882,
                             "w": 96,
                             "h": 28,
                             "r": 0
@@ -2920,7 +2789,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 326,
+                            "x": 280,
                             "y": 290,
                             "w": 58,
                             "h": 38,
@@ -2944,7 +2813,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 188.5,
+                            "x": 142.5,
                             "y": 290,
                             "w": 65,
                             "h": 38,
@@ -3513,19 +3382,23 @@
                         "type": "Shape"
                     },
                     {
-                        "id": "1738075121342",
+                        "id": "1766924661483",
                         "appearance": {
-                            "FONT_SIZE": 28,
+                            "FOREGROUND_COLOR": 15790320,
+                            "FONT_SIZE": 16,
                             "BACKGROUND_COLOR": 2434341,
+                            "STROKE_COLOR": "#525252",
+                            "STROKE_THICKNESS": 1,
                             "TEXT_ALIGNMENT": "left",
-                            "TEXT": "Blueprint For Free Speech\nNGI Zero Commons Fund"
+                            "TEXT": "Minimize instead of exit",
+                            "STATE": "Checked"
                         },
-                        "renderer": "Paragraph",
+                        "renderer": "Checkbox",
                         "transform": {
-                            "x": 1072,
-                            "y": 51.5,
-                            "w": 336,
-                            "h": 103,
+                            "x": 513,
+                            "y": 768,
+                            "w": 536,
+                            "h": 36,
                             "r": 0
                         },
                         "type": "Shape"
@@ -3540,7 +3413,6 @@
                     "1734805232051",
                     "1734805232052",
                     "1734805232053",
-                    "1734805232054",
                     "1734805232055",
                     "1734805232056",
                     "1734805232057",
@@ -3592,7 +3464,7 @@
                     "1734897872872",
                     "1734897872873",
                     "1734897872874",
-                    "1738075121342"
+                    "1766924661483"
                 ],
                 "title": "Rico - Settings (Interface)"
             },
@@ -3886,7 +3758,7 @@
                         },
                         "renderer": "RadioButton",
                         "transform": {
-                            "x": 577,
+                            "x": 570,
                             "y": 1197,
                             "w": 326,
                             "h": 36,
@@ -4338,30 +4210,6 @@
                         "type": "Shape"
                     },
                     {
-                        "id": "1734805238758",
-                        "appearance": {
-                            "BORDER_RADIUS": 0,
-                            "FOREGROUND_COLOR": "#f0f0f0",
-                            "FONT_SIZE": 16,
-                            "BACKGROUND_COLOR": 0,
-                            "STROKE_COLOR": "#f0f0f0",
-                            "STROKE_THICKNESS": 1,
-                            "TEXT_ALIGNMENT": "center",
-                            "TEXT": "File",
-                            "PADDING_HORIZONTAL2": 10,
-                            "PADDING_VERTICAL2": 10
-                        },
-                        "renderer": "Rectangle",
-                        "transform": {
-                            "x": 293.5,
-                            "y": 244,
-                            "w": 45,
-                            "h": 38,
-                            "r": 0
-                        },
-                        "type": "Shape"
-                    },
-                    {
                         "id": "1734805238759",
                         "appearance": {
                             "BORDER_RADIUS": 0,
@@ -4377,7 +4225,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 421,
+                            "x": 375,
                             "y": 244,
                             "w": 86,
                             "h": 38,
@@ -4401,7 +4249,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 544.5,
+                            "x": 498.5,
                             "y": 244,
                             "w": 59,
                             "h": 38,
@@ -4425,7 +4273,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 602.5,
+                            "x": 556.5,
                             "y": 244,
                             "w": 57,
                             "h": 38,
@@ -4473,7 +4321,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 487,
+                            "x": 441,
                             "y": 244,
                             "w": 58,
                             "h": 38,
@@ -4497,7 +4345,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 349.5,
+                            "x": 303.5,
                             "y": 244,
                             "w": 65,
                             "h": 38,
@@ -5226,31 +5074,12 @@
                             "r": 0
                         },
                         "type": "Shape"
-                    },
-                    {
-                        "id": "1738075121405",
-                        "appearance": {
-                            "FONT_SIZE": 28,
-                            "BACKGROUND_COLOR": 2434341,
-                            "TEXT_ALIGNMENT": "left",
-                            "TEXT": "Blueprint For Free Speech\nNGI Zero Commons Fund"
-                        },
-                        "renderer": "Paragraph",
-                        "transform": {
-                            "x": 1072,
-                            "y": 51.5,
-                            "w": 336,
-                            "h": 103,
-                            "r": 0
-                        },
-                        "type": "Shape"
                     }
                 ],
                 "rootIds": [
                     "1734805238755",
                     "1734805238756",
                     "1734805238757",
-                    "1734805238758",
                     "1734805238759",
                     "1734805238760",
                     "1734805238761",
@@ -5328,8 +5157,7 @@
                     "1734897874344",
                     "1734897874345",
                     "1734897874346",
-                    "1734897874347",
-                    "1738075121405"
+                    "1734897874347"
                 ],
                 "title": "Rico - Settings (Connection)"
             },
@@ -5394,30 +5222,6 @@
                         "type": "Shape"
                     },
                     {
-                        "id": "1708271110358",
-                        "appearance": {
-                            "BORDER_RADIUS": 0,
-                            "FOREGROUND_COLOR": "#f0f0f0",
-                            "FONT_SIZE": 16,
-                            "BACKGROUND_COLOR": 0,
-                            "STROKE_COLOR": "#f0f0f0",
-                            "STROKE_THICKNESS": 1,
-                            "TEXT_ALIGNMENT": "center",
-                            "TEXT": "File",
-                            "PADDING_HORIZONTAL2": 10,
-                            "PADDING_VERTICAL2": 10
-                        },
-                        "renderer": "Rectangle",
-                        "transform": {
-                            "x": 229.5,
-                            "y": 241,
-                            "w": 45,
-                            "h": 38,
-                            "r": 0
-                        },
-                        "type": "Shape"
-                    },
-                    {
                         "id": "1708271110635",
                         "appearance": {
                             "BORDER_RADIUS": 0,
@@ -5433,7 +5237,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 357,
+                            "x": 311,
                             "y": 241,
                             "w": 86,
                             "h": 38,
@@ -5457,7 +5261,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 480.5,
+                            "x": 434.5,
                             "y": 241,
                             "w": 59,
                             "h": 38,
@@ -5481,7 +5285,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 538.5,
+                            "x": 492.5,
                             "y": 241,
                             "w": 57,
                             "h": 38,
@@ -6125,7 +5929,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 423,
+                            "x": 377,
                             "y": 241,
                             "w": 58,
                             "h": 38,
@@ -6283,7 +6087,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 285.5,
+                            "x": 239.5,
                             "y": 241,
                             "w": 65,
                             "h": 38,
@@ -6755,9 +6559,9 @@
                         },
                         "renderer": "Heading",
                         "transform": {
-                            "x": 325,
+                            "x": 326,
                             "y": 39,
-                            "w": 650,
+                            "w": 652,
                             "h": 78,
                             "r": 0
                         },
@@ -6993,7 +6797,6 @@
                     "1711155024002",
                     "1708271107681",
                     "1708271108331",
-                    "1708271110358",
                     "1708271110635",
                     "1708271110726",
                     "1708271110919",
@@ -7137,30 +6940,6 @@
                         "type": "Shape"
                     },
                     {
-                        "id": "1708271110358",
-                        "appearance": {
-                            "BORDER_RADIUS": 0,
-                            "FOREGROUND_COLOR": "#f0f0f0",
-                            "FONT_SIZE": 16,
-                            "BACKGROUND_COLOR": 0,
-                            "STROKE_COLOR": "#f0f0f0",
-                            "STROKE_THICKNESS": 1,
-                            "TEXT_ALIGNMENT": "center",
-                            "TEXT": "File",
-                            "PADDING_HORIZONTAL2": 10,
-                            "PADDING_VERTICAL2": 10
-                        },
-                        "renderer": "Rectangle",
-                        "transform": {
-                            "x": 242.5,
-                            "y": 299,
-                            "w": 45,
-                            "h": 38,
-                            "r": 0
-                        },
-                        "type": "Shape"
-                    },
-                    {
                         "id": "1708271110635",
                         "appearance": {
                             "BORDER_RADIUS": 0,
@@ -7176,7 +6955,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 370,
+                            "x": 324,
                             "y": 299,
                             "w": 86,
                             "h": 38,
@@ -7200,7 +6979,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 493.5,
+                            "x": 447.5,
                             "y": 299,
                             "w": 59,
                             "h": 38,
@@ -7224,7 +7003,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 551.5,
+                            "x": 505.5,
                             "y": 299,
                             "w": 57,
                             "h": 38,
@@ -7510,7 +7289,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 436,
+                            "x": 390,
                             "y": 299,
                             "w": 58,
                             "h": 38,
@@ -7668,7 +7447,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 298.5,
+                            "x": 252.5,
                             "y": 299,
                             "w": 65,
                             "h": 38,
@@ -7948,30 +7727,6 @@
                         "type": "Shape"
                     },
                     {
-                        "id": "1713060220116",
-                        "appearance": {
-                            "BORDER_RADIUS": 0,
-                            "FOREGROUND_COLOR": "#f0f0f0",
-                            "FONT_SIZE": 16,
-                            "BACKGROUND_COLOR": 0,
-                            "STROKE_COLOR": "#f0f0f0",
-                            "STROKE_THICKNESS": 1,
-                            "TEXT_ALIGNMENT": "center",
-                            "TEXT": "File",
-                            "PADDING_HORIZONTAL2": 10,
-                            "PADDING_VERTICAL2": 10
-                        },
-                        "renderer": "Rectangle",
-                        "transform": {
-                            "x": 243.5,
-                            "y": 1008,
-                            "w": 45,
-                            "h": 38,
-                            "r": 0
-                        },
-                        "type": "Shape"
-                    },
-                    {
                         "id": "1713060220117",
                         "appearance": {
                             "BORDER_RADIUS": 0,
@@ -7987,7 +7742,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 371,
+                            "x": 325,
                             "y": 1008,
                             "w": 86,
                             "h": 38,
@@ -8011,7 +7766,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 494.5,
+                            "x": 448.5,
                             "y": 1008,
                             "w": 59,
                             "h": 38,
@@ -8035,7 +7790,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 552.5,
+                            "x": 506.5,
                             "y": 1008,
                             "w": 57,
                             "h": 38,
@@ -8513,7 +8268,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 437,
+                            "x": 391,
                             "y": 1008,
                             "w": 58,
                             "h": 38,
@@ -8671,7 +8426,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 299.5,
+                            "x": 253.5,
                             "y": 1008,
                             "w": 65,
                             "h": 38,
@@ -10095,7 +9850,6 @@
                     "1711155024002",
                     "1708271107681",
                     "1708271108331",
-                    "1708271110358",
                     "1708271110635",
                     "1708271110726",
                     "1708271110919",
@@ -10134,7 +9888,6 @@
                     "1713060220113",
                     "1713060220114",
                     "1713060220115",
-                    "1713060220116",
                     "1713060220117",
                     "1713060220118",
                     "1713060220119",
@@ -10307,30 +10060,6 @@
                         "type": "Shape"
                     },
                     {
-                        "id": "1708271110358",
-                        "appearance": {
-                            "BORDER_RADIUS": 0,
-                            "FOREGROUND_COLOR": "#f0f0f0",
-                            "FONT_SIZE": 16,
-                            "BACKGROUND_COLOR": 0,
-                            "STROKE_COLOR": "#f0f0f0",
-                            "STROKE_THICKNESS": 1,
-                            "TEXT_ALIGNMENT": "center",
-                            "TEXT": "File",
-                            "PADDING_HORIZONTAL2": 10,
-                            "PADDING_VERTICAL2": 10
-                        },
-                        "renderer": "Rectangle",
-                        "transform": {
-                            "x": 244.5,
-                            "y": 361,
-                            "w": 45,
-                            "h": 38,
-                            "r": 0
-                        },
-                        "type": "Shape"
-                    },
-                    {
                         "id": "1708271110635",
                         "appearance": {
                             "BORDER_RADIUS": 0,
@@ -10346,7 +10075,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 372,
+                            "x": 326,
                             "y": 361,
                             "w": 86,
                             "h": 38,
@@ -10370,7 +10099,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 495.5,
+                            "x": 449.5,
                             "y": 361,
                             "w": 59,
                             "h": 38,
@@ -10394,7 +10123,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 553.5,
+                            "x": 507.5,
                             "y": 361,
                             "w": 57,
                             "h": 38,
@@ -10612,7 +10341,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 438,
+                            "x": 392,
                             "y": 361,
                             "w": 58,
                             "h": 38,
@@ -10770,7 +10499,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 300.5,
+                            "x": 254.5,
                             "y": 361,
                             "w": 65,
                             "h": 38,
@@ -11068,30 +10797,6 @@
                         "type": "Shape"
                     },
                     {
-                        "id": "1713060220116",
-                        "appearance": {
-                            "BORDER_RADIUS": 0,
-                            "FOREGROUND_COLOR": "#f0f0f0",
-                            "FONT_SIZE": 16,
-                            "BACKGROUND_COLOR": 0,
-                            "STROKE_COLOR": "#f0f0f0",
-                            "STROKE_THICKNESS": 1,
-                            "TEXT_ALIGNMENT": "center",
-                            "TEXT": "File",
-                            "PADDING_HORIZONTAL2": 10,
-                            "PADDING_VERTICAL2": 10
-                        },
-                        "renderer": "Rectangle",
-                        "transform": {
-                            "x": 244.5,
-                            "y": 1079,
-                            "w": 45,
-                            "h": 38,
-                            "r": 0
-                        },
-                        "type": "Shape"
-                    },
-                    {
                         "id": "1713060220117",
                         "appearance": {
                             "BORDER_RADIUS": 0,
@@ -11107,7 +10812,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 372,
+                            "x": 326,
                             "y": 1079,
                             "w": 86,
                             "h": 38,
@@ -11131,7 +10836,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 495.5,
+                            "x": 449.5,
                             "y": 1079,
                             "w": 59,
                             "h": 38,
@@ -11155,7 +10860,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 553.5,
+                            "x": 507.5,
                             "y": 1079,
                             "w": 57,
                             "h": 38,
@@ -11651,7 +11356,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 438,
+                            "x": 392,
                             "y": 1079,
                             "w": 58,
                             "h": 38,
@@ -11809,7 +11514,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 300.5,
+                            "x": 254.5,
                             "y": 1079,
                             "w": 65,
                             "h": 38,
@@ -13254,7 +12959,6 @@
                     "1711155024002",
                     "1708271107681",
                     "1708271108331",
-                    "1708271110358",
                     "1708271110635",
                     "1708271110726",
                     "1708271110919",
@@ -13290,7 +12994,6 @@
                     "1713060220113",
                     "1713060220114",
                     "1713060220115",
-                    "1713060220116",
                     "1713060220117",
                     "1713060220118",
                     "1713060220119",
@@ -13586,30 +13289,6 @@
                         "type": "Shape"
                     },
                     {
-                        "id": "1734805209588",
-                        "appearance": {
-                            "BORDER_RADIUS": 0,
-                            "FOREGROUND_COLOR": "#f0f0f0",
-                            "FONT_SIZE": 16,
-                            "BACKGROUND_COLOR": 0,
-                            "STROKE_COLOR": "#f0f0f0",
-                            "STROKE_THICKNESS": 1,
-                            "TEXT_ALIGNMENT": "center",
-                            "TEXT": "File",
-                            "PADDING_HORIZONTAL2": 10,
-                            "PADDING_VERTICAL2": 10
-                        },
-                        "renderer": "Rectangle",
-                        "transform": {
-                            "x": 271.5,
-                            "y": 348,
-                            "w": 45,
-                            "h": 38,
-                            "r": 0
-                        },
-                        "type": "Shape"
-                    },
-                    {
                         "id": "1734805209589",
                         "appearance": {
                             "BORDER_RADIUS": 0,
@@ -13625,7 +13304,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 399,
+                            "x": 353,
                             "y": 348,
                             "w": 86,
                             "h": 38,
@@ -13649,7 +13328,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 522.5,
+                            "x": 476.5,
                             "y": 348,
                             "w": 59,
                             "h": 38,
@@ -13673,7 +13352,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 580.5,
+                            "x": 534.5,
                             "y": 348,
                             "w": 57,
                             "h": 38,
@@ -13721,7 +13400,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 465,
+                            "x": 419,
                             "y": 348,
                             "w": 58,
                             "h": 38,
@@ -13745,7 +13424,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 327.5,
+                            "x": 281.5,
                             "y": 348,
                             "w": 65,
                             "h": 38,
@@ -14357,24 +14036,6 @@
                             "r": 0
                         },
                         "type": "Shape"
-                    },
-                    {
-                        "id": "1738075121224",
-                        "appearance": {
-                            "FONT_SIZE": 28,
-                            "BACKGROUND_COLOR": 2434341,
-                            "TEXT_ALIGNMENT": "left",
-                            "TEXT": "Blueprint For Free Speech\nNGI Zero Commons Fund"
-                        },
-                        "renderer": "Paragraph",
-                        "transform": {
-                            "x": 1072,
-                            "y": 51.5,
-                            "w": 336,
-                            "h": 103,
-                            "r": 0
-                        },
-                        "type": "Shape"
                     }
                 ],
                 "rootIds": [
@@ -14383,7 +14044,6 @@
                     "1734805209584",
                     "1734805209586",
                     "1734805209587",
-                    "1734805209588",
                     "1734805209589",
                     "1734805209590",
                     "1734805209591",
@@ -14425,8 +14085,7 @@
                     "1734897869346",
                     "1734897869347",
                     "1734897869348",
-                    "1734897869349",
-                    "1738075121224"
+                    "1734897869349"
                 ],
                 "title": "Rico - Connection Status"
             },
@@ -15337,30 +14996,6 @@
                         "type": "Shape"
                     },
                     {
-                        "id": "1713060215506",
-                        "appearance": {
-                            "BORDER_RADIUS": 0,
-                            "FOREGROUND_COLOR": "#f0f0f0",
-                            "FONT_SIZE": 16,
-                            "BACKGROUND_COLOR": 0,
-                            "STROKE_COLOR": "#f0f0f0",
-                            "STROKE_THICKNESS": 1,
-                            "TEXT_ALIGNMENT": "center",
-                            "TEXT": "File",
-                            "PADDING_HORIZONTAL2": 10,
-                            "PADDING_VERTICAL2": 10
-                        },
-                        "renderer": "Rectangle",
-                        "transform": {
-                            "x": 65.5,
-                            "y": 282,
-                            "w": 45,
-                            "h": 38,
-                            "r": 0
-                        },
-                        "type": "Shape"
-                    },
-                    {
                         "id": "1713060215507",
                         "appearance": {
                             "BORDER_RADIUS": 0,
@@ -15376,7 +15011,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 193,
+                            "x": 147,
                             "y": 282,
                             "w": 86,
                             "h": 38,
@@ -15400,7 +15035,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 316.5,
+                            "x": 270.5,
                             "y": 282,
                             "w": 59,
                             "h": 38,
@@ -15424,7 +15059,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 374.5,
+                            "x": 328.5,
                             "y": 282,
                             "w": 57,
                             "h": 38,
@@ -15532,7 +15167,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 259,
+                            "x": 213,
                             "y": 282,
                             "w": 58,
                             "h": 38,
@@ -15673,7 +15308,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 121.5,
+                            "x": 75.5,
                             "y": 282,
                             "w": 65,
                             "h": 38,
@@ -16136,30 +15771,6 @@
                         "type": "Shape"
                     },
                     {
-                        "id": "1734805198256",
-                        "appearance": {
-                            "BORDER_RADIUS": 0,
-                            "FOREGROUND_COLOR": "#f0f0f0",
-                            "FONT_SIZE": 16,
-                            "BACKGROUND_COLOR": 0,
-                            "STROKE_COLOR": "#f0f0f0",
-                            "STROKE_THICKNESS": 1,
-                            "TEXT_ALIGNMENT": "center",
-                            "TEXT": "File",
-                            "PADDING_HORIZONTAL2": 10,
-                            "PADDING_VERTICAL2": 10
-                        },
-                        "renderer": "Rectangle",
-                        "transform": {
-                            "x": 65.5,
-                            "y": 896,
-                            "w": 45,
-                            "h": 38,
-                            "r": 0
-                        },
-                        "type": "Shape"
-                    },
-                    {
                         "id": "1734805198257",
                         "appearance": {
                             "BORDER_RADIUS": 0,
@@ -16175,7 +15786,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 193,
+                            "x": 147,
                             "y": 896,
                             "w": 86,
                             "h": 38,
@@ -16199,7 +15810,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 316.5,
+                            "x": 270.5,
                             "y": 896,
                             "w": 59,
                             "h": 38,
@@ -16223,7 +15834,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 374.5,
+                            "x": 328.5,
                             "y": 896,
                             "w": 57,
                             "h": 38,
@@ -16271,7 +15882,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 259,
+                            "x": 213,
                             "y": 896,
                             "w": 58,
                             "h": 38,
@@ -16295,27 +15906,10 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 121.5,
+                            "x": 75.5,
                             "y": 896,
                             "w": 65,
                             "h": 38,
-                            "r": 0
-                        },
-                        "type": "Shape"
-                    },
-                    {
-                        "id": "1734805202497",
-                        "appearance": {
-                            "FONT_SIZE": 24,
-                            "BACKGROUND_COLOR": 2434341,
-                            "TEXT": "Establishing a Connection"
-                        },
-                        "renderer": "Heading",
-                        "transform": {
-                            "x": 442,
-                            "y": 1052,
-                            "w": 298,
-                            "h": 48,
                             "r": 0
                         },
                         "type": "Shape"
@@ -16335,26 +15929,9 @@
                         "renderer": "Progress",
                         "transform": {
                             "x": 446.5,
-                            "y": 1111,
+                            "y": 1153,
                             "w": 537,
                             "h": 16,
-                            "r": 0
-                        },
-                        "type": "Shape"
-                    },
-                    {
-                        "id": "1734805202499",
-                        "appearance": {
-                            "FONT_SIZE": 16,
-                            "BACKGROUND_COLOR": 2434341,
-                            "TEXT": "Downloading mcguffins..."
-                        },
-                        "renderer": "Label",
-                        "transform": {
-                            "x": 266,
-                            "y": 1144,
-                            "w": 190,
-                            "h": 30,
                             "r": 0
                         },
                         "type": "Shape"
@@ -17140,19 +16717,36 @@
                         "type": "Shape"
                     },
                     {
-                        "id": "1738075120973",
+                        "id": "1766924660173",
                         "appearance": {
-                            "FONT_SIZE": 28,
+                            "FONT_SIZE": 16,
                             "BACKGROUND_COLOR": 2434341,
                             "TEXT_ALIGNMENT": "left",
-                            "TEXT": "Blueprint For Free Speech\nNGI Zero Commons Fund"
+                            "TEXT": "Ricochet Refresh routes your traffic over the Tor Network, run by thousands of volunteers around the world."
                         },
                         "renderer": "Paragraph",
                         "transform": {
-                            "x": 1072,
-                            "y": 51.5,
-                            "w": 336,
-                            "h": 103,
+                            "x": 449.5,
+                            "y": 1121,
+                            "w": 547,
+                            "h": 64,
+                            "r": 0
+                        },
+                        "type": "Shape"
+                    },
+                    {
+                        "id": "1766924660174",
+                        "appearance": {
+                            "FONT_SIZE": 24,
+                            "BACKGROUND_COLOR": 2434341,
+                            "TEXT": "Connect to Tor"
+                        },
+                        "renderer": "Heading",
+                        "transform": {
+                            "x": 443,
+                            "y": 1052,
+                            "w": 178,
+                            "h": 48,
                             "r": 0
                         },
                         "type": "Shape"
@@ -17162,7 +16756,6 @@
                     "1713060215502",
                     "1713060215504",
                     "1713060215505",
-                    "1713060215506",
                     "1713060215507",
                     "1713060215508",
                     "1713060215509",
@@ -17197,7 +16790,6 @@
                     "1734805198253",
                     "1734805198254",
                     "1734805198255",
-                    "1734805198256",
                     "1734805198257",
                     "1734805198258",
                     "1734805198259",
@@ -17218,9 +16810,6 @@
                     "1734805185747",
                     "1734805185748",
                     "1734805213136",
-                    "1734805202497",
-                    "1734805202498",
-                    "1734805202499",
                     "1734805202500",
                     "1734805202501",
                     "1734897866362",
@@ -17252,7 +16841,9 @@
                     "1734897866630",
                     "1734897866631",
                     "1734897866632",
-                    "1738075120973"
+                    "1766924660173",
+                    "1766924660174",
+                    "1734805202498"
                 ],
                 "title": "Rico - Connect"
             },
@@ -17317,30 +16908,6 @@
                         "type": "Shape"
                     },
                     {
-                        "id": "1713060215506",
-                        "appearance": {
-                            "BORDER_RADIUS": 0,
-                            "FOREGROUND_COLOR": "#f0f0f0",
-                            "FONT_SIZE": 16,
-                            "BACKGROUND_COLOR": 0,
-                            "STROKE_COLOR": "#f0f0f0",
-                            "STROKE_THICKNESS": 1,
-                            "TEXT_ALIGNMENT": "center",
-                            "TEXT": "File",
-                            "PADDING_HORIZONTAL2": 10,
-                            "PADDING_VERTICAL2": 10
-                        },
-                        "renderer": "Rectangle",
-                        "transform": {
-                            "x": 65.5,
-                            "y": 282,
-                            "w": 45,
-                            "h": 38,
-                            "r": 0
-                        },
-                        "type": "Shape"
-                    },
-                    {
                         "id": "1713060215507",
                         "appearance": {
                             "BORDER_RADIUS": 0,
@@ -17356,7 +16923,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 193,
+                            "x": 147,
                             "y": 282,
                             "w": 86,
                             "h": 38,
@@ -17380,7 +16947,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 316.5,
+                            "x": 270.5,
                             "y": 282,
                             "w": 59,
                             "h": 38,
@@ -17404,7 +16971,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 374.5,
+                            "x": 328.5,
                             "y": 282,
                             "w": 57,
                             "h": 38,
@@ -17452,7 +17019,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 259,
+                            "x": 213,
                             "y": 282,
                             "w": 58,
                             "h": 38,
@@ -17476,7 +17043,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 121.5,
+                            "x": 75.5,
                             "y": 282,
                             "w": 65,
                             "h": 38,
@@ -18198,31 +17765,12 @@
                             "r": 0
                         },
                         "type": "Shape"
-                    },
-                    {
-                        "id": "1738075121179",
-                        "appearance": {
-                            "FONT_SIZE": 28,
-                            "BACKGROUND_COLOR": 2434341,
-                            "TEXT_ALIGNMENT": "left",
-                            "TEXT": "Blueprint For Free Speech\nNGI Zero Commons Fund"
-                        },
-                        "renderer": "Paragraph",
-                        "transform": {
-                            "x": 1072,
-                            "y": 51.5,
-                            "w": 336,
-                            "h": 103,
-                            "r": 0
-                        },
-                        "type": "Shape"
                     }
                 ],
                 "rootIds": [
                     "1713060215502",
                     "1713060215504",
                     "1713060215505",
-                    "1713060215506",
                     "1713060215507",
                     "1713060215508",
                     "1713060215509",
@@ -18265,8 +17813,7 @@
                     "1734897868413",
                     "1734897868414",
                     "1734897868415",
-                    "1734897868416",
-                    "1738075121179"
+                    "1734897868416"
                 ],
                 "title": "Rico - Connected"
             },
@@ -18331,30 +17878,6 @@
                         "type": "Shape"
                     },
                     {
-                        "id": "1708271110358",
-                        "appearance": {
-                            "BORDER_RADIUS": 0,
-                            "FOREGROUND_COLOR": "#f0f0f0",
-                            "FONT_SIZE": 16,
-                            "BACKGROUND_COLOR": 0,
-                            "STROKE_COLOR": "#f0f0f0",
-                            "STROKE_THICKNESS": 1,
-                            "TEXT_ALIGNMENT": "center",
-                            "TEXT": "File",
-                            "PADDING_HORIZONTAL2": 10,
-                            "PADDING_VERTICAL2": 10
-                        },
-                        "renderer": "Rectangle",
-                        "transform": {
-                            "x": 60.5,
-                            "y": 259,
-                            "w": 45,
-                            "h": 38,
-                            "r": 0
-                        },
-                        "type": "Shape"
-                    },
-                    {
                         "id": "1708271110635",
                         "appearance": {
                             "BORDER_RADIUS": 0,
@@ -18370,7 +17893,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 188,
+                            "x": 142,
                             "y": 259,
                             "w": 86,
                             "h": 38,
@@ -18394,7 +17917,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 311.5,
+                            "x": 265.5,
                             "y": 259,
                             "w": 59,
                             "h": 38,
@@ -18418,7 +17941,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 369.5,
+                            "x": 323.5,
                             "y": 259,
                             "w": 57,
                             "h": 38,
@@ -18594,7 +18117,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 254,
+                            "x": 208,
                             "y": 259,
                             "w": 58,
                             "h": 38,
@@ -18735,7 +18258,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 116.5,
+                            "x": 70.5,
                             "y": 259,
                             "w": 65,
                             "h": 38,
@@ -19370,30 +18893,6 @@
                         "type": "Shape"
                     },
                     {
-                        "id": "1734897850018",
-                        "appearance": {
-                            "BORDER_RADIUS": 0,
-                            "FOREGROUND_COLOR": "#f0f0f0",
-                            "FONT_SIZE": 16,
-                            "BACKGROUND_COLOR": 0,
-                            "STROKE_COLOR": "#f0f0f0",
-                            "STROKE_THICKNESS": 1,
-                            "TEXT_ALIGNMENT": "center",
-                            "TEXT": "File",
-                            "PADDING_HORIZONTAL2": 10,
-                            "PADDING_VERTICAL2": 10
-                        },
-                        "renderer": "Rectangle",
-                        "transform": {
-                            "x": 705.5,
-                            "y": 259,
-                            "w": 45,
-                            "h": 38,
-                            "r": 0
-                        },
-                        "type": "Shape"
-                    },
-                    {
                         "id": "1734897850019",
                         "appearance": {
                             "BORDER_RADIUS": 0,
@@ -19409,7 +18908,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 833,
+                            "x": 787,
                             "y": 259,
                             "w": 86,
                             "h": 38,
@@ -19433,7 +18932,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 956.5,
+                            "x": 910.5,
                             "y": 259,
                             "w": 59,
                             "h": 38,
@@ -19457,7 +18956,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 1014.5,
+                            "x": 968.5,
                             "y": 259,
                             "w": 57,
                             "h": 38,
@@ -19565,7 +19064,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 899,
+                            "x": 853,
                             "y": 259,
                             "w": 58,
                             "h": 38,
@@ -19706,7 +19205,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 761.5,
+                            "x": 715.5,
                             "y": 259,
                             "w": 65,
                             "h": 38,
@@ -20241,30 +19740,6 @@
                         "type": "Shape"
                     },
                     {
-                        "id": "1734897855079",
-                        "appearance": {
-                            "BORDER_RADIUS": 0,
-                            "FOREGROUND_COLOR": "#f0f0f0",
-                            "FONT_SIZE": 16,
-                            "BACKGROUND_COLOR": 0,
-                            "STROKE_COLOR": "#f0f0f0",
-                            "STROKE_THICKNESS": 1,
-                            "TEXT_ALIGNMENT": "center",
-                            "TEXT": "File",
-                            "PADDING_HORIZONTAL2": 10,
-                            "PADDING_VERTICAL2": 10
-                        },
-                        "renderer": "Rectangle",
-                        "transform": {
-                            "x": 60.5,
-                            "y": 747,
-                            "w": 45,
-                            "h": 38,
-                            "r": 0
-                        },
-                        "type": "Shape"
-                    },
-                    {
                         "id": "1734897855080",
                         "appearance": {
                             "BORDER_RADIUS": 0,
@@ -20280,7 +19755,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 188,
+                            "x": 142,
                             "y": 747,
                             "w": 86,
                             "h": 38,
@@ -20304,7 +19779,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 311.5,
+                            "x": 265.5,
                             "y": 747,
                             "w": 59,
                             "h": 38,
@@ -20328,7 +19803,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 369.5,
+                            "x": 323.5,
                             "y": 747,
                             "w": 57,
                             "h": 38,
@@ -20436,7 +19911,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 254,
+                            "x": 208,
                             "y": 747,
                             "w": 58,
                             "h": 38,
@@ -20577,7 +20052,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 116.5,
+                            "x": 70.5,
                             "y": 747,
                             "w": 65,
                             "h": 38,
@@ -21235,30 +20710,6 @@
                         "type": "Shape"
                     },
                     {
-                        "id": "1734897860695",
-                        "appearance": {
-                            "BORDER_RADIUS": 0,
-                            "FOREGROUND_COLOR": "#f0f0f0",
-                            "FONT_SIZE": 16,
-                            "BACKGROUND_COLOR": 0,
-                            "STROKE_COLOR": "#f0f0f0",
-                            "STROKE_THICKNESS": 1,
-                            "TEXT_ALIGNMENT": "center",
-                            "TEXT": "File",
-                            "PADDING_HORIZONTAL2": 10,
-                            "PADDING_VERTICAL2": 10
-                        },
-                        "renderer": "Rectangle",
-                        "transform": {
-                            "x": 705.5,
-                            "y": 745,
-                            "w": 45,
-                            "h": 38,
-                            "r": 0
-                        },
-                        "type": "Shape"
-                    },
-                    {
                         "id": "1734897860696",
                         "appearance": {
                             "BORDER_RADIUS": 0,
@@ -21274,7 +20725,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 833,
+                            "x": 787,
                             "y": 745,
                             "w": 86,
                             "h": 38,
@@ -21298,7 +20749,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 956.5,
+                            "x": 910.5,
                             "y": 745,
                             "w": 59,
                             "h": 38,
@@ -21322,7 +20773,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 1014.5,
+                            "x": 968.5,
                             "y": 745,
                             "w": 57,
                             "h": 38,
@@ -21430,7 +20881,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 899,
+                            "x": 853,
                             "y": 745,
                             "w": 58,
                             "h": 38,
@@ -21571,7 +21022,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 761.5,
+                            "x": 715.5,
                             "y": 745,
                             "w": 65,
                             "h": 38,
@@ -22281,31 +21732,12 @@
                             "r": 0
                         },
                         "type": "Shape"
-                    },
-                    {
-                        "id": "1738075121531",
-                        "appearance": {
-                            "FONT_SIZE": 28,
-                            "BACKGROUND_COLOR": 2434341,
-                            "TEXT_ALIGNMENT": "left",
-                            "TEXT": "Blueprint For Free Speech\nNGI Zero Commons Fund"
-                        },
-                        "renderer": "Paragraph",
-                        "transform": {
-                            "x": 1072,
-                            "y": 51.5,
-                            "w": 336,
-                            "h": 103,
-                            "r": 0
-                        },
-                        "type": "Shape"
                     }
                 ],
                 "rootIds": [
                     "1708271107634",
                     "1708271107681",
                     "1708271108331",
-                    "1708271110358",
                     "1708271110635",
                     "1708271110726",
                     "1708271110919",
@@ -22358,7 +21790,6 @@
                     "1734897850014",
                     "1734897850016",
                     "1734897850017",
-                    "1734897850018",
                     "1734897850019",
                     "1734897850020",
                     "1734897850021",
@@ -22402,7 +21833,6 @@
                     "1734897855076",
                     "1734897855077",
                     "1734897855078",
-                    "1734897855079",
                     "1734897855080",
                     "1734897855081",
                     "1734897855082",
@@ -22452,7 +21882,6 @@
                     "1734897860692",
                     "1734897860693",
                     "1734897860694",
-                    "1734897860695",
                     "1734897860696",
                     "1734897860697",
                     "1734897860698",
@@ -22504,8 +21933,7 @@
                     "1734897865575",
                     "1734897865869",
                     "1734897880986",
-                    "1734897888244",
-                    "1738075121531"
+                    "1734897888244"
                 ],
                 "title": "Rico - New Profile"
             },
@@ -22612,9 +22040,9 @@
                         },
                         "renderer": "Label",
                         "transform": {
-                            "x": 271,
+                            "x": 272,
                             "y": 636,
-                            "w": 132,
+                            "w": 134,
                             "h": 30,
                             "r": 0
                         },
@@ -22834,30 +22262,6 @@
                         "type": "Shape"
                     },
                     {
-                        "id": "1734897882186",
-                        "appearance": {
-                            "BORDER_RADIUS": 0,
-                            "FOREGROUND_COLOR": "#f0f0f0",
-                            "FONT_SIZE": 16,
-                            "BACKGROUND_COLOR": 0,
-                            "STROKE_COLOR": "#f0f0f0",
-                            "STROKE_THICKNESS": 1,
-                            "TEXT_ALIGNMENT": "center",
-                            "TEXT": "File",
-                            "PADDING_HORIZONTAL2": 10,
-                            "PADDING_VERTICAL2": 10
-                        },
-                        "renderer": "Rectangle",
-                        "transform": {
-                            "x": 218.5,
-                            "y": 306,
-                            "w": 45,
-                            "h": 38,
-                            "r": 0
-                        },
-                        "type": "Shape"
-                    },
-                    {
                         "id": "1734897882187",
                         "appearance": {
                             "BORDER_RADIUS": 0,
@@ -22873,7 +22277,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 346,
+                            "x": 300,
                             "y": 306,
                             "w": 86,
                             "h": 38,
@@ -22897,7 +22301,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 469.5,
+                            "x": 423.5,
                             "y": 306,
                             "w": 59,
                             "h": 38,
@@ -22921,7 +22325,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 527.5,
+                            "x": 481.5,
                             "y": 306,
                             "w": 57,
                             "h": 38,
@@ -23029,7 +22433,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 412,
+                            "x": 366,
                             "y": 306,
                             "w": 58,
                             "h": 38,
@@ -23170,7 +22574,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 274.5,
+                            "x": 228.5,
                             "y": 306,
                             "w": 65,
                             "h": 38,
@@ -23757,24 +23161,6 @@
                             "r": 0
                         },
                         "type": "Shape"
-                    },
-                    {
-                        "id": "1738075121593",
-                        "appearance": {
-                            "FONT_SIZE": 28,
-                            "BACKGROUND_COLOR": 2434341,
-                            "TEXT_ALIGNMENT": "left",
-                            "TEXT": "Blueprint For Free Speech\nNGI Zero Commons Fund"
-                        },
-                        "renderer": "Paragraph",
-                        "transform": {
-                            "x": 1472,
-                            "y": 451.5,
-                            "w": 336,
-                            "h": 103,
-                            "r": 0
-                        },
-                        "type": "Shape"
                     }
                 ],
                 "rootIds": [
@@ -23784,7 +23170,6 @@
                     "1734897882183",
                     "1734897882184",
                     "1734897882185",
-                    "1734897882186",
                     "1734897882187",
                     "1734897882188",
                     "1734897882189",
@@ -23840,8 +23225,7 @@
                     "1734897887939",
                     "1734897881161",
                     "1734897888078",
-                    "1734897888079",
-                    "1738075121593"
+                    "1734897888079"
                 ],
                 "title": "Rico - Edit Profile"
             },
@@ -23900,30 +23284,6 @@
                             "x": 607,
                             "y": 949,
                             "w": 800,
-                            "h": 38,
-                            "r": 0
-                        },
-                        "type": "Shape"
-                    },
-                    {
-                        "id": "1708271110358",
-                        "appearance": {
-                            "BORDER_RADIUS": 0,
-                            "FOREGROUND_COLOR": "#f0f0f0",
-                            "FONT_SIZE": 16,
-                            "BACKGROUND_COLOR": 0,
-                            "STROKE_COLOR": "#f0f0f0",
-                            "STROKE_THICKNESS": 1,
-                            "TEXT_ALIGNMENT": "center",
-                            "TEXT": "File",
-                            "PADDING_HORIZONTAL2": 10,
-                            "PADDING_VERTICAL2": 10
-                        },
-                        "renderer": "Rectangle",
-                        "transform": {
-                            "x": 229.5,
-                            "y": 949,
-                            "w": 45,
                             "h": 38,
                             "r": 0
                         },
@@ -25345,7 +24705,7 @@
                         },
                         "renderer": "Window",
                         "transform": {
-                            "x": 608,
+                            "x": 607,
                             "y": 533,
                             "w": 800,
                             "h": 600,
@@ -25369,7 +24729,7 @@
                         },
                         "renderer": "Tabs",
                         "transform": {
-                            "x": 608,
+                            "x": 607,
                             "y": 568,
                             "w": 800,
                             "h": 530,
@@ -25386,7 +24746,7 @@
                         },
                         "renderer": "Label",
                         "transform": {
-                            "x": 608,
+                            "x": 607,
                             "y": 218,
                             "w": 44,
                             "h": 30,
@@ -25410,33 +24770,9 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 608,
+                            "x": 607,
                             "y": 252,
                             "w": 800,
-                            "h": 38,
-                            "r": 0
-                        },
-                        "type": "Shape"
-                    },
-                    {
-                        "id": "1735737536143",
-                        "appearance": {
-                            "BORDER_RADIUS": 0,
-                            "FOREGROUND_COLOR": "#f0f0f0",
-                            "FONT_SIZE": 16,
-                            "BACKGROUND_COLOR": 0,
-                            "STROKE_COLOR": "#f0f0f0",
-                            "STROKE_THICKNESS": 1,
-                            "TEXT_ALIGNMENT": "center",
-                            "TEXT": "File",
-                            "PADDING_HORIZONTAL2": 10,
-                            "PADDING_VERTICAL2": 10
-                        },
-                        "renderer": "Rectangle",
-                        "transform": {
-                            "x": 230.5,
-                            "y": 252,
-                            "w": 45,
                             "h": 38,
                             "r": 0
                         },
@@ -25458,7 +24794,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 358,
+                            "x": 357,
                             "y": 252,
                             "w": 86,
                             "h": 38,
@@ -25482,7 +24818,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 481.5,
+                            "x": 480.5,
                             "y": 252,
                             "w": 59,
                             "h": 38,
@@ -25506,7 +24842,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 539.5,
+                            "x": 538.5,
                             "y": 252,
                             "w": 57,
                             "h": 38,
@@ -25530,7 +24866,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 324.5,
+                            "x": 323.5,
                             "y": 584,
                             "w": 233,
                             "h": 498,
@@ -25547,7 +24883,7 @@
                         },
                         "renderer": "Heading",
                         "transform": {
-                            "x": 270,
+                            "x": 269,
                             "y": 356,
                             "w": 124,
                             "h": 42,
@@ -25568,7 +24904,7 @@
                         },
                         "renderer": "ComboBox",
                         "transform": {
-                            "x": 300.5,
+                            "x": 299.5,
                             "y": 811.5,
                             "w": 187,
                             "h": 43,
@@ -25586,7 +24922,7 @@
                         },
                         "renderer": "Icon",
                         "transform": {
-                            "x": 225,
+                            "x": 224,
                             "y": 811,
                             "w": 32,
                             "h": 32,
@@ -25603,7 +24939,7 @@
                         },
                         "renderer": "Heading",
                         "transform": {
-                            "x": 273,
+                            "x": 272,
                             "y": 584,
                             "w": 128,
                             "h": 42,
@@ -25626,7 +24962,7 @@
                         },
                         "renderer": "VerticalScrollbar",
                         "transform": {
-                            "x": 997,
+                            "x": 996,
                             "y": 486,
                             "w": 20,
                             "h": 302,
@@ -25647,7 +24983,7 @@
                         },
                         "renderer": "TextArea",
                         "transform": {
-                            "x": 693.5,
+                            "x": 692.5,
                             "y": 725,
                             "w": 503,
                             "h": 80,
@@ -25668,7 +25004,7 @@
                         },
                         "renderer": "Button",
                         "transform": {
-                            "x": 970.5,
+                            "x": 969.5,
                             "y": 759.5,
                             "w": 75,
                             "h": 147,
@@ -25692,7 +25028,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 726,
+                            "x": 725,
                             "y": 669,
                             "w": 564,
                             "h": 32,
@@ -25713,7 +25049,7 @@
                         },
                         "renderer": "Button",
                         "transform": {
-                            "x": 461,
+                            "x": 460,
                             "y": 670,
                             "w": 32,
                             "h": 32,
@@ -25734,7 +25070,7 @@
                         },
                         "renderer": "Button",
                         "transform": {
-                            "x": 494,
+                            "x": 493,
                             "y": 670,
                             "w": 32,
                             "h": 32,
@@ -25755,7 +25091,7 @@
                         },
                         "renderer": "Button",
                         "transform": {
-                            "x": 527,
+                            "x": 526,
                             "y": 670,
                             "w": 32,
                             "h": 32,
@@ -25773,7 +25109,7 @@
                         },
                         "renderer": "Icon",
                         "transform": {
-                            "x": 461,
+                            "x": 460,
                             "y": 671,
                             "w": 26,
                             "h": 26,
@@ -25791,7 +25127,7 @@
                         },
                         "renderer": "Icon",
                         "transform": {
-                            "x": 494,
+                            "x": 493,
                             "y": 671,
                             "w": 26,
                             "h": 26,
@@ -25809,7 +25145,7 @@
                         },
                         "renderer": "Icon",
                         "transform": {
-                            "x": 526,
+                            "x": 525,
                             "y": 671,
                             "w": 26,
                             "h": 26,
@@ -25830,7 +25166,7 @@
                         },
                         "renderer": "Button",
                         "transform": {
-                            "x": 560,
+                            "x": 559,
                             "y": 670,
                             "w": 32,
                             "h": 32,
@@ -25848,7 +25184,7 @@
                         },
                         "renderer": "Icon",
                         "transform": {
-                            "x": 560,
+                            "x": 559,
                             "y": 671,
                             "w": 26,
                             "h": 26,
@@ -25869,7 +25205,7 @@
                         },
                         "renderer": "Button",
                         "transform": {
-                            "x": 593,
+                            "x": 592,
                             "y": 670,
                             "w": 32,
                             "h": 32,
@@ -25887,7 +25223,7 @@
                         },
                         "renderer": "Icon",
                         "transform": {
-                            "x": 593,
+                            "x": 592,
                             "y": 671,
                             "w": 26,
                             "h": 26,
@@ -25911,7 +25247,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 608,
+                            "x": 607,
                             "y": 287,
                             "w": 800,
                             "h": 32,
@@ -25932,7 +25268,7 @@
                         },
                         "renderer": "Button",
                         "transform": {
-                            "x": 496,
+                            "x": 495,
                             "y": 287,
                             "w": 32,
                             "h": 32,
@@ -25950,7 +25286,7 @@
                         },
                         "renderer": "Icon",
                         "transform": {
-                            "x": 970,
+                            "x": 969,
                             "y": 751.5,
                             "w": 40,
                             "h": 99,
@@ -25971,7 +25307,7 @@
                         },
                         "renderer": "Button",
                         "transform": {
-                            "x": 529,
+                            "x": 528,
                             "y": 287,
                             "w": 32,
                             "h": 32,
@@ -25989,7 +25325,7 @@
                         },
                         "renderer": "Icon",
                         "transform": {
-                            "x": 528,
+                            "x": 527,
                             "y": 287,
                             "w": 28,
                             "h": 28,
@@ -26013,7 +25349,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 424,
+                            "x": 423,
                             "y": 252,
                             "w": 58,
                             "h": 38,
@@ -26034,7 +25370,7 @@
                         },
                         "renderer": "Button",
                         "transform": {
-                            "x": 361,
+                            "x": 360,
                             "y": 287,
                             "w": 32,
                             "h": 32,
@@ -26055,7 +25391,7 @@
                         },
                         "renderer": "Button",
                         "transform": {
-                            "x": 394,
+                            "x": 393,
                             "y": 287,
                             "w": 32,
                             "h": 32,
@@ -26076,7 +25412,7 @@
                         },
                         "renderer": "Button",
                         "transform": {
-                            "x": 427,
+                            "x": 426,
                             "y": 287,
                             "w": 32,
                             "h": 32,
@@ -26094,7 +25430,7 @@
                         },
                         "renderer": "Icon",
                         "transform": {
-                            "x": 361,
+                            "x": 360,
                             "y": 288,
                             "w": 26,
                             "h": 26,
@@ -26112,7 +25448,7 @@
                         },
                         "renderer": "Icon",
                         "transform": {
-                            "x": 393,
+                            "x": 392,
                             "y": 288,
                             "w": 26,
                             "h": 26,
@@ -26130,7 +25466,7 @@
                         },
                         "renderer": "Icon",
                         "transform": {
-                            "x": 427,
+                            "x": 426,
                             "y": 288,
                             "w": 26,
                             "h": 26,
@@ -26147,7 +25483,7 @@
                         },
                         "renderer": "VerticalLine",
                         "transform": {
-                            "x": 441,
+                            "x": 440,
                             "y": 584,
                             "w": 4,
                             "h": 498,
@@ -26171,7 +25507,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 286.5,
+                            "x": 285.5,
                             "y": 252,
                             "w": 65,
                             "h": 38,
@@ -26192,7 +25528,7 @@
                         },
                         "renderer": "Button",
                         "transform": {
-                            "x": 224,
+                            "x": 223,
                             "y": 287,
                             "w": 32,
                             "h": 32,
@@ -26213,7 +25549,7 @@
                         },
                         "renderer": "Button",
                         "transform": {
-                            "x": 290,
+                            "x": 289,
                             "y": 287,
                             "w": 32,
                             "h": 32,
@@ -26234,7 +25570,7 @@
                         },
                         "renderer": "Button",
                         "transform": {
-                            "x": 323,
+                            "x": 322,
                             "y": 287,
                             "w": 32,
                             "h": 32,
@@ -26252,7 +25588,7 @@
                         },
                         "renderer": "Icon",
                         "transform": {
-                            "x": 497,
+                            "x": 496,
                             "y": 287,
                             "w": 28,
                             "h": 28,
@@ -26270,7 +25606,7 @@
                         },
                         "renderer": "Icon",
                         "transform": {
-                            "x": 223,
+                            "x": 222,
                             "y": 286,
                             "w": 26,
                             "h": 26,
@@ -26288,7 +25624,7 @@
                         },
                         "renderer": "Icon",
                         "transform": {
-                            "x": 290,
+                            "x": 289,
                             "y": 286,
                             "w": 28,
                             "h": 28,
@@ -26305,7 +25641,7 @@
                         },
                         "renderer": "VerticalLine",
                         "transform": {
-                            "x": 342,
+                            "x": 341,
                             "y": 287,
                             "w": 2,
                             "h": 32,
@@ -26322,7 +25658,7 @@
                         },
                         "renderer": "VerticalLine",
                         "transform": {
-                            "x": 478,
+                            "x": 477,
                             "y": 287,
                             "w": 2,
                             "h": 32,
@@ -26340,7 +25676,7 @@
                         },
                         "renderer": "Icon",
                         "transform": {
-                            "x": 325,
+                            "x": 324,
                             "y": 287,
                             "w": 30,
                             "h": 30,
@@ -26361,7 +25697,7 @@
                         },
                         "renderer": "Button",
                         "transform": {
-                            "x": 417.5,
+                            "x": 416.5,
                             "y": 811.5,
                             "w": 47,
                             "h": 43,
@@ -26379,7 +25715,7 @@
                         },
                         "renderer": "Icon",
                         "transform": {
-                            "x": 418,
+                            "x": 417,
                             "y": 813,
                             "w": 48,
                             "h": 48,
@@ -26400,7 +25736,7 @@
                         },
                         "renderer": "Button",
                         "transform": {
-                            "x": 460,
+                            "x": 459,
                             "y": 287,
                             "w": 32,
                             "h": 32,
@@ -26418,7 +25754,7 @@
                         },
                         "renderer": "Icon",
                         "transform": {
-                            "x": 459,
+                            "x": 458,
                             "y": 288,
                             "w": 28,
                             "h": 28,
@@ -26435,7 +25771,7 @@
                         },
                         "renderer": "Heading",
                         "transform": {
-                            "x": 281,
+                            "x": 280,
                             "y": 494,
                             "w": 146,
                             "h": 42,
@@ -26452,7 +25788,7 @@
                         },
                         "renderer": "Heading",
                         "transform": {
-                            "x": 259,
+                            "x": 258,
                             "y": 674,
                             "w": 100,
                             "h": 42,
@@ -26474,7 +25810,7 @@
                         },
                         "renderer": "List",
                         "transform": {
-                            "x": 314,
+                            "x": 313,
                             "y": 425,
                             "w": 210,
                             "h": 96,
@@ -26497,7 +25833,7 @@
                         },
                         "renderer": "VerticalScrollbar",
                         "transform": {
-                            "x": 429,
+                            "x": 428,
                             "y": 562,
                             "w": 20,
                             "h": 454,
@@ -26515,7 +25851,7 @@
                         },
                         "renderer": "Icon",
                         "transform": {
-                            "x": 236,
+                            "x": 235,
                             "y": 403,
                             "w": 54,
                             "h": 48,
@@ -26533,7 +25869,7 @@
                         },
                         "renderer": "Icon",
                         "transform": {
-                            "x": 236,
+                            "x": 235,
                             "y": 447,
                             "w": 54,
                             "h": 48,
@@ -26555,7 +25891,7 @@
                         },
                         "renderer": "List",
                         "transform": {
-                            "x": 314,
+                            "x": 313,
                             "y": 533,
                             "w": 210,
                             "h": 48,
@@ -26573,7 +25909,7 @@
                         },
                         "renderer": "Icon",
                         "transform": {
-                            "x": 236,
+                            "x": 235,
                             "y": 533,
                             "w": 54,
                             "h": 48,
@@ -26595,7 +25931,7 @@
                         },
                         "renderer": "List",
                         "transform": {
-                            "x": 314,
+                            "x": 313,
                             "y": 629,
                             "w": 210,
                             "h": 48,
@@ -26613,7 +25949,7 @@
                         },
                         "renderer": "Icon",
                         "transform": {
-                            "x": 236,
+                            "x": 235,
                             "y": 629,
                             "w": 54,
                             "h": 48,
@@ -26634,7 +25970,7 @@
                         },
                         "renderer": "Button",
                         "transform": {
-                            "x": 257,
+                            "x": 256,
                             "y": 287,
                             "w": 32,
                             "h": 32,
@@ -26652,7 +25988,7 @@
                         },
                         "renderer": "Icon",
                         "transform": {
-                            "x": 259,
+                            "x": 258,
                             "y": 288,
                             "w": 28,
                             "h": 28,
@@ -26669,7 +26005,7 @@
                         },
                         "renderer": "VerticalLine",
                         "transform": {
-                            "x": 548,
+                            "x": 547,
                             "y": 286,
                             "w": 2,
                             "h": 32,
@@ -26690,7 +26026,7 @@
                         },
                         "renderer": "Button",
                         "transform": {
-                            "x": 567,
+                            "x": 566,
                             "y": 286,
                             "w": 32,
                             "h": 32,
@@ -26711,7 +26047,7 @@
                         },
                         "renderer": "Button",
                         "transform": {
-                            "x": 600,
+                            "x": 599,
                             "y": 286,
                             "w": 32,
                             "h": 32,
@@ -26729,7 +26065,7 @@
                         },
                         "renderer": "Icon",
                         "transform": {
-                            "x": 566,
+                            "x": 565,
                             "y": 288,
                             "w": 28,
                             "h": 28,
@@ -26747,7 +26083,7 @@
                         },
                         "renderer": "Icon",
                         "transform": {
-                            "x": 600,
+                            "x": 599,
                             "y": 286,
                             "w": 28,
                             "h": 28,
@@ -26771,7 +26107,7 @@
                         },
                         "renderer": "Rectangle",
                         "transform": {
-                            "x": 687.5,
+                            "x": 686.5,
                             "y": 783,
                             "w": 489,
                             "h": 32,
@@ -26788,7 +26124,7 @@
                         },
                         "renderer": "Label",
                         "transform": {
-                            "x": 525,
+                            "x": 524,
                             "y": 786,
                             "w": 166,
                             "h": 30,
@@ -26810,7 +26146,7 @@
                         },
                         "renderer": "List",
                         "transform": {
-                            "x": 665.5,
+                            "x": 664.5,
                             "y": 816,
                             "w": 445,
                             "h": 32,
@@ -26828,7 +26164,7 @@
                         },
                         "renderer": "Paragraph",
                         "transform": {
-                            "x": 711,
+                            "x": 710,
                             "y": 484.5,
                             "w": 540,
                             "h": 305,
@@ -26846,7 +26182,7 @@
                         },
                         "renderer": "Icon",
                         "transform": {
-                            "x": 910,
+                            "x": 909,
                             "y": 820,
                             "w": 32,
                             "h": 32,
@@ -26930,7 +26266,6 @@
                     "1711155024002",
                     "1708271107681",
                     "1708271108331",
-                    "1708271110358",
                     "1708271110635",
                     "1708271110726",
                     "1708271110919",
@@ -27005,7 +26340,6 @@
                     "1735737536140",
                     "1735737536141",
                     "1735737536142",
-                    "1735737536143",
                     "1735737536144",
                     "1735737536145",
                     "1735737536146",
@@ -28772,7 +28106,7 @@
             "1713060276314",
             "1713839345582"
         ],
-        "id": "be183bd1-2bc0-2b26-47b4-7eb79a06ab9c",
+        "id": "be3de33e-6d64-8b5e-c2d0-63fbd965384a",
         "size": {
             "x": 1240,
             "y": 1754
@@ -28782,463 +28116,215 @@
         {
             "type": "items/transform",
             "payload": {
-                "diagramId": "200ef765-dd62-4cfa-3e44-3c3eaa16e499",
-                "timestamp": 1738404193423,
-                "oldBounds": {
-                    "x": 1472,
-                    "y": 451.5,
-                    "w": 336,
-                    "h": 103,
-                    "r": 0
-                },
-                "newBounds": {
-                    "x": 1072,
-                    "y": 51.5,
-                    "w": 336,
-                    "h": 103,
-                    "r": 0
-                },
-                "itemIds": [
-                    "1738075121593"
-                ]
-            }
-        },
-        {
-            "type": "items/paste",
-            "payload": {
-                "diagramId": "2bbbacdc-15be-9c5b-1a19-e04902aff5ef",
-                "timestamp": 1738404196581,
-                "json": "{\"visuals\":[{\"id\":\"1738075121640\",\"appearance\":{\"FONT_SIZE\":28,\"BACKGROUND_COLOR\":2434341,\"TEXT_ALIGNMENT\":\"left\",\"TEXT\":\"Blueprint For Free Speech\\nNGI Zero Commons Fund\"},\"renderer\":\"Paragraph\",\"transform\":{\"x\":1072,\"y\":51.5,\"w\":336,\"h\":103,\"r\":0},\"type\":\"Shape\"}],\"groups\":[]}",
-                "offset": 450
-            }
-        },
-        {
-            "type": "items/transform",
-            "payload": {
-                "diagramId": "2bbbacdc-15be-9c5b-1a19-e04902aff5ef",
-                "timestamp": 1738404199715,
-                "oldBounds": {
-                    "x": 1522,
-                    "y": 501.5,
-                    "w": 336,
-                    "h": 103,
-                    "r": 0
-                },
-                "newBounds": {
-                    "x": 1072,
-                    "y": 51.5,
-                    "w": 336,
-                    "h": 103,
-                    "r": 0
-                },
-                "itemIds": [
-                    "1738075121640"
-                ]
-            }
-        },
-        {
-            "type": "items/paste",
-            "payload": {
-                "diagramId": "aded38e4-f279-58df-12ed-8d8a929a1fdd",
-                "timestamp": 1738404202322,
-                "json": "{\"visuals\":[{\"id\":\"1738075121703\",\"appearance\":{\"FONT_SIZE\":28,\"BACKGROUND_COLOR\":2434341,\"TEXT_ALIGNMENT\":\"left\",\"TEXT\":\"Blueprint For Free Speech\\nNGI Zero Commons Fund\"},\"renderer\":\"Paragraph\",\"transform\":{\"x\":1072,\"y\":51.5,\"w\":336,\"h\":103,\"r\":0},\"type\":\"Shape\"}],\"groups\":[]}",
-                "offset": 500
-            }
-        },
-        {
-            "type": "items/transform",
-            "payload": {
-                "diagramId": "aded38e4-f279-58df-12ed-8d8a929a1fdd",
-                "timestamp": 1738404206078,
-                "oldBounds": {
-                    "x": 1572,
-                    "y": 551.5,
-                    "w": 336,
-                    "h": 103,
-                    "r": 0
-                },
-                "newBounds": {
-                    "x": 1072,
-                    "y": 51.5,
-                    "w": 336,
-                    "h": 103,
-                    "r": 0
-                },
-                "itemIds": [
-                    "1738075121703"
-                ]
-            }
-        },
-        {
-            "type": "items/paste",
-            "payload": {
-                "diagramId": "544a9ad8-9a02-4fd4-b179-0e177bd09248",
-                "timestamp": 1738404208645,
-                "json": "{\"visuals\":[{\"id\":\"1738075121767\",\"appearance\":{\"FONT_SIZE\":28,\"BACKGROUND_COLOR\":2434341,\"TEXT_ALIGNMENT\":\"left\",\"TEXT\":\"Blueprint For Free Speech\\nNGI Zero Commons Fund\"},\"renderer\":\"Paragraph\",\"transform\":{\"x\":1072,\"y\":51.5,\"w\":336,\"h\":103,\"r\":0},\"type\":\"Shape\"}],\"groups\":[]}",
-                "offset": 550
-            }
-        },
-        {
-            "type": "items/transform",
-            "payload": {
-                "diagramId": "544a9ad8-9a02-4fd4-b179-0e177bd09248",
-                "timestamp": 1738404211629,
-                "oldBounds": {
-                    "x": 1622,
-                    "y": 601.5,
-                    "w": 336,
-                    "h": 103,
-                    "r": 0
-                },
-                "newBounds": {
-                    "x": 943,
-                    "y": 211.5,
-                    "w": 336,
-                    "h": 103,
-                    "r": 0
-                },
-                "itemIds": [
-                    "1738075121767"
-                ]
-            }
-        },
-        {
-            "type": "items/transform",
-            "payload": {
-                "diagramId": "544a9ad8-9a02-4fd4-b179-0e177bd09248",
-                "timestamp": 1738404213025,
-                "oldBounds": {
-                    "x": 943,
-                    "y": 211.5,
-                    "w": 336,
-                    "h": 103,
-                    "r": 0
-                },
-                "newBounds": {
-                    "x": 1079,
-                    "y": 39.5,
-                    "w": 336,
-                    "h": 103,
-                    "r": 0
-                },
-                "itemIds": [
-                    "1738075121767"
-                ]
-            }
-        },
-        {
-            "type": "items/transform",
-            "payload": {
-                "diagramId": "544a9ad8-9a02-4fd4-b179-0e177bd09248",
-                "timestamp": 1738404215833,
-                "oldBounds": {
-                    "x": 1079,
-                    "y": 39.5,
-                    "w": 336,
-                    "h": 103,
-                    "r": 0
-                },
-                "newBounds": {
-                    "x": 1072,
-                    "y": 51.5,
-                    "w": 336,
-                    "h": 103,
-                    "r": 0
-                },
-                "itemIds": [
-                    "1738075121767"
-                ]
-            }
-        },
-        {
-            "type": "items/paste",
-            "payload": {
                 "diagramId": "50cd4105-3f13-d5df-5535-631cee530817",
-                "timestamp": 1738404217735,
-                "json": "{\"visuals\":[{\"id\":\"1738075121879\",\"appearance\":{\"FONT_SIZE\":28,\"BACKGROUND_COLOR\":2434341,\"TEXT_ALIGNMENT\":\"left\",\"TEXT\":\"Blueprint For Free Speech\\nNGI Zero Commons Fund\"},\"renderer\":\"Paragraph\",\"transform\":{\"x\":1072,\"y\":51.5,\"w\":336,\"h\":103,\"r\":0},\"type\":\"Shape\"}],\"groups\":[]}",
-                "offset": 50
-            }
-        },
-        {
-            "type": "items/transform",
-            "payload": {
-                "diagramId": "50cd4105-3f13-d5df-5535-631cee530817",
-                "timestamp": 1738404220198,
+                "timestamp": 1770988951455,
                 "oldBounds": {
-                    "x": 1122,
-                    "y": 101.5,
-                    "w": 336,
-                    "h": 103,
+                    "x": 410,
+                    "y": 600.5,
+                    "w": 314,
+                    "h": 735,
                     "r": 0
                 },
                 "newBounds": {
-                    "x": 1072,
-                    "y": 51.5,
-                    "w": 336,
-                    "h": 103,
+                    "x": 364,
+                    "y": 600.5,
+                    "w": 314,
+                    "h": 735,
                     "r": 0
                 },
                 "itemIds": [
-                    "1738075121879"
+                    "1735737536179",
+                    "1713060192233",
+                    "1708271110635",
+                    "1713060188609",
+                    "1708271110726",
+                    "1708271110919",
+                    "1735737536144",
+                    "1735737536171",
+                    "1735737536145",
+                    "1735737536146"
                 ]
             }
         },
         {
-            "type": "items/paste",
+            "type": "items/remove",
             "payload": {
                 "diagramId": "425d3797-dfeb-8669-7a81-24d75caf41dd",
-                "timestamp": 1738404222262,
-                "json": "{\"visuals\":[{\"id\":\"1738075121914\",\"appearance\":{\"FONT_SIZE\":28,\"BACKGROUND_COLOR\":2434341,\"TEXT_ALIGNMENT\":\"left\",\"TEXT\":\"Blueprint For Free Speech\\nNGI Zero Commons Fund\"},\"renderer\":\"Paragraph\",\"transform\":{\"x\":1072,\"y\":51.5,\"w\":336,\"h\":103,\"r\":0},\"type\":\"Shape\"}],\"groups\":[]}",
-                "offset": 100
+                "timestamp": 1770988957978,
+                "itemIds": [
+                    "1735737564996"
+                ]
             }
         },
         {
             "type": "items/transform",
             "payload": {
                 "diagramId": "425d3797-dfeb-8669-7a81-24d75caf41dd",
-                "timestamp": 1738404224272,
+                "timestamp": 1770988963406,
                 "oldBounds": {
-                    "x": 1172,
-                    "y": 151.5,
-                    "w": 336,
-                    "h": 103,
+                    "x": 425,
+                    "y": 229,
+                    "w": 314,
+                    "h": 38,
                     "r": 0
                 },
                 "newBounds": {
-                    "x": 1072,
-                    "y": 51.5,
-                    "w": 336,
-                    "h": 103,
+                    "x": 379,
+                    "y": 229,
+                    "w": 314,
+                    "h": 38,
                     "r": 0
                 },
                 "itemIds": [
-                    "1738075121914"
+                    "1735737565032",
+                    "1735737564997",
+                    "1735737565024",
+                    "1735737564998",
+                    "1735737564999"
                 ]
             }
         },
         {
-            "type": "items/paste",
-            "payload": {
-                "diagramId": "1713060276314",
-                "timestamp": 1738404226220,
-                "json": "{\"visuals\":[{\"id\":\"1738075121955\",\"appearance\":{\"FONT_SIZE\":28,\"BACKGROUND_COLOR\":2434341,\"TEXT_ALIGNMENT\":\"left\",\"TEXT\":\"Blueprint For Free Speech\\nNGI Zero Commons Fund\"},\"renderer\":\"Paragraph\",\"transform\":{\"x\":1072,\"y\":51.5,\"w\":336,\"h\":103,\"r\":0},\"type\":\"Shape\"}],\"groups\":[]}",
-                "offset": 150
-            }
-        },
-        {
-            "type": "items/transform",
-            "payload": {
-                "diagramId": "1713060276314",
-                "timestamp": 1738404228821,
-                "oldBounds": {
-                    "x": 1222,
-                    "y": 201.5,
-                    "w": 336,
-                    "h": 103,
-                    "r": 0
-                },
-                "newBounds": {
-                    "x": 1072,
-                    "y": 51.5,
-                    "w": 336,
-                    "h": 103,
-                    "r": 0
-                },
-                "itemIds": [
-                    "1738075121955"
-                ]
-            }
-        },
-        {
-            "type": "items/paste",
-            "payload": {
-                "diagramId": "1713839345582",
-                "timestamp": 1738404230241,
-                "json": "{\"visuals\":[{\"id\":\"1738075122012\",\"appearance\":{\"FONT_SIZE\":28,\"BACKGROUND_COLOR\":2434341,\"TEXT_ALIGNMENT\":\"left\",\"TEXT\":\"Blueprint For Free Speech\\nNGI Zero Commons Fund\"},\"renderer\":\"Paragraph\",\"transform\":{\"x\":1072,\"y\":51.5,\"w\":336,\"h\":103,\"r\":0},\"type\":\"Shape\"}],\"groups\":[]}",
-                "offset": 200
-            }
-        },
-        {
-            "type": "items/transform",
-            "payload": {
-                "diagramId": "1713839345582",
-                "timestamp": 1738404232741,
-                "oldBounds": {
-                    "x": 1272,
-                    "y": 251.5,
-                    "w": 336,
-                    "h": 103,
-                    "r": 0
-                },
-                "newBounds": {
-                    "x": 1072,
-                    "y": 51.5,
-                    "w": 336,
-                    "h": 103,
-                    "r": 0
-                },
-                "itemIds": [
-                    "1738075122012"
-                ]
-            }
-        },
-        {
-            "type": "items/remove",
-            "payload": {
-                "diagramId": "3cccf5c6-5703-2a2b-e550-913434085717",
-                "timestamp": 1739046250074,
-                "itemIds": [
-                    "1738075120973"
-                ]
-            }
-        },
-        {
-            "type": "items/remove",
-            "payload": {
-                "diagramId": "8edb0316-01d0-623c-b898-adfc06164db9",
-                "timestamp": 1739046252401,
-                "itemIds": [
-                    "1738075121179"
-                ]
-            }
-        },
-        {
-            "type": "items/remove",
-            "payload": {
-                "diagramId": "1713060268309",
-                "timestamp": 1739046254245,
-                "itemIds": [
-                    "1738075121224"
-                ]
-            }
-        },
-        {
-            "type": "items/remove",
-            "payload": {
-                "diagramId": "7dcfb6a5-477d-07db-0156-6b42cba5d355",
-                "timestamp": 1739046255613,
-                "itemIds": [
-                    "1738075121276"
-                ]
-            }
-        },
-        {
-            "type": "items/remove",
-            "payload": {
-                "diagramId": "3ea4032a-0bf8-058c-ca48-279759f15cce",
-                "timestamp": 1739046257414,
-                "itemIds": [
-                    "1738075121342"
-                ]
-            }
-        },
-        {
-            "type": "items/remove",
-            "payload": {
-                "diagramId": "c1fe2795-f392-3b54-e4ee-ba14ad73ee7a",
-                "timestamp": 1739046259157,
-                "itemIds": [
-                    "1738075121405"
-                ]
-            }
-        },
-        {
-            "type": "items/remove",
+            "type": "items/appearance",
             "payload": {
                 "diagramId": "1708271107626",
-                "timestamp": 1739046261328,
+                "timestamp": 1770989797982,
+                "appearance": {
+                    "key": "TEXT",
+                    "value": "Profile:\n- New Profile\n- Open Profile...\n- Save Profile As...\n- Edit Profile...\n---\n- Close Profile\n- Logout\n---\n- Copy User Id\n- Set Visibility \n⠀- Online\n⠀- Restricted\n⠀- Hidden\n---\n- Logout All \n- Quit"
+                },
+                "force": false,
                 "itemIds": [
-                    "1738075121460"
+                    "1713839317629"
                 ]
             }
         },
         {
-            "type": "items/remove",
+            "type": "items/appearance",
             "payload": {
-                "diagramId": "384728bc-a37b-1a56-8c97-59b9dd7736f5",
-                "timestamp": 1739046262838,
+                "diagramId": "1708271107626",
+                "timestamp": 1770992712252,
+                "appearance": {
+                    "key": "TEXT",
+                    "value": "Profile:\n- New Profile\n- Open Profile...\n- Save Profile As...\n- Edit Profile...\n---\n- Close Profile\n- Logout\n---\n- Copy User Id\n- Set Visibility \n⠀- Visible\n⠀- Restricted\n⠀- Hidden\n---\n- Logout All \n- Quit"
+                },
+                "force": false,
                 "itemIds": [
-                    "1738075121531"
+                    "1713839317629"
                 ]
             }
         },
         {
-            "type": "items/remove",
+            "type": "items/appearance",
             "payload": {
-                "diagramId": "200ef765-dd62-4cfa-3e44-3c3eaa16e499",
-                "timestamp": 1739046264149,
+                "diagramId": "1708271107626",
+                "timestamp": 1770993749915,
+                "appearance": {
+                    "key": "TEXT",
+                    "value": "Contacts:\n- Add Contact...\n- Delete Contact\n- Connect/Disconnect Contact\n- Block/Unblock Contact\n"
+                },
+                "force": false,
                 "itemIds": [
-                    "1738075121593"
+                    "1713839317630"
                 ]
             }
         },
         {
-            "type": "items/remove",
+            "type": "items/appearance",
             "payload": {
-                "diagramId": "2bbbacdc-15be-9c5b-1a19-e04902aff5ef",
-                "timestamp": 1739046266374,
+                "diagramId": "1708271107626",
+                "timestamp": 1770994630005,
+                "appearance": {
+                    "key": "TEXT",
+                    "value": "Tools:\n- Downloads...\n- Tor logs...\n- Settings...\n"
+                },
+                "force": false,
                 "itemIds": [
-                    "1738075121640"
+                    "1713839317631"
                 ]
             }
         },
         {
-            "type": "items/remove",
+            "type": "items/appearance",
             "payload": {
-                "diagramId": "aded38e4-f279-58df-12ed-8d8a929a1fdd",
-                "timestamp": 1739046268359,
+                "diagramId": "1708271107626",
+                "timestamp": 1770995250616,
+                "appearance": {
+                    "key": "TEXT",
+                    "value": "Help:\n- Manual\n- Licenses...\n---\n- Check for Updates...\n- About"
+                },
+                "force": false,
                 "itemIds": [
-                    "1738075121703"
+                    "1713839317632"
                 ]
             }
         },
         {
-            "type": "items/remove",
+            "type": "items/appearance",
             "payload": {
-                "diagramId": "544a9ad8-9a02-4fd4-b179-0e177bd09248",
-                "timestamp": 1739046270950,
+                "diagramId": "1708271107626",
+                "timestamp": 1770995255441,
+                "appearance": {
+                    "key": "TEXT",
+                    "value": "Help:\n- Manual\n- Licenses...\n- Changelog...\n---\n- Check for Updates...\n- About"
+                },
+                "force": false,
                 "itemIds": [
-                    "1738075121767"
+                    "1713839317632"
                 ]
             }
         },
         {
-            "type": "items/remove",
+            "type": "items/appearance",
             "payload": {
-                "diagramId": "50cd4105-3f13-d5df-5535-631cee530817",
-                "timestamp": 1739046273220,
+                "diagramId": "1708271107626",
+                "timestamp": 1770995264750,
+                "appearance": {
+                    "key": "TEXT",
+                    "value": "Help:\n- Manual\n- Licenses...\n- Changelog...\n---\n- Check for Updates...\n---\n- About"
+                },
+                "force": false,
                 "itemIds": [
-                    "1738075121879"
+                    "1713839317632"
                 ]
             }
         },
         {
-            "type": "items/remove",
+            "type": "items/transform",
             "payload": {
-                "diagramId": "425d3797-dfeb-8669-7a81-24d75caf41dd",
-                "timestamp": 1739046275231,
+                "diagramId": "1708271107626",
+                "timestamp": 1770995275802,
+                "oldBounds": {
+                    "x": 690,
+                    "y": 324,
+                    "w": 194,
+                    "h": 180,
+                    "r": 0
+                },
+                "newBounds": {
+                    "x": 690,
+                    "y": 337.5,
+                    "w": 194,
+                    "h": 207,
+                    "r": 0
+                },
                 "itemIds": [
-                    "1738075121914"
+                    "1713839317632"
                 ]
             }
         },
         {
-            "type": "items/remove",
+            "type": "items/appearance",
             "payload": {
-                "diagramId": "1713060276314",
-                "timestamp": 1739046276859,
+                "diagramId": "1708271107626",
+                "timestamp": 1770995278320,
+                "appearance": {
+                    "key": "TEXT",
+                    "value": "Help:\n- Manual\n- Licenses...\n- Changelog...\n---\n- Check for Updates...\n- About"
+                },
+                "force": false,
                 "itemIds": [
-                    "1738075121955"
-                ]
-            }
-        },
-        {
-            "type": "items/remove",
-            "payload": {
-                "diagramId": "1713839345582",
-                "timestamp": 1739046278701,
-                "itemIds": [
-                    "1738075122012"
+                    "1713839317632"
                 ]
             }
         }
