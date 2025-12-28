@@ -60,13 +60,13 @@ ConnectionStatusPanel::ConnectionStatusPanel(
     );
     copy_logs_button->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) { this->copy_tor_logs(); });
 
-    auto ok_button =
-        new wxButton(button_panel, wxID_OK, Strings::ConnectionStatusPanel::ok_button());
-    ok_button->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) { this->close(); });
+    auto close_button =
+        new wxButton(button_panel, wxID_OK, Strings::ConnectionStatusPanel::close_button());
+    close_button->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) { this->close(); });
 
     button_panel_h_sizer->Add(copy_logs_button, 0, wxTOP, 8);
     button_panel_h_sizer->AddStretchSpacer(1);
-    button_panel_h_sizer->Add(ok_button, 0, wxTOP, 8);
+    button_panel_h_sizer->Add(close_button, 0, wxTOP, 8);
     button_panel->SetSizer(button_panel_h_sizer);
 
     v_sizer->Add(title, 0, wxALIGN_LEFT, 0);

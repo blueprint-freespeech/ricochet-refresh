@@ -16,8 +16,8 @@ public:
             return wxString("Ricochet-Refresh");
         }
 
-        static wxString ok_button() {
-            return translate(u8"Ok");
+        static wxString close_button() {
+            return translate(u8"Close");
         }
     };
 
@@ -142,8 +142,8 @@ public:
             return translate(u8"Copy Logs to Clipboard");
         }
 
-        static wxString ok_button() {
-            return Common::ok_button();
+        static wxString close_button() {
+            return Common::close_button();
         }
     };
 };
