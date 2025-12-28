@@ -8,13 +8,13 @@
 DisconnectedPanel::DisconnectedPanel(wxWindow* parent) : wxPanel(parent) {
     auto v_sizer = new wxBoxSizer(wxVERTICAL);
 
-    auto title = new wxStaticText(this, wxID_ANY, Strings::connect_panel_title_disconnected());
+    auto title = new wxStaticText(this, wxID_ANY, Strings::DisconnectedPanel::title());
     title->SetFont(Fonts::title_font());
 
     auto explainer_text =
-        new WrappedStaticText(this, wxID_ANY, Strings::connect_panel_explainer_text());
+        new WrappedStaticText(this, wxID_ANY, Strings::DisconnectedPanel::explainer_text());
     auto connect_automatically_toggle =
-        new wxCheckBox(this, wxID_ANY, Strings::connect_panel_connect_automatically_toggle());
+        new wxCheckBox(this, wxID_ANY, Strings::DisconnectedPanel::connect_automatically_toggle());
     connect_automatically_toggle->Bind(wxEVT_CHECKBOX, [this](wxCommandEvent& evt) {
         this->set_quickstart(evt.IsChecked());
     });
@@ -23,10 +23,10 @@ DisconnectedPanel::DisconnectedPanel(wxWindow* parent) : wxPanel(parent) {
     auto h_button_sizer = new wxBoxSizer(wxHORIZONTAL);
 
     auto configure_button =
-        new wxButton(button_panel, wxID_ANY, Strings::connect_panel_button_configure());
+        new wxButton(button_panel, wxID_ANY, Strings::DisconnectedPanel::configure_button());
     configure_button->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) { this->configure(); });
     auto connect_button =
-        new wxButton(button_panel, wxID_ANY, Strings::connect_panel_button_connect());
+        new wxButton(button_panel, wxID_ANY, Strings::DisconnectedPanel::connect_button());
     connect_button->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) { this->connect(); });
 
     h_button_sizer->AddStretchSpacer(1);

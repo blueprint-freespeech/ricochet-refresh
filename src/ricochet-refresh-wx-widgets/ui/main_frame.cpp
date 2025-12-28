@@ -5,15 +5,15 @@
 #include "enums.hpp"
 #include "strings.hpp"
 
-MainFrame::MainFrame() : wxFrame(nullptr, wxID_ANY, Strings::frame_title()) {
+MainFrame::MainFrame() : wxFrame(nullptr, wxID_ANY, Strings::MainFrame::title()) {
     // Create MenuBar
     auto menuBar = new wxMenuBar();
     // Craete File Menu
     auto menuFile = new wxMenu();
-    menuFile->Append(wxID_EXIT, Strings::menu_quit());
+    menuFile->Append(wxID_EXIT, Strings::MainFrame::MenuBar::Menu::quit());
 
     // Add Menus to MenUBar
-    menuBar->Append(menuFile, Strings::menu_bar_file());
+    menuBar->Append(menuFile, Strings::MainFrame::MenuBar::file());
     this->SetMenuBar(menuBar);
 
     // auto panel = new BootstrapPanel(this);
@@ -23,7 +23,7 @@ MainFrame::MainFrame() : wxFrame(nullptr, wxID_ANY, Strings::frame_title()) {
 
     auto panel = new ConnectionStatusPanel(
         this,
-        Strings::connection_status_panel_bundled_client("tor", "0.4.8.21"),
+        Strings::ConnectionStatusPanel::bundled_client_string("tor", "0.4.8.21"),
         ConnectionStatus::Online
     );
 

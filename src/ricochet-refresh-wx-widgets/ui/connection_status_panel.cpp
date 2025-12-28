@@ -12,7 +12,7 @@ ConnectionStatusPanel::ConnectionStatusPanel(
     wxPanel(parent) {
     auto v_sizer = new wxBoxSizer(wxVERTICAL);
 
-    auto title = new wxStaticText(this, wxID_ANY, Strings::connection_status_panel_title());
+    auto title = new wxStaticText(this, wxID_ANY, Strings::ConnectionStatusPanel::title());
     title->SetFont(Fonts::title_font());
 
     // status
@@ -20,12 +20,15 @@ ConnectionStatusPanel::ConnectionStatusPanel(
     auto status_panel = new wxPanel(this);
     auto status_panel_h_sizer = new wxBoxSizer(wxHORIZONTAL);
 
-    auto backend_text =
-        new wxStaticText(status_panel, wxID_ANY, Strings::connection_status_panel_backend(backend));
+    auto backend_text = new wxStaticText(
+        status_panel,
+        wxID_ANY,
+        Strings::ConnectionStatusPanel::backend_label(backend)
+    );
     auto connection_status_text = new wxStaticText(
         status_panel,
         wxID_ANY,
-        Strings::connection_status_panel_status(connection_status)
+        Strings::ConnectionStatusPanel::status_label(connection_status)
     );
 
     status_panel_h_sizer->Add(backend_text, 0, wxTOP, 8);
@@ -50,9 +53,15 @@ ConnectionStatusPanel::ConnectionStatusPanel(
     auto button_panel = new wxPanel(this);
     auto button_panel_h_sizer = new wxBoxSizer(wxHORIZONTAL);
 
-    auto copy_logs_button = new wxButton(button_panel, wxID_ANY, Strings::copy_tor_logs());
+    auto copy_logs_button = new wxButton(
+        button_panel,
+        wxID_ANY,
+        Strings::ConnectionStatusPanel::copy_tor_logs_button()
+    );
     copy_logs_button->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) { this->copy_tor_logs(); });
-    auto ok_button = new wxButton(button_panel, wxID_OK, Strings::ok_button());
+
+    auto ok_button =
+        new wxButton(button_panel, wxID_OK, Strings::ConnectionStatusPanel::ok_button());
     ok_button->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) { this->close(); });
 
     button_panel_h_sizer->Add(copy_logs_button, 0, wxTOP, 8);

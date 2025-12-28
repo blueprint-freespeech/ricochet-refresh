@@ -7,20 +7,20 @@
 ConnectingPanel::ConnectingPanel(wxWindow* parent) : wxPanel(parent) {
     auto v_sizer = new wxBoxSizer(wxVERTICAL);
 
-    auto title = new wxStaticText(this, wxID_ANY, Strings::connect_panel_title_connecting());
+    auto title = new wxStaticText(this, wxID_ANY, Strings::ConnectingPanel::title());
     title->SetFont(Fonts::title_font());
 
     auto explainer_text =
-        new WrappedStaticText(this, wxID_ANY, Strings::connect_panel_explainer_text());
+        new WrappedStaticText(this, wxID_ANY, Strings::ConnectingPanel::explainer_text());
     this->progress_bar = new wxGauge(this, wxID_ANY, 100);
     auto button_panel = new wxPanel(this, wxID_ANY);
     auto h_button_sizer = new wxBoxSizer(wxHORIZONTAL);
 
     auto view_logs_button =
-        new wxButton(button_panel, wxID_ANY, Strings::connect_panel_button_view_logs());
+        new wxButton(button_panel, wxID_ANY, Strings::ConnectingPanel::view_logs_button());
     view_logs_button->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) { this->view_logs(); });
     auto cancel_button =
-        new wxButton(button_panel, wxID_ANY, Strings::connect_panel_button_cancel());
+        new wxButton(button_panel, wxID_ANY, Strings::ConnectingPanel::cancel_button());
     cancel_button->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) { this->cancel(); });
 
     h_button_sizer->AddStretchSpacer(1);

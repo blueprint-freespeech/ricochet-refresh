@@ -6,21 +6,21 @@
 ConnectedPanel::ConnectedPanel(wxWindow* parent) : wxPanel(parent) {
     auto v_sizer = new wxBoxSizer(wxVERTICAL);
 
-    auto title = new wxStaticText(this, wxID_ANY, Strings::connect_panel_title_connected());
+    auto title = new wxStaticText(this, wxID_ANY, Strings::ConnectedPanel::title());
     title->SetFont(Fonts::title_font());
 
     auto create_profile_button =
-        new wxButton(this, wxID_ANY, Strings::connect_panel_button_create_profile());
+        new wxButton(this, wxID_ANY, Strings::ConnectedPanel::create_profile_button());
     create_profile_button->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) { this->create_profile(); });
     auto open_profile_button =
-        new wxButton(this, wxID_ANY, Strings::connect_panel_button_open_profile());
+        new wxButton(this, wxID_ANY, Strings::ConnectedPanel::open_profile_button());
     open_profile_button->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) { this->open_profile(); });
     auto import_profile_button =
-        new wxButton(this, wxID_ANY, Strings::connect_panel_button_import_profile());
+        new wxButton(this, wxID_ANY, Strings::ConnectedPanel::import_profile_button());
     import_profile_button->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) { this->import_profile(); });
 
     auto recent_profiles_label =
-        new wxStaticText(this, wxID_ANY, Strings::connect_panel_label_recent_profiles());
+        new wxStaticText(this, wxID_ANY, Strings::ConnectedPanel::recent_profiles_label());
 
     this->recent_profiles_listbox = new wxListBox(this, wxID_ANY);
     auto recent_profiles = this->get_recent_profiles();
