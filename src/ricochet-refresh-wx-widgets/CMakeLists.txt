@@ -29,6 +29,7 @@ endif()
 set_target_properties(ricochet-refresh-wx-widgets PROPERTIES OUTPUT_NAME "ricochet-refresh")
 
 set(RICOCHET_REFRESH_SOURCE
+    enums.hpp
     main.cpp
     precomp.hpp
     strings.cpp
@@ -39,6 +40,8 @@ set(RICOCHET_REFRESH_SOURCE
     ui/connected_panel.hpp
     ui/connecting_panel.cpp
     ui/connecting_panel.hpp
+    ui/connection_status_panel.cpp
+    ui/connection_status_panel.hpp
     ui/disconnected_panel.cpp
     ui/disconnected_panel.hpp
     ui/fonts.cpp

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "enums.hpp"
+
 //clang-format off
 class Strings {
 public:
@@ -65,7 +67,7 @@ public:
     }
 
     static wxString connect_panel_button_open_profile() {
-        return translate(u8"Open existing profile…");
+        return translate(u8"Open existing profile   ");
     }
 
     static wxString connect_panel_button_import_profile() {
@@ -74,5 +76,49 @@ public:
 
     static wxString connect_panel_label_recent_profiles() {
         return translate(u8"Recent profiles:");
+    }
+
+    static wxString connection_status_panel_title() {
+        return translate(u8"Connection Status");
+    }
+
+    static wxString connection_status_panel_backend(wxString backend_type) {
+        auto fmt_string = translate(u8"Backend: %s");
+        return wxString::Format(fmt_string, backend_type);
+    }
+
+    static wxString
+    connection_status_panel_bundled_client(const wxString& client, const wxString& version) {
+        /* Bundled out-of-process tor implemenation (e.g. "bundled tor version 0.4.8.21, bundled arti version 1.8.0, etc)" */
+        auto fmt_string = translate(u8"bundled %s version %s");
+        return wxString::Format(fmt_string, client, version);
+    }
+
+    static wxString connection_status_panel_status(ConnectionStatus connection_status) {
+        auto connection_status_string = [=]() {
+            switch (connection_status) {
+                case ConnectionStatus::Offline:
+                    return translate(u8"Offline");
+                case ConnectionStatus::Connecting:
+                    return translate(u8"Connecting");
+                case ConnectionStatus::Online:
+                    return translate(u8"Online");
+                default:
+                    return translate(u8"Unknown");
+            }
+        }();
+
+        std::cout << connection_status_string.utf8_string() << std::endl;
+
+        auto fmt_string = translate(u8"Status: %s");
+        return wxString::Format(fmt_string, connection_status_string);
+    }
+
+    static wxString copy_tor_logs() {
+        return translate(u8"Copy Logs to Clipboard");
+    }
+
+    static wxString ok_button() {
+        return translate(u8"Ok");
     }
 };

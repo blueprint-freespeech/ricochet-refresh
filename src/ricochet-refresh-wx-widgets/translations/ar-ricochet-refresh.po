@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Ricochet-Refresh 3.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-12-20 02:04+0000\n"
+"POT-Creation-Date: 2025-12-23 22:29+0000\n"
 "PO-Revision-Date: 2025-12-19 17:56+0000\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -17,68 +17,112 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 
 #. Titlebar String
-#: strings.hpp:13
+#: strings.hpp:15
 msgid "Ricochet-Refresh"
 msgstr ""
 
-#: strings.hpp:17
+#: strings.hpp:19
 msgid "&File"
 msgstr ""
 
-#: strings.hpp:21
+#: strings.hpp:23
 msgid "&Quit"
 msgstr ""
 
-#: strings.hpp:26
+#: strings.hpp:28
 msgid "Connect to Tor"
 msgstr ""
 
-#: strings.hpp:30
+#: strings.hpp:32
 msgid "Establishing a Connection"
 msgstr ""
 
-#: strings.hpp:34
+#: strings.hpp:36
 msgid "Connected"
 msgstr ""
 
-#: strings.hpp:39
+#: strings.hpp:41
 msgid ""
 "Ricochet-Refresh routes your traffic over the Tor network, run by thousands "
 "of volunteers from around the world."
 msgstr ""
 
-#: strings.hpp:44
+#: strings.hpp:46
 msgid "Always connect automatically"
 msgstr ""
 
-#: strings.hpp:48
+#: strings.hpp:50
 msgid "Configure…"
 msgstr ""
 
-#: strings.hpp:52
+#: strings.hpp:54
 msgid "Connect"
 msgstr ""
 
-#: strings.hpp:56
+#: strings.hpp:58
 msgid "View Logs…"
 msgstr ""
 
-#: strings.hpp:60
+#: strings.hpp:62
 msgid "Cancel"
 msgstr ""
 
-#: strings.hpp:64
+#: strings.hpp:66
 msgid "Create new profile…"
 msgstr ""
 
-#: strings.hpp:68
-msgid "Open existing profile…"
+#: strings.hpp:70
+msgid "Open existing profile   "
 msgstr ""
 
-#: strings.hpp:72
+#: strings.hpp:74
 msgid "Import legacy profile…"
 msgstr ""
 
-#: strings.hpp:76
+#: strings.hpp:78
 msgid "Recent profiles:"
+msgstr ""
+
+#: strings.hpp:82
+msgid "Connection Status"
+msgstr ""
+
+#: strings.hpp:86
+#, c-format
+msgid "Backend: %s"
+msgstr ""
+
+#. Bundled out-of-process tor implemenation (e.g. "bundled tor version 0.4.8.21, bundled arti version 1.8.0, etc)"
+#: strings.hpp:93
+#, c-format
+msgid "bundled %s version %s"
+msgstr ""
+
+#: strings.hpp:101
+msgid "Offline"
+msgstr ""
+
+#: strings.hpp:103
+msgid "Connecting"
+msgstr ""
+
+#: strings.hpp:105
+msgid "Online"
+msgstr ""
+
+#: strings.hpp:107
+msgid "Unknown"
+msgstr ""
+
+#: strings.hpp:113
+#, c-format
+msgid "Status: %s"
+msgstr ""
+
+#: strings.hpp:118
+msgid "Copy Logs to Clipboard"
+msgstr ""
+
+#: strings.hpp:122
+msgid "Ok"
 msgstr ""
