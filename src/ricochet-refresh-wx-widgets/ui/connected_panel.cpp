@@ -1,6 +1,7 @@
 #include "connected_panel.hpp"
 
 #include "fonts.hpp"
+#include "metrics.hpp"
 #include "strings.hpp"
 
 ConnectedPanel::ConnectedPanel(wxWindow* parent) : wxPanel(parent) {
@@ -30,11 +31,11 @@ ConnectedPanel::ConnectedPanel(wxWindow* parent) : wxPanel(parent) {
         this->open_recent_profile(evt.GetInt());
     });
 
-    v_sizer->Add(title, 0, wxALIGN_CENTER | wxBOTTOM, 24);
-    v_sizer->Add(create_profile_button, 0, wxEXPAND | wxBOTTOM, 8);
-    v_sizer->Add(open_profile_button, 0, wxEXPAND | wxBOTTOM, 8);
-    v_sizer->Add(import_profile_button, 0, wxEXPAND | wxBOTTOM, 8);
-    v_sizer->Add(recent_profiles_label, 0, wxEXPAND | wxBOTTOM, 8);
+    v_sizer->Add(title, 0, wxALIGN_CENTER | wxBOTTOM, Metrics::VERTICAL_PADDING_LARGE);
+    v_sizer->Add(create_profile_button, 0, wxEXPAND | wxBOTTOM, Metrics::VERTICAL_PADDING_MEDIUM);
+    v_sizer->Add(open_profile_button, 0, wxEXPAND | wxBOTTOM, Metrics::VERTICAL_PADDING_MEDIUM);
+    v_sizer->Add(import_profile_button, 0, wxEXPAND | wxBOTTOM, Metrics::VERTICAL_PADDING_MEDIUM);
+    v_sizer->Add(recent_profiles_label, 0, wxEXPAND | wxBOTTOM, Metrics::VERTICAL_PADDING_MEDIUM);
     v_sizer->Add(this->recent_profiles_listbox, 1, wxEXPAND);
 
     this->SetSizerAndFit(v_sizer);

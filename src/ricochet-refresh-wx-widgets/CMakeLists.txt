@@ -48,6 +48,8 @@ set(RICOCHET_REFRESH_SOURCE
     ui/fonts.hpp
     ui/main_frame.cpp
     ui/main_frame.hpp
+    ui/metrics.cpp
+    ui/metrics.hpp
     ui/wrapped_static_text.cpp
     ui/wrapped_static_text.hpp
 )

@@ -2,6 +2,7 @@
 
 #include "enums.hpp"
 #include "fonts.hpp"
+#include "metrics.hpp"
 #include "strings.hpp"
 
 ConnectionStatusPanel::ConnectionStatusPanel(
@@ -31,9 +32,9 @@ ConnectionStatusPanel::ConnectionStatusPanel(
         Strings::ConnectionStatusPanel::status_label(connection_status)
     );
 
-    status_panel_h_sizer->Add(backend_text, 0, wxTOP, 8);
+    status_panel_h_sizer->Add(backend_text, 0);
     status_panel_h_sizer->AddStretchSpacer(1);
-    status_panel_h_sizer->Add(connection_status_text, 0, wxTop, 8);
+    status_panel_h_sizer->Add(connection_status_text, 0);
 
     status_panel->SetSizer(status_panel_h_sizer);
 
@@ -64,15 +65,15 @@ ConnectionStatusPanel::ConnectionStatusPanel(
         new wxButton(button_panel, wxID_OK, Strings::ConnectionStatusPanel::close_button());
     close_button->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) { this->close(); });
 
-    button_panel_h_sizer->Add(copy_logs_button, 0, wxTOP, 8);
+    button_panel_h_sizer->Add(copy_logs_button, 0);
     button_panel_h_sizer->AddStretchSpacer(1);
-    button_panel_h_sizer->Add(close_button, 0, wxTOP, 8);
+    button_panel_h_sizer->Add(close_button, 0);
     button_panel->SetSizer(button_panel_h_sizer);
 
-    v_sizer->Add(title, 0, wxALIGN_LEFT, 0);
-    v_sizer->Add(status_panel, 0, wxTOP | wxEXPAND, 4);
-    v_sizer->Add(logs_textbox, 1, wxTOP | wxEXPAND, 4);
-    v_sizer->Add(button_panel, 0, wxTOP | wxEXPAND, 0);
+    v_sizer->Add(title, 0, wxALIGN_LEFT | wxBOTTOM, Metrics::VERTICAL_PADDING_MEDIUM);
+    v_sizer->Add(status_panel, 0, wxEXPAND | wxBOTTOM, Metrics::VERTICAL_PADDING_MEDIUM);
+    v_sizer->Add(logs_textbox, 1, wxEXPAND | wxBOTTOM, Metrics::VERTICAL_PADDING_MEDIUM);
+    v_sizer->Add(button_panel, 0, wxEXPAND);
     this->SetSizerAndFit(v_sizer);
 
     // todo: handle via callback
