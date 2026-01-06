@@ -1,6 +1,7 @@
 #include "main_frame.hpp"
 
 #include "bootstrap_panel.hpp"
+#include "connection_settings_panel.hpp"
 #include "connection_status_panel.hpp"
 #include "enums.hpp"
 #include "strings.hpp"
@@ -21,11 +22,13 @@ MainFrame::MainFrame() : wxFrame(nullptr, wxID_ANY, Strings::MainFrame::title())
     // panel->ShowConnecting();
     // panel->ShowConnected();
 
-    auto panel = new ConnectionStatusPanel(
-        this,
-        Strings::ConnectionStatusPanel::bundled_client_string("tor", "0.4.8.21"),
-        ConnectionStatus::Online
-    );
+    // auto panel = new ConnectionStatusPanel(
+    //     this,
+    //     Strings::ConnectionStatusPanel::bundled_client_string("tor", "0.4.8.21"),
+    //     ConnectionStatus::Online
+    // );
+
+    auto panel = new ConnectionSettingsPanel(this);
 
     this->SetMinSize(wxSize(800, 600));
     this->SetSize(wxSize(800, 600));

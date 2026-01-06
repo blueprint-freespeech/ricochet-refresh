@@ -19,4 +19,11 @@ public:
     constexpr static int HORIZONTAL_PADDING_MEDIUM = 8;
     constexpr static int HORIZONTAL_PADDING_LARGE = 16;
     constexpr static int HORIZONTAL_PADDING_XLARGE = 24;
+
+    constexpr static int VSCROLL_RATE = 10;
+    constexpr static int HSCROLL_RATE = 10;
+
+    // font metrics
+    static int line_height(wxWindow& win);
+    static int zero_width(wxWindow& win);
 };

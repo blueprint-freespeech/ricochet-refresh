@@ -15,4 +15,5 @@
 #include <wx/stdpaths.h>
 #include <wx/textwrapper.h>
 #include <wx/uilocale.h>
+#include <wx/valnum.h>
 #include <wx/wx.h>

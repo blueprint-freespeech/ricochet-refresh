@@ -146,4 +146,183 @@ public:
             return Common::close_button();
         }
     };
+
+    struct ConnectionSettingsPanel {
+        static wxString backend_heading() {
+            return translate(u8"Backend");
+        }
+
+        static wxString backend_description() {
+            return translate(u8"Select which underlying Tor implementation to use.");
+        }
+
+        static wxString bundled_legacy_tor_option() {
+            return translate(u8"Bundled legacy tor (Default)");
+        }
+
+        static wxString external_legacy_tor_option() {
+            return translate(u8"External legacy tor");
+        }
+
+        static wxString in_process_arti_option() {
+            return translate(u8"In-Process Arti");
+        }
+
+        static wxString quickstart_heading() {
+            return translate(u8"Quickstart");
+        }
+
+        static wxString quickstart_description() {
+            auto fmt_string = translate(
+                u8"Quickstart connects %s to the Tor network automatically when launched, based on your last used connection setttings."
+            );
+            return wxString::Format(fmt_string, Strings::Common::app_name());
+        }
+
+        static wxString connect_automatically_toggle() {
+            return DisconnectedPanel::connect_automatically_toggle();
+        }
+
+        static wxString bridges_heading() {
+            return translate(u8"Bridges");
+        }
+
+        static wxString bridges_description() {
+            return translate(
+                u8"Bridges help you securely access the Tor network in places where Tor is blocked. Depending on where you are, one bridge may work better than another."
+            );
+        }
+
+        static wxString use_bridges_toggle() {
+            return translate(u8"Use bridges");
+        }
+
+        static wxString builtin_bridge_option() {
+            auto fmt_string = translate(u8"Choose from one of %s's built-in bridges");
+            return wxString::Format(fmt_string, Strings::Common::app_name());
+        }
+
+        static wxString custom_bridge_option() {
+            return translate(u8"Enter bridge addresses you already know");
+        }
+
+        static wxString obfs4_bridge_option() {
+            return wxString("obfs4");
+        }
+
+        static wxString obfs4_bridge_description() {
+            return translate(
+                u8"Makes your Tor traffic look like random data. May not work in heavily censored regions."
+            );
+        }
+
+        static wxString snowflake_bridge_option() {
+            return wxString("Snowflake");
+        }
+
+        static wxString snowflake_bridge_description() {
+            return translate(
+                u8"Routes your connection through Snowflake proxies to make it look like you’re placing a video call, for example."
+            );
+        }
+
+        static wxString meek_bridge_option() {
+            return wxString("meek");
+        }
+
+        static wxString meek_bridge_description() {
+            return translate(
+                u8"Connects you to the Tor network through a big cloud provider. May work in heavily censored regions, but is usually very slow."
+            );
+        }
+
+        static wxString custom_bridge_textbox_hint() {
+            // todo: use a list-formatter from icu crate to build list of supported transports
+            // https://docs.rs/icu/2.1.1/icu/list/index.html
+            return translate(
+                u8"Supported transports: meek_lite, obfs2, obfs3, obfs4, scramblesuit, webtunnel, snowflake, and conjure"
+            );
+        }
+
+        static wxString network_settings_heading() {
+            return translate(u8"Network Settings");
+        }
+
+        static wxString network_settings_description() {
+            auto fmt_string = translate(u8"Configure how %s connects to the internet.");
+            return wxString::Format(fmt_string, Common::app_name());
+        }
+
+        static wxString use_proxy_toggle() {
+            return translate(u8"I use a proxy to connect to the internet");
+        }
+
+        static wxString proxy_type_label() {
+            return translate(u8"Proxy type");
+        }
+
+        static wxString proxy_socks4() {
+            return wxString("SOCKS4");
+        }
+
+        static wxString proxy_socks5() {
+            return wxString("SOCKS5");
+        }
+
+        static wxString proxy_https() {
+            return wxString("HTTPS");
+        }
+
+        static wxArrayString proxy_types() {
+            auto proxy_types = wxArrayString();
+            proxy_types.Add(proxy_socks4());
+            proxy_types.Add(proxy_socks5());
+            proxy_types.Add(proxy_https());
+            return proxy_types;
+        }
+
+        static wxString proxy_address_label() {
+            return translate(u8"Address");
+        }
+
+        static wxString proxy_address_textbox_hint() {
+            return translate(u8"IP address or hostname");
+        }
+
+        static wxString proxy_port_label() {
+            return translate(u8"Port");
+        }
+
+        static wxString proxy_username_label() {
+            return translate(u8"Username");
+        }
+
+        static wxString proxy_username_textbox_hint() {
+            return translate(u8"Optional");
+        }
+
+        static wxString proxy_password_label() {
+            return translate(u8"Password");
+        }
+
+        static wxString proxy_password_textbox_hint() {
+            return proxy_username_textbox_hint();
+        }
+
+        static wxString firewall_toggle() {
+            return translate(
+                u8"This computer goes through a firewall that only allows connections to certain ports"
+            );
+        }
+
+        static wxString allowed_ports_label() {
+            return translate(u8"Allowed ports");
+        }
+
+        static wxString allowed_ports_textbox_hint() {
+            // not translating this string is intentional, the tor backend expects a list in
+            // this particular format
+            return wxString("80,443");
+        }
+    };
 };
