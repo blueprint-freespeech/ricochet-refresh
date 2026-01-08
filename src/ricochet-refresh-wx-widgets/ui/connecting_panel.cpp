@@ -31,7 +31,12 @@ ConnectingPanel::ConnectingPanel(wxWindow* parent) : wxPanel(parent) {
     button_panel->SetSizer(h_button_sizer);
 
     v_sizer->Add(title, 0, wxALIGN_CENTER | wxBOTTOM, Metrics::VERTICAL_PADDING_LARGE);
-    v_sizer->Add(explainer_text, 0, wxALIGN_LEFT | wxBOTTOM, Metrics::VERTICAL_PADDING_MEDIUM);
+    v_sizer->Add(
+        explainer_text,
+        0,
+        wxEXPAND | wxALIGN_LEFT | wxBOTTOM,
+        Metrics::VERTICAL_PADDING_MEDIUM
+    );
     v_sizer->Add(progress_bar, 0, wxEXPAND);
     v_sizer->AddStretchSpacer(1);
     v_sizer->Add(button_panel, 0, wxALIGN_RIGHT);

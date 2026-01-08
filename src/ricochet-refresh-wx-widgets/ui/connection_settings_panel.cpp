@@ -255,13 +255,13 @@ ConnectionSettingsPanel::ConnectionSettingsPanel(wxWindow* parent) :
     // Layout
 
     v_sizer->Add(backend_heading, 0, wxBOTTOM, Metrics::VERTICAL_PADDING_MEDIUM);
-    v_sizer->Add(backend_description, 0, wxBOTTOM, Metrics::VERTICAL_PADDING_MEDIUM);
+    v_sizer->Add(backend_description, 0, wxEXPAND | wxBOTTOM, Metrics::VERTICAL_PADDING_MEDIUM);
     v_sizer->Add(bundled_legacy_tor_option, 0, wxBOTTOM, Metrics::VERTICAL_PADDING_SMALL);
     v_sizer->Add(external_legacy_tor_option, 0, wxBOTTOM, Metrics::VERTICAL_PADDING_SMALL);
     v_sizer->Add(in_process_arti_option, 0, wxBOTTOM, Metrics::VERTICAL_PADDING_MEDIUM);
 
     v_sizer->Add(quickstart_heading, 0, wxBOTTOM, Metrics::VERTICAL_PADDING_MEDIUM);
-    v_sizer->Add(quickstart_description, 0, wxBOTTOM, Metrics::VERTICAL_PADDING_MEDIUM);
+    v_sizer->Add(quickstart_description, 0, wxEXPAND | wxBOTTOM, Metrics::VERTICAL_PADDING_MEDIUM);
     v_sizer->Add(
         connect_automatically_toggle,
         0,
@@ -270,7 +270,7 @@ ConnectionSettingsPanel::ConnectionSettingsPanel(wxWindow* parent) :
     );
 
     v_sizer->Add(bridges_heading, 0, wxBOTTOM, Metrics::VERTICAL_PADDING_MEDIUM);
-    v_sizer->Add(bridges_description, 0, wxBOTTOM, Metrics::VERTICAL_PADDING_MEDIUM);
+    v_sizer->Add(bridges_description, 0, wxEXPAND | wxBOTTOM, Metrics::VERTICAL_PADDING_MEDIUM);
     v_sizer->Add(use_bridges_toggle, 0, wxEXPAND | wxBOTTOM, Metrics::VERTICAL_PADDING_MEDIUM);
 
     auto bridges_v_sizer = new wxBoxSizer(wxVERTICAL);
@@ -280,17 +280,22 @@ ConnectionSettingsPanel::ConnectionSettingsPanel(wxWindow* parent) :
     builtin_bridges_v_sizer
         ->Add(this->obfs4_bridge_option, 0, wxBOTTOM, Metrics::VERTICAL_PADDING_SMALL);
     builtin_bridges_v_sizer
-        ->Add(this->obfs4_bridge_description, 0, wxBOTTOM, Metrics::VERTICAL_PADDING_SMALL);
+        ->Add(this->obfs4_bridge_description, 0, wxEXPAND | wxBOTTOM, Metrics::VERTICAL_PADDING_SMALL);
     builtin_bridges_v_sizer
         ->Add(this->snowflake_bridge_option, 0, wxBOTTOM, Metrics::VERTICAL_PADDING_SMALL);
-    builtin_bridges_v_sizer
-        ->Add(this->snowflake_bridge_description, 0, wxBOTTOM, Metrics::VERTICAL_PADDING_SMALL);
+    builtin_bridges_v_sizer->Add(
+        this->snowflake_bridge_description,
+        0,
+        wxEXPAND | wxBOTTOM,
+        Metrics::VERTICAL_PADDING_SMALL
+    );
     builtin_bridges_v_sizer
         ->Add(this->meek_bridge_option, 0, wxBOTTOM, Metrics::VERTICAL_PADDING_SMALL);
     builtin_bridges_v_sizer
-        ->Add(this->meek_bridge_description, 0, wxBOTTOM, Metrics::VERTICAL_PADDING_SMALL);
+        ->Add(this->meek_bridge_description, 0, wxEXPAND | wxBOTTOM, Metrics::VERTICAL_PADDING_SMALL);
 
-    bridges_v_sizer->Add(builtin_bridges_v_sizer, 0, wxLEFT, Metrics::HORIZONTAL_PADDING_XLARGE);
+    bridges_v_sizer
+        ->Add(builtin_bridges_v_sizer, 0, wxEXPAND | wxLEFT, Metrics::HORIZONTAL_PADDING_XLARGE);
     bridges_v_sizer->Add(this->custom_bridge_option, 0, wxBOTTOM, Metrics::VERTICAL_PADDING_SMALL);
     bridges_v_sizer->Add(
         this->custom_bridge_textbox,
