@@ -46,6 +46,8 @@ set(RICOCHET_REFRESH_SOURCE
     ui/connection_settings_panel.hpp
     ui/disconnected_panel.cpp
     ui/disconnected_panel.hpp
+    ui/interface_settings_panel.cpp
+    ui/interface_settings_panel.hpp
     ui/fonts.cpp
     ui/fonts.hpp
     ui/main_frame.cpp

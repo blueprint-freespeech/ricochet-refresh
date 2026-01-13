@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Ricochet-Refresh 3.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-01-15 12:30+0000\n"
+"POT-Creation-Date: 2026-01-14 10:43+0000\n"
 "PO-Revision-Date: 2026-01-14 10:43+0000\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -249,4 +249,76 @@ msgstr ""
 
 #: strings.hpp:319
 msgid "Allowed ports"
+msgstr ""
+
+#: strings.hpp:331
+msgid "System language"
+msgstr ""
+
+#: strings.hpp:366
+msgid "Language"
+msgstr ""
+
+#: strings.hpp:370
+msgid "Select interface language"
+msgstr ""
+
+#: strings.hpp:387
+msgid "Toolbars"
+msgstr ""
+
+#: strings.hpp:391
+msgid "Show toolbar"
+msgstr ""
+
+#: strings.hpp:395
+msgid "Button style"
+msgstr ""
+
+#: strings.hpp:399
+msgid "Icons"
+msgstr ""
+
+#: strings.hpp:403
+msgid "Text"
+msgstr ""
+
+#: strings.hpp:407
+msgid "Icons and Text"
+msgstr ""
+
+#: strings.hpp:411
+msgid "Icons beside Text"
+msgstr ""
+
+#: strings.hpp:425
+msgid "Alerts"
+msgstr ""
+
+#: strings.hpp:429
+msgid "Show desktop notifications"
+msgstr ""
+
+#: strings.hpp:433
+msgid "Blink taskbar icon"
+msgstr ""
+
+#: strings.hpp:437
+msgid "Enable audio notifications"
+msgstr ""
+
+#: strings.hpp:441
+msgid "Window"
+msgstr ""
+
+#: strings.hpp:445
+msgid "Minimize instead of exit"
+msgstr ""
+
+#: strings.hpp:449
+msgid "Show system tray icon"
+msgstr ""
+
+#: strings.hpp:453
+msgid "Minimize to system tray"
 msgstr ""

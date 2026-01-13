@@ -279,8 +279,12 @@ ConnectionSettingsPanel::ConnectionSettingsPanel(wxWindow* parent) :
     auto builtin_bridges_v_sizer = new wxBoxSizer(wxVERTICAL);
     builtin_bridges_v_sizer
         ->Add(this->obfs4_bridge_option, 0, wxBOTTOM, Metrics::VERTICAL_PADDING_SMALL);
-    builtin_bridges_v_sizer
-        ->Add(this->obfs4_bridge_description, 0, wxEXPAND | wxBOTTOM, Metrics::VERTICAL_PADDING_SMALL);
+    builtin_bridges_v_sizer->Add(
+        this->obfs4_bridge_description,
+        0,
+        wxEXPAND | wxBOTTOM,
+        Metrics::VERTICAL_PADDING_SMALL
+    );
     builtin_bridges_v_sizer
         ->Add(this->snowflake_bridge_option, 0, wxBOTTOM, Metrics::VERTICAL_PADDING_SMALL);
     builtin_bridges_v_sizer->Add(
@@ -291,8 +295,12 @@ ConnectionSettingsPanel::ConnectionSettingsPanel(wxWindow* parent) :
     );
     builtin_bridges_v_sizer
         ->Add(this->meek_bridge_option, 0, wxBOTTOM, Metrics::VERTICAL_PADDING_SMALL);
-    builtin_bridges_v_sizer
-        ->Add(this->meek_bridge_description, 0, wxEXPAND | wxBOTTOM, Metrics::VERTICAL_PADDING_SMALL);
+    builtin_bridges_v_sizer->Add(
+        this->meek_bridge_description,
+        0,
+        wxEXPAND | wxBOTTOM,
+        Metrics::VERTICAL_PADDING_SMALL
+    );
 
     bridges_v_sizer
         ->Add(builtin_bridges_v_sizer, 0, wxEXPAND | wxLEFT, Metrics::HORIZONTAL_PADDING_XLARGE);

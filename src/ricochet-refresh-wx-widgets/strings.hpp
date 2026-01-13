@@ -325,4 +325,132 @@ public:
             return wxString("80,443");
         }
     };
+
+    struct Language {
+        static wxString system() {
+            return translate(u8"System language");
+        }
+
+        // not translating these functions is intentional as the
+        // language names are translated to the name of each language
+        // in the given language
+
+        static wxString ar() {
+            // note: we force rendering the reversed arabic word for
+            // arabic (العربية) left to right using the
+            // LEFT-TO-RIGHT OVERRIDE control character (\u202d) so that
+            // (ar) always appears to the right rather than
+            // relying on potentially platform-specific BiDi rendering
+            return wxString("\u202dةيبرعلا (ar)");
+        }
+
+        static wxString de() {
+            return wxString("Deutsch (de)");
+        }
+
+        static wxString en() {
+            return wxString("English (en)");
+        }
+
+        static wxString es() {
+            return wxString("Español (es)");
+        }
+
+        static wxString nl() {
+            return wxString("Nederlands (nl)");
+        }
+    };
+
+    struct InterfaceSettingsPanel {
+        static wxString language_heading() {
+            return translate(u8"Language");
+        }
+
+        static wxString select_interface_language_label() {
+            return translate(u8"Select interface language");
+        }
+
+        static wxArrayString supported_languages() {
+            // should be sorted in order by their language code
+            auto supported_languages = wxArrayString();
+            supported_languages.Add(Language::system());
+            supported_languages.Add(Language::ar());
+            supported_languages.Add(Language::de());
+            supported_languages.Add(Language::en());
+            supported_languages.Add(Language::es());
+            supported_languages.Add(Language::nl());
+
+            return supported_languages;
+        }
+
+        static wxString toolbars_heading() {
+            return translate(u8"Toolbars");
+        }
+
+        static wxString show_toolbar_toggle() {
+            return translate(u8"Show toolbar");
+        }
+
+        static wxString button_style_label() {
+            return translate(u8"Button style");
+        }
+
+        static wxString button_style_icons() {
+            return translate(u8"Icons");
+        }
+
+        static wxString button_style_text() {
+            return translate(u8"Text");
+        }
+
+        static wxString button_style_icons_and_text() {
+            return translate(u8"Icons and Text");
+        }
+
+        static wxString button_style_icons_beside_text() {
+            return translate(u8"Icons beside Text");
+        }
+
+        static wxArrayString button_styles() {
+            auto button_styles = wxArrayString();
+            button_styles.Add(button_style_icons());
+            button_styles.Add(button_style_text());
+            button_styles.Add(button_style_icons_and_text());
+            button_styles.Add(button_style_icons_beside_text());
+
+            return button_styles;
+        }
+
+        static wxString alerts_heading() {
+            return translate(u8"Alerts");
+        }
+
+        static wxString show_desktop_notifications_toggle() {
+            return translate(u8"Show desktop notifications");
+        }
+
+        static wxString blink_taskbar_icon_toggle() {
+            return translate(u8"Blink taskbar icon");
+        }
+
+        static wxString enable_audio_notifications_toggle() {
+            return translate(u8"Enable audio notifications");
+        }
+
+        static wxString window_heading() {
+            return translate(u8"Window");
+        }
+
+        static wxString minimize_instead_of_exit_toggle() {
+            return translate(u8"Minimize instead of exit");
+        }
+
+        static wxString show_system_tray_icon_toggle() {
+            return translate(u8"Show system tray icon");
+        }
+
+        static wxString minimize_to_system_tray_toggle() {
+            return translate(u8"Minimize to system tray");
+        }
+    };
 };

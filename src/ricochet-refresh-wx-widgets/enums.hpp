@@ -30,3 +30,19 @@ enum class ProxyType {
     SOCKS5,
     HTTPS,
 };
+
+enum class Language {
+    System = 0,
+    Arabic, // ar
+    German, // de
+    English, // en
+    Spanish, // es
+    Dutch, // nl
+};
+
+enum class ButtonStyle {
+    Icons = 0,
+    Text,
+    IconsAndText,
+    IconsBesideText,
+};
