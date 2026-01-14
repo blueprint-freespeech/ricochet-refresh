@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Ricochet-Refresh 3.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-01-14 10:43+0000\n"
+"POT-Creation-Date: 2026-01-14 10:47+0000\n"
 "PO-Revision-Date: 2026-01-14 10:43+0000\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -322,4 +322,17 @@ msgstr ""
 
 #: strings.hpp:453
 msgid "Minimize to system tray"
+msgstr ""
+
+#: strings.hpp:459
+msgid "Startup"
+msgstr ""
+
+#: strings.hpp:463
+#, c-format
+msgid "Start only single instance of %s"
+msgstr ""
+
+#: strings.hpp:468
+msgid "Check for updates on launch"
 msgstr ""

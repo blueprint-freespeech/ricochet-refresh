@@ -453,4 +453,19 @@ public:
             return translate(u8"Minimize to system tray");
         }
     };
+
+    struct GeneralSettingsPanel {
+        static wxString startup_heading() {
+            return translate(u8"Startup");
+        }
+
+        static wxString start_only_single_instance_toggle() {
+            auto fmt_string = translate(u8"Start only single instance of %s");
+            return wxString::Format(fmt_string, Common::app_name());
+        }
+
+        static wxString check_for_updates_on_launch_toggle() {
+            return translate(u8"Check for updates on launch");
+        }
+    };
 };

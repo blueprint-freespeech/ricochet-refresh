@@ -40,16 +40,18 @@ set(RICOCHET_REFRESH_SOURCE
     ui/connected_panel.hpp
     ui/connecting_panel.cpp
     ui/connecting_panel.hpp
-    ui/connection_status_panel.cpp
-    ui/connection_status_panel.hpp
     ui/connection_settings_panel.cpp
     ui/connection_settings_panel.hpp
+    ui/connection_status_panel.cpp
+    ui/connection_status_panel.hpp
     ui/disconnected_panel.cpp
     ui/disconnected_panel.hpp
-    ui/interface_settings_panel.cpp
-    ui/interface_settings_panel.hpp
     ui/fonts.cpp
     ui/fonts.hpp
+    ui/general_settings_panel.cpp
+    ui/general_settings_panel.hpp
+    ui/interface_settings_panel.cpp
+    ui/interface_settings_panel.hpp
     ui/main_frame.cpp
     ui/main_frame.hpp
     ui/metrics.cpp
