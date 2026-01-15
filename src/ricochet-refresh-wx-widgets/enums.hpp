@@ -46,3 +46,9 @@ enum class ButtonStyle {
     IconsAndText,
     IconsBesideText,
 };
+
+enum class Settings {
+    General = 0,
+    Interface,
+    Connection,
+};

@@ -468,4 +468,22 @@ public:
             return translate(u8"Check for updates on launch");
         }
     };
+
+    struct SettingsPanel {
+        static wxString title() {
+            return translate(u8"Settings");
+        }
+
+        static wxString general_settings_choice() {
+            return translate(u8"General");
+        }
+
+        static wxString interface_settings_choice() {
+            return translate(u8"Interface");
+        }
+
+        static wxString connection_settings_choice() {
+            return translate(u8"Connection");
+        }
+    };
 };

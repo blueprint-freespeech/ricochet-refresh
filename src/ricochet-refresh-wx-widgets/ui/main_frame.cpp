@@ -6,6 +6,7 @@
 #include "enums.hpp"
 #include "general_settings_panel.hpp"
 #include "interface_settings_panel.hpp"
+#include "settings_panel.hpp"
 #include "strings.hpp"
 #include "wrapped_static_text.hpp"
 
@@ -31,9 +32,11 @@ MainFrame::MainFrame() : wxFrame(nullptr, wxID_ANY, Strings::MainFrame::title())
     //     ConnectionStatus::Online
     // );
 
-    auto panel = new GeneralSettingsPanel(this);
+    // auto panel = new GeneralSettingsPanel(this);
     // auto panel = new InterfaceSettingsPanel(this);
     // auto panel = new ConnectionSettingsPanel(this);
+
+    auto panel = new SettingsPanel(this);
 
     // auto top_string =
     //     "Ricochet Refresh est applicatio nuntiorum inter pares quae Tor utitur ad clientes connectendos. Cum Ricochet Refresh incipis, servitium Tor occultum in computatro tuo creat. Inscriptio huius servitii occulti est identitas tua anonyma in rete Tor et modus quo alii tecum communicare poterunt.";

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Ricochet-Refresh 3.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-01-14 10:47+0000\n"
+"POT-Creation-Date: 2026-01-15 13:12+0000\n"
 "PO-Revision-Date: 2026-01-14 10:43+0000\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -335,4 +335,20 @@ msgstr ""
 
 #: strings.hpp:468
 msgid "Check for updates on launch"
+msgstr ""
+
+#: strings.hpp:474
+msgid "Settings"
+msgstr ""
+
+#: strings.hpp:478
+msgid "General"
+msgstr ""
+
+#: strings.hpp:482
+msgid "Interface"
+msgstr ""
+
+#: strings.hpp:486
+msgid "Connection"
 msgstr ""
