@@ -25,7 +25,7 @@ wxString Strings::translate(const char8_t str[]) {
 }
 
 // cppcheck-suppress unusedFunction
-wxString translate_plural(const char8_t single[], const char8_t plural[], unsigned n) {
+wxString Strings::translate_plural(const char8_t single[], const char8_t plural[], unsigned n) {
     return wxGetTranslation(
         wxString::FromUTF8(reinterpret_cast<const char*>(single)),
         wxString::FromUTF8(reinterpret_cast<const char*>(plural)),

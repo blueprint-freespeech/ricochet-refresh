@@ -20,6 +20,9 @@ public:
     constexpr static int HORIZONTAL_PADDING_LARGE = 16;
     constexpr static int HORIZONTAL_PADDING_XLARGE = 24;
 
+    constexpr static int AVATAR_SIZE = 48;
+
+    // todo: should these be set differently?
     constexpr static int VSCROLL_RATE = 10;
     constexpr static int HSCROLL_RATE = 10;
 

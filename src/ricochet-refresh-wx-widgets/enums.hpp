@@ -52,3 +52,11 @@ enum class Settings {
     Interface,
     Connection,
 };
+
+enum class ContactGroup {
+    Connected = 0,
+    Disconnected,
+    Requesting,
+    Blocked,
+    Count,
+};

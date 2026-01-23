@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Ricochet-Refresh 3.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-01-15 13:12+0000\n"
+"POT-Creation-Date: 2026-01-23 22:02+0000\n"
 "PO-Revision-Date: 2026-01-14 10:43+0000\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -63,7 +63,7 @@ msgstr ""
 msgid "Cancel"
 msgstr ""
 
-#: strings.hpp:87
+#: strings.hpp:87 strings.hpp:511
 msgid "Connected"
 msgstr ""
 
@@ -351,4 +351,16 @@ msgstr ""
 
 #: strings.hpp:486
 msgid "Connection"
+msgstr ""
+
+#: strings.hpp:513
+msgid "Disconnected"
+msgstr ""
+
+#: strings.hpp:515
+msgid "Requesting"
+msgstr ""
+
+#: strings.hpp:517
+msgid "Blocked"
 msgstr ""

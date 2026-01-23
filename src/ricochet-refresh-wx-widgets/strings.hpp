@@ -486,4 +486,40 @@ public:
             return translate(u8"Connection");
         }
     };
+
+    struct ContactGroupPanel {
+        static wxString group_label(ContactGroup contact_group, bool expanded) {
+            auto fmt_string = [=]() -> wxString {
+                const auto layout_direction = wxUILocale::GetCurrent().GetLayoutDirection();
+                if (expanded) {
+                    if (layout_direction == wxLayout_RightToLeft) {
+                        return wxString("\u202b ⏷\u202c %s");
+                    } else {
+                        return wxString(" ⏷ %s");
+                    }
+                } else {
+                    if (layout_direction == wxLayout_RightToLeft) {
+                        return wxString("\u202b ⏴\u202c %s");
+                    } else {
+                        return wxString(" ⏵ %s");
+                    }
+                }
+            }();
+            auto label = [=]() -> wxString {
+                switch (contact_group) {
+                    case ContactGroup::Connected:
+                        return translate(u8"Connected");
+                    case ContactGroup::Disconnected:
+                        return translate(u8"Disconnected");
+                    case ContactGroup::Requesting:
+                        return translate(u8"Requesting");
+                    case ContactGroup::Blocked:
+                        return translate(u8"Blocked");
+                    default:
+                        return wxEmptyString;
+                }
+            }();
+            return wxString::Format(fmt_string, label);
+        }
+    };
 };
