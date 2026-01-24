@@ -60,3 +60,11 @@ enum class ContactGroup {
     Blocked,
     Count,
 };
+
+enum class Visibility {
+    Online = 0,
+    Restricted,
+    Hidden,
+    Offline,
+    Count,
+};

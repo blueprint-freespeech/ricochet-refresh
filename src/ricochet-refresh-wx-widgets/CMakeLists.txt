@@ -66,6 +66,8 @@ set(RICOCHET_REFRESH_SOURCE
     ui/metrics.hpp
     ui/settings_panel.cpp
     ui/settings_panel.hpp
+    ui/user_status_panel.cpp
+    ui/user_status_panel.hpp
     ui/wrapped_static_text.cpp
     ui/wrapped_static_text.hpp
 )

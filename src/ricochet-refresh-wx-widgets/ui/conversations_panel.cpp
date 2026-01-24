@@ -1,6 +1,7 @@
 #include "conversations_panel.hpp"
 
 #include "contact_list_panel.hpp"
+#include "user_status_panel.hpp"
 
 ConversationsPanel::ConversationsPanel(wxWindow* parent) :
     wxSplitterWindow(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxSP_LIVE_UPDATE) {
@@ -13,9 +14,7 @@ ConversationsPanel::ConversationsPanel(wxWindow* parent) :
 
     // todo: replace with actual implementation
     auto contacts_list_panel = new ContactListPanel(left_panel);
-    auto user_status_panel = new wxPanel(left_panel);
-    user_status_panel->SetMinSize(wxSize(-1, 48));
-    user_status_panel->SetBackgroundColour(wxColour(0x88, 0xFF, 0xFF));
+    auto user_status_panel = new UserStatusPanel(left_panel);
 
     left_v_sizer->Add(contacts_list_panel, 1, wxEXPAND);
     left_v_sizer->Add(user_status_panel, 0, wxEXPAND);

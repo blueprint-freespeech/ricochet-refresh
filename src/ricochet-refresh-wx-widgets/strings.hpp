@@ -527,4 +527,69 @@ public:
             return wxString::Format(fmt_string, label);
         }
     };
+
+    struct Visibility {
+        static wxString online() {
+            return translate(u8"Online");
+        }
+
+        static wxString restricted() {
+            return translate(u8"Restricted");
+        }
+
+        static wxString hidden() {
+            return translate(u8"Hidden");
+        }
+
+        static wxString offline() {
+            return translate(u8"Offline");
+        }
+
+        static wxString to_string(::Visibility visibility) {
+            switch (visibility) {
+                case ::Visibility::Online:
+                    return online();
+                case ::Visibility::Restricted:
+                    return restricted();
+                case ::Visibility::Hidden:
+                    return hidden();
+                case ::Visibility::Offline:
+                    return offline();
+                default:
+                    return wxEmptyString;
+            }
+        }
+    };
+
+    struct UserStatusPanel {
+        static wxString visibility_option(::Visibility visibility) {
+            auto fmt_string = [=]() -> wxString {
+                const auto layout_direction = wxUILocale::GetCurrent().GetLayoutDirection();
+                if (layout_direction == wxLayout_RightToLeft) {
+                    return raw(u8"\u202b%s\u202c %s");
+                } else {
+                    return raw(u8"%s %s");
+                }
+            }();
+            wxString icon;
+            switch (visibility) {
+                case ::Visibility::Online:
+                    icon = raw(u8"●");
+                    break;
+                case ::Visibility::Restricted:
+                    icon = raw(u8"○");
+                    break;
+                case ::Visibility::Hidden:
+                    icon = raw(u8"▤");
+                    break;
+                case ::Visibility::Offline:
+                    icon = raw(u8"■");
+                    break;
+                default:
+                    break;
+            }
+            auto option = Strings::Visibility::to_string(visibility);
+            return wxString::Format(fmt_string, icon, option);
+        }
+    };
 };
