@@ -7,17 +7,22 @@ class Strings {
 public:
     static void init();
 
+    static wxString raw(const char8_t str[]);
     static wxString translate(const char8_t str[]);
     static wxString translate_plural(const char8_t single[], const char8_t plural[], unsigned n);
 
     struct Common {
         static wxString app_name() {
             // we don't want to translate the application name
-            return wxString("Ricochet-Refresh");
+            return raw(u8"Ricochet-Refresh");
         }
 
         static wxString close_button() {
             return translate(u8"Close");
+        }
+
+        static wxString new_line() {
+            return raw(u8"\n");
         }
     };
 
@@ -207,7 +212,7 @@ public:
         }
 
         static wxString obfs4_bridge_option() {
-            return wxString("obfs4");
+            return raw(u8"obfs4");
         }
 
         static wxString obfs4_bridge_description() {
@@ -217,7 +222,7 @@ public:
         }
 
         static wxString snowflake_bridge_option() {
-            return wxString("Snowflake");
+            return raw(u8"Snowflake");
         }
 
         static wxString snowflake_bridge_description() {
@@ -227,7 +232,7 @@ public:
         }
 
         static wxString meek_bridge_option() {
-            return wxString("meek");
+            return raw(u8"meek");
         }
 
         static wxString meek_bridge_description() {
@@ -262,15 +267,15 @@ public:
         }
 
         static wxString proxy_socks4() {
-            return wxString("SOCKS4");
+            return raw(u8"SOCKS4");
         }
 
         static wxString proxy_socks5() {
-            return wxString("SOCKS5");
+            return raw(u8"SOCKS5");
         }
 
         static wxString proxy_https() {
-            return wxString("HTTPS");
+            return raw(u8"HTTPS");
         }
 
         static wxArrayString proxy_types() {
@@ -322,7 +327,7 @@ public:
         static wxString allowed_ports_textbox_hint() {
             // not translating this string is intentional, the tor backend expects a list in
             // this particular format
-            return wxString("80,443");
+            return raw(u8"80,443");
         }
     };
 
@@ -341,23 +346,23 @@ public:
             // LEFT-TO-RIGHT OVERRIDE control character (\u202d) so that
             // (ar) always appears to the right rather than
             // relying on potentially platform-specific BiDi rendering
-            return wxString("\u202dةيبرعلا (ar)");
+            return raw(u8"\u202dةيبرعلا (ar)");
         }
 
         static wxString de() {
-            return wxString("Deutsch (de)");
+            return raw(u8"Deutsch (de)");
         }
 
         static wxString en() {
-            return wxString("English (en)");
+            return raw(u8"English (en)");
         }
 
         static wxString es() {
-            return wxString("Español (es)");
+            return raw(u8"Español (es)");
         }
 
         static wxString nl() {
-            return wxString("Nederlands (nl)");
+            return raw(u8"Nederlands (nl)");
         }
     };
 
@@ -493,15 +498,15 @@ public:
                 const auto layout_direction = wxUILocale::GetCurrent().GetLayoutDirection();
                 if (expanded) {
                     if (layout_direction == wxLayout_RightToLeft) {
-                        return wxString("\u202b ⏷\u202c %s");
+                        return raw(u8"\u202b ⏷\u202c %s");
                     } else {
-                        return wxString(" ⏷ %s");
+                        return raw(u8" ⏷ %s");
                     }
                 } else {
                     if (layout_direction == wxLayout_RightToLeft) {
-                        return wxString("\u202b ⏴\u202c %s");
+                        return raw(u8"\u202b ⏴\u202c %s");
                     } else {
-                        return wxString(" ⏵ %s");
+                        return raw(u8" ⏵ %s");
                     }
                 }
             }();

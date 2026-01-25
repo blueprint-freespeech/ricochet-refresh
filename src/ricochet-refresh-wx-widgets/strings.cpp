@@ -20,6 +20,10 @@ void Strings::init() {
     }
 }
 
+wxString Strings::raw(const char8_t str[]) {
+    return wxString::FromUTF8(reinterpret_cast<const char*>(str));
+}
+
 wxString Strings::translate(const char8_t str[]) {
     return wxGetTranslation(wxString::FromUTF8(reinterpret_cast<const char*>(str)));
 }

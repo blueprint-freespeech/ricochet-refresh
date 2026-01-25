@@ -84,7 +84,7 @@ ConnectionStatusPanel::ConnectionStatusPanel(
 void ConnectionStatusPanel::add_log(const wxString& log_line) {
     const auto insertion_point = this->logs_textbox->GetInsertionPoint();
     this->logs_textbox->AppendText(log_line);
-    this->logs_textbox->AppendText(wxString("\n"));
+    this->logs_textbox->AppendText(Strings::Common::new_line());
     this->logs_textbox->SetInsertionPoint(insertion_point);
 }
 
