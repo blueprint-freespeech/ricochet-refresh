@@ -33,6 +33,16 @@ cmake_minimum_required(VERSION 3.18)
 
 project(ricochet-refresh)
 
+# cmake variables reference: https://cmake.org/cmake/help/v3.17/manual/cmake-variables.7.html
+# define per-platform flags
+if(UNIX AND NOT APPLE)
+    set(LINUX TRUE)
+elseif(UNIX AND APPLE)
+    set(MACOS TRUE)
+elseif(WIN32)
+    set(WINDOWS TRUE)
+endif()
+
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/cmake)
 
 # ctest targets
