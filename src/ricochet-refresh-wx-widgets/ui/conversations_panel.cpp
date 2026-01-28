@@ -1,5 +1,6 @@
 #include "conversations_panel.hpp"
 
+#include "chat_panel.hpp"
 #include "contact_list_panel.hpp"
 #include "user_status_panel.hpp"
 
@@ -26,9 +27,22 @@ ConversationsPanel::ConversationsPanel(wxWindow* parent) :
 
     auto right_v_sizer = new wxBoxSizer(wxVERTICAL);
 
-    // todo replace with actual implementation
-    auto chat_panel = new wxPanel(right_panel);
-    chat_panel->SetBackgroundColour(wxColour(0xFF, 0xFF, 0xAA));
+    // todo: we need a chat panel per contact
+    auto chat_panel = new ChatPanel(right_panel);
+    // todo: load chat log from profile
+    const auto timestamp = wxDateTime::Now();
+    chat_panel->add_chat_message(timestamp, "Alice", "Hi there! How have you been?");
+    chat_panel->add_chat_message(
+        timestamp.Add(wxTimeSpan::Seconds(5)),
+        "Me",
+        "Pretty well actually. How about you?"
+    );
+    chat_panel->add_chat_message(
+        timestamp.Add(wxTimeSpan::Seconds(15)),
+        "Alice",
+        "Literally everything in my life is perfect! 😅. Do you wannt to go to the park later? It is a beautiful day you know?"
+    );
+
     auto text_entry_panel = new wxPanel(right_panel);
     text_entry_panel->SetBackgroundColour(wxColour(0xFF, 0xAA, 0xAA));
     text_entry_panel->SetMinSize(wxSize(-1, 196));

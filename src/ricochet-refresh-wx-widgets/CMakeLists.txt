@@ -36,6 +36,8 @@ set(RICOCHET_REFRESH_SOURCE
     strings.hpp
     ui/bootstrap_panel.cpp
     ui/bootstrap_panel.hpp
+    ui/chat_panel.cpp
+    ui/chat_panel.hpp
     ui/connected_panel.cpp
     ui/connected_panel.hpp
     ui/connecting_panel.cpp
