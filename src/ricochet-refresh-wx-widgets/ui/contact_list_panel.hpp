@@ -8,7 +8,7 @@ struct ContactPanel;
 
 class ContactListPanel: public wxScrolled<wxPanel> {
 public:
-    ContactListPanel(wxWindow* parent);
+    ContactListPanel(wxWindow* parent, std::span<const ContactHandle> contacts);
 
     void add_contact(
         ContactHandle contact_handle,

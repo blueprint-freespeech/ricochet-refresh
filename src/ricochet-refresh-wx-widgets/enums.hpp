@@ -68,3 +68,7 @@ enum class Visibility {
     Offline,
     Count,
 };
+
+enum class MessageType {
+    Text,
+};

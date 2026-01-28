@@ -592,4 +592,27 @@ public:
             return wxString::Format(fmt_string, icon, option);
         }
     };
+
+    struct MessageEntryPanel {
+        static wxString bold_button() {
+            return raw(u8"B");
+        }
+
+        static wxString italic_button() {
+            return raw(u8"I");
+        }
+
+        static wxString underline_button() {
+            return raw(u8"U\u0332");
+        }
+
+        static wxString send_message_button() {
+            const auto layout_direction = wxUILocale::GetCurrent().GetLayoutDirection();
+            if (layout_direction == wxLayout_RightToLeft) {
+                return raw(u8"◁");
+            } else {
+                return raw(u8"▷");
+            }
+        }
+    };
 };

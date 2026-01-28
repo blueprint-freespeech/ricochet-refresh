@@ -4,9 +4,12 @@
 #include "contact_panel.hpp"
 #include "enums.hpp"
 #include "metrics.hpp"
+#include "mock_ffi.hpp"
 #include "strings.hpp"
 
-ContactListPanel::ContactListPanel(wxWindow* parent) :
+using namespace mock;
+
+ContactListPanel::ContactListPanel(wxWindow* parent, std::span<const ContactHandle> contacts) :
     wxScrolled<wxPanel>(
         parent,
         wxID_ANY,
@@ -18,14 +21,6 @@ ContactListPanel::ContactListPanel(wxWindow* parent) :
     this->SetBackgroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_LISTBOX));
 
     auto v_sizer = new wxBoxSizer(wxVERTICAL);
-
-    // todo: load actual avatars
-    constexpr unsigned char avatar_data[] = {0xFF, 0xAA, 0xFF};
-    const auto avatar_size = Metrics::AVATAR_SIZE;
-    auto avatar_image = wxImage(1, 1, const_cast<unsigned char*>(avatar_data), true);
-    avatar_image.Rescale(avatar_size, avatar_size, wxIMAGE_QUALITY_BILINEAR);
-    const auto debug_avatar = wxBitmap(avatar_image);
-
     v_sizer->AddSpacer(Metrics::VERTICAL_PADDING_SMALL);
 
     for (auto i = 0; i < static_cast<int>(ContactGroup::Count); ++i) {
@@ -49,55 +44,14 @@ ContactListPanel::ContactListPanel(wxWindow* parent) :
         v_sizer->Add(this->group_v_sizer[i], 0, wxEXPAND);
     }
 
-    // todo: load from profile
-    this->add_contact(
-        reinterpret_cast<ContactHandle>(0),
-        "Alice",
-        debug_avatar,
-        ContactGroup::Connected
-    );
-    this->add_contact(
-        reinterpret_cast<ContactHandle>(3),
-        "Claire",
-        debug_avatar,
-        ContactGroup::Disconnected
-    );
-    this->add_contact(
-        reinterpret_cast<ContactHandle>(2),
-        "Bridgette",
-        debug_avatar,
-        ContactGroup::Disconnected
-    );
-    this->add_contact(
-        reinterpret_cast<ContactHandle>(4),
-        "Danielle",
-        debug_avatar,
-        ContactGroup::Requesting
-    );
-    this->add_contact(
-        reinterpret_cast<ContactHandle>(5),
-        "Erica",
-        debug_avatar,
-        ContactGroup::Requesting
-    );
-    this->add_contact(
-        reinterpret_cast<ContactHandle>(6),
-        "Felicia",
-        debug_avatar,
-        ContactGroup::Requesting
-    );
-    this->add_contact(
-        reinterpret_cast<ContactHandle>(7),
-        "Gabriella",
-        debug_avatar,
-        ContactGroup::Blocked
-    );
-    this->add_contact(
-        reinterpret_cast<ContactHandle>(8),
-        "Henrietta",
-        debug_avatar,
-        ContactGroup::Blocked
-    );
+    for (const auto contact_handle : contacts) {
+        this->add_contact(
+            contact_handle,
+            nickname_from_contact_handle(contact_handle),
+            avatar_from_contact_handle(contact_handle),
+            ContactGroup::Disconnected
+        );
+    }
 
     this->SetSizerAndFit(v_sizer);
 }

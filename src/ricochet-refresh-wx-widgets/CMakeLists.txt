@@ -31,6 +31,7 @@ set_target_properties(ricochet-refresh-wx-widgets PROPERTIES OUTPUT_NAME "ricoch
 set(RICOCHET_REFRESH_SOURCE
     enums.hpp
     main.cpp
+    mock_ffi.hpp
     precomp.hpp
     strings.cpp
     strings.hpp
@@ -46,16 +47,18 @@ set(RICOCHET_REFRESH_SOURCE
     ui/connection_settings_panel.hpp
     ui/connection_status_panel.cpp
     ui/connection_status_panel.hpp
-    ui/contact_panel.cpp
-    ui/contact_panel.hpp
     ui/contact_group_heading_panel.cpp
     ui/contact_group_heading_panel.hpp
     ui/contact_list_panel.cpp
     ui/contact_list_panel.hpp
+    ui/contact_panel.cpp
+    ui/contact_panel.hpp
     ui/conversations_panel.cpp
     ui/conversations_panel.hpp
     ui/disconnected_panel.cpp
     ui/disconnected_panel.hpp
+    ui/events.cpp
+    ui/events.hpp
     ui/fonts.cpp
     ui/fonts.hpp
     ui/general_settings_panel.cpp
@@ -64,6 +67,8 @@ set(RICOCHET_REFRESH_SOURCE
     ui/interface_settings_panel.hpp
     ui/main_frame.cpp
     ui/main_frame.hpp
+    ui/message_entry_panel.cpp
+    ui/message_entry_panel.hpp
     ui/metrics.cpp
     ui/metrics.hpp
     ui/settings_panel.cpp
