@@ -18,12 +18,79 @@ ContactPanel::ContactPanel(
 
     // window events
     this->Bind(wxEVT_PAINT, &ContactPanel::on_paint, this);
-    this->Bind(wxEVT_SET_FOCUS, &ContactPanel::on_set_focus, this);
-    this->Bind(wxEVT_KILL_FOCUS, &ContactPanel::on_kill_focus, this);
 
     // input events
-    this->Bind(wxEVT_LEFT_DOWN, &ContactPanel::on_left_down, this);
-    this->Bind(wxEVT_CHAR, &ContactPanel::on_char, this);
+    this->Bind(wxEVT_ENTER_WINDOW, [this](const wxMouseEvent&) { this->set_mouse_hovering(true); });
+    this->Bind(wxEVT_LEAVE_WINDOW, [this](const wxMouseEvent&) {
+        this->set_mouse_hovering(false);
+    });
+}
+
+// linked list management
+
+void ContactPanel::insert_before(ContactPanel* a, ContactPanel* b) {
+    // verify 'a' is not already in a list
+    assert(a->previous == nullptr);
+    assert(a->next == nullptr);
+    assert(a != b);
+
+    // before:
+    // b-1 <-> b <-> b+1
+    // after:
+    // b-1 <-> a <-> b <-> b+1
+
+    a->previous = b->previous;
+    b->previous = a;
+    a->next = b;
+}
+
+void ContactPanel::add_after(ContactPanel* a, ContactPanel* b) {
+    // veiry 'a' is not already in a list
+    assert(a->previous == nullptr);
+    assert(a->next == nullptr);
+    assert(a != b);
+
+    // before:
+    // b-1 <-> b <-> b+1
+    // after:
+    // b-1 <-> b <-> a <-> b+1
+
+    a->next = b->next;
+    b->next = a;
+    a->previous = b;
+}
+
+void ContactPanel::remove(ContactPanel* panel) {
+    // before:
+    // p-1 <-> p <-> p+1
+    // after:
+    // p-1 <-> p+1
+
+    auto previous = panel->previous;
+    auto next = panel->next;
+
+    if (previous) {
+        if (next) {
+            next->previous = previous;
+            previous->next = next;
+        } else {
+            previous->next = nullptr;
+        }
+    } else if (next) {
+        next->previous = nullptr;
+    } else {
+        // niks te doen
+    }
+
+    panel->next = panel->previous = nullptr;
+}
+
+ContactPanel* ContactPanel::get_previous() {
+    return this->previous;
+}
+
+ContactPanel* ContactPanel::get_next() {
+    return this->next;
 }
 
 // event handlers
@@ -33,6 +100,8 @@ void ContactPanel::on_paint(const wxPaintEvent&) {
     const auto bg_colour = [this]() {
         if (this->get_selected()) {
             return wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHT);
+        } else if (this->get_mouse_hovering()) {
+            return wxSystemSettings::GetColour(wxSYS_COLOUR_BTNHIGHLIGHT);
         } else {
             return this->GetParent()->GetBackgroundColour();
         }
@@ -56,13 +125,14 @@ void ContactPanel::on_paint(const wxPaintEvent&) {
     // draw nickname
 
     dc.SetFont(this->GetFont());
-    if (this->get_selected()) {
-        auto colour = wxSystemSettings::GetColour(wxSYS_COLOUR_LISTBOXHIGHLIGHTTEXT);
-        dc.SetTextForeground(colour);
-    } else {
-        auto colour = wxSystemSettings::GetColour(wxSYS_COLOUR_LISTBOXTEXT);
-        dc.SetTextForeground(colour);
-    }
+    const auto text_colour = [this]() {
+        if (this->get_selected()) {
+            return wxSystemSettings::GetColour(wxSYS_COLOUR_LISTBOXHIGHLIGHTTEXT);
+        } else {
+            return wxSystemSettings::GetColour(wxSYS_COLOUR_LISTBOXTEXT);
+        }
+    }();
+    dc.SetTextForeground(text_colour);
 
     auto nickname = this->nickname;
 
@@ -79,62 +149,33 @@ void ContactPanel::on_paint(const wxPaintEvent&) {
         nickname = wxControl::Ellipsize(nickname, dc, wxELLIPSIZE_END, available_width);
     }
     dc.DrawText(nickname, wxPoint(text_x, text_y));
-
-    // draw focus rect
-    if (this->HasFocus()) {
-        // todo: this doesn't work on macOS
-        wxRendererNative::Get().DrawFocusRect(this, dc, client_rect, wxCONTROL_SELECTED);
-    }
-}
-
-void ContactPanel::on_set_focus(wxFocusEvent& event) {
-    this->Refresh();
-    event.Skip();
-
-    std::cout << "Focus: " << this->nickname << std::endl;
-}
-
-void ContactPanel::on_kill_focus(wxFocusEvent& event) {
-    this->Refresh();
-    event.Skip();
-}
-
-void ContactPanel::on_left_down(const wxMouseEvent&) {
-    this->set_selected(true);
-    this->SetFocus();
-}
-
-void ContactPanel::on_char(wxKeyEvent& event) {
-    const auto key_code = event.GetKeyCode();
-    switch (key_code) {
-        case WXK_SPACE:
-        case WXK_RETURN:
-        case WXK_NUMPAD_ENTER:
-            this->set_selected(true);
-            break;
-        default:
-            event.Skip();
-            break;
-    }
 }
 
 // setters+getters
 void ContactPanel::set_selected(bool selected) {
     if (selected != this->selected) {
         this->selected = selected;
-        this->Refresh();
-
-        if (this->selected) {
-            if (auto contact_list_panel = dynamic_cast<ContactListPanel*>(this->GetParent());
-                contact_list_panel) {
-                contact_list_panel->set_selected_contact_panel(this);
-            }
+        // focus so we scroll into view in parent when selected
+        if (selected) {
+            this->SetFocus();
         }
+        this->Refresh();
     }
 }
 
 bool ContactPanel::get_selected() const {
     return this->selected;
+}
+
+void ContactPanel::set_mouse_hovering(bool mouse_hovering) {
+    if (this->mouse_hovering != mouse_hovering) {
+        this->mouse_hovering = mouse_hovering;
+        this->Refresh();
+    }
+}
+
+bool ContactPanel::get_mouse_hovering() const {
+    return this->mouse_hovering;
 }
 
 const wxString& ContactPanel::get_nickname() const {

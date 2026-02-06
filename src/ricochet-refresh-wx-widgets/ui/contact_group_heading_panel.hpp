@@ -3,28 +3,26 @@
 class ContactListPanel;
 enum class ContactGroup;
 
-wxDECLARE_EVENT(wxEVT_CONTACT_GROUP_EXPAND, wxCommandEvent);
-wxDECLARE_EVENT(wxEVT_CONTACT_GROUP_COLLAPSE, wxCommandEvent);
-
 class ContactGroupHeadingPanel: public wxControl {
 public:
     ContactGroupHeadingPanel(ContactListPanel* parent, ContactGroup contact_group, bool expanded);
 
+    // setters/getters
+    void set_selected(bool selected);
+    bool get_selected() const;
+    void set_mouse_hovering(bool mouse_hovering);
+    bool get_mouse_hovering() const;
+    void set_expanded(bool expanded);
+    bool get_expanded() const;
+    ContactGroup get_contact_group() const;
+
 private:
     // event handlers
     void on_paint(const wxPaintEvent&);
-    void on_set_focus(wxFocusEvent&);
-    void on_kill_focus(wxFocusEvent&);
-    void on_left_down(const wxMouseEvent&);
-    void on_char(wxKeyEvent&);
-
-    // setters
-    void set_expanded(bool expanded);
-
-    // event emitters
-    void emit_expand_event();
-    void emit_collapse_event();
 
     ContactGroup contact_group;
+    // render state flags
+    bool selected = false;
+    bool mouse_hovering = false;
     bool expanded = false;
 };

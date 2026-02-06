@@ -4,9 +4,6 @@
 #include "metrics.hpp"
 #include "strings.hpp"
 
-wxDEFINE_EVENT(wxEVT_CONTACT_GROUP_EXPAND, wxCommandEvent);
-wxDEFINE_EVENT(wxEVT_CONTACT_GROUP_COLLAPSE, wxCommandEvent);
-
 ContactGroupHeadingPanel::ContactGroupHeadingPanel(
     ContactListPanel* parent,
     ContactGroup contact_group,
@@ -20,17 +17,25 @@ ContactGroupHeadingPanel::ContactGroupHeadingPanel(
 
     // window events
     this->Bind(wxEVT_PAINT, &ContactGroupHeadingPanel::on_paint, this);
-    this->Bind(wxEVT_SET_FOCUS, &ContactGroupHeadingPanel::on_set_focus, this);
-    this->Bind(wxEVT_KILL_FOCUS, &ContactGroupHeadingPanel::on_kill_focus, this);
 
     // input events
-    this->Bind(wxEVT_LEFT_DOWN, &ContactGroupHeadingPanel::on_left_down, this);
-    this->Bind(wxEVT_CHAR, &ContactGroupHeadingPanel::on_char, this);
+    this->Bind(wxEVT_ENTER_WINDOW, [this](const wxMouseEvent&) { this->set_mouse_hovering(true); });
+    this->Bind(wxEVT_LEAVE_WINDOW, [this](const wxMouseEvent&) {
+        this->set_mouse_hovering(false);
+    });
 }
 
 void ContactGroupHeadingPanel::on_paint(const wxPaintEvent&) {
     wxAutoBufferedPaintDC dc(this);
-    const auto bg_colour = this->GetParent()->GetBackgroundColour();
+    const auto bg_colour = [this]() {
+        if (this->get_selected()) {
+            return wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHT);
+        } else if (this->get_mouse_hovering()) {
+            return wxSystemSettings::GetColour(wxSYS_COLOUR_BTNHIGHLIGHT);
+        } else {
+            return this->GetParent()->GetBackgroundColour();
+        }
+    }();
     dc.SetBackground(wxBrush(bg_colour));
     dc.Clear();
     dc.SetBackground(wxNullBrush);
@@ -40,8 +45,14 @@ void ContactGroupHeadingPanel::on_paint(const wxPaintEvent&) {
     // draw heading
 
     dc.SetFont(this->GetFont());
-    auto colour = wxSystemSettings::GetColour(wxSYS_COLOUR_LISTBOXTEXT);
-    dc.SetTextForeground(colour);
+    const auto text_colour = [this]() {
+        if (this->get_selected()) {
+            return wxSystemSettings::GetColour(wxSYS_COLOUR_LISTBOXHIGHLIGHTTEXT);
+        } else {
+            return wxSystemSettings::GetColour(wxSYS_COLOUR_LISTBOXTEXT);
+        }
+    }();
+    dc.SetTextForeground(text_colour);
 
     auto heading = Strings::ContactGroupPanel::group_label(this->contact_group, this->expanded);
 
@@ -59,78 +70,47 @@ void ContactGroupHeadingPanel::on_paint(const wxPaintEvent&) {
         heading = wxControl::Ellipsize(heading, dc, wxELLIPSIZE_END, available_width);
     }
     dc.DrawText(heading, wxPoint(text_x, text_y));
-
-    // draw focus rect
-    if (this->HasFocus()) {
-        // todo: this doesn't work on macOS
-        wxRendererNative::Get().DrawFocusRect(this, dc, client_rect, wxCONTROL_SELECTED);
-    }
 }
 
-void ContactGroupHeadingPanel::on_set_focus(wxFocusEvent& event) {
-    const auto heading = [this]() {
-        switch (this->contact_group) {
-            case ContactGroup::Connected:
-                return "Connected";
-            case ContactGroup::Disconnected:
-                return "Disconnected";
-            case ContactGroup::Requesting:
-                return "Requesting";
-            case ContactGroup::Blocked:
-                return "Blocked";
-            default:
-                return "";
+// setters+getters
+
+void ContactGroupHeadingPanel::set_selected(bool selected) {
+    if (this->selected != selected) {
+        this->selected = selected;
+        // focus so we scroll into view in parent when selected
+        if (selected) {
+            this->SetFocus();
         }
-    }();
-    std::cout << "Focus: " << heading << " group " << std::endl;
-
-    this->Refresh();
-    event.Skip();
-}
-
-void ContactGroupHeadingPanel::on_kill_focus(wxFocusEvent& event) {
-    this->Refresh();
-    event.Skip();
-}
-
-void ContactGroupHeadingPanel::on_left_down(const wxMouseEvent&) {
-    this->set_expanded(!this->expanded);
-    this->SetFocus();
-    this->Refresh();
-}
-
-void ContactGroupHeadingPanel::on_char(wxKeyEvent& event) {
-    const auto key_code = event.GetKeyCode();
-    switch (key_code) {
-        case WXK_SPACE:
-        case WXK_RETURN:
-        case WXK_NUMPAD_ENTER:
-            this->set_expanded(!this->expanded);
-            this->Refresh();
-            break;
-        default:
-            event.Skip();
-            break;
+        this->Refresh();
     }
+}
+
+bool ContactGroupHeadingPanel::get_selected() const {
+    return this->selected;
+}
+
+void ContactGroupHeadingPanel::set_mouse_hovering(bool mouse_hovering) {
+    if (this->mouse_hovering != mouse_hovering) {
+        this->mouse_hovering = mouse_hovering;
+        this->Refresh();
+    }
+}
+
+bool ContactGroupHeadingPanel::get_mouse_hovering() const {
+    return this->mouse_hovering;
 }
 
 void ContactGroupHeadingPanel::set_expanded(bool expanded) {
-    this->expanded = expanded;
-    if (this->expanded) {
-        this->emit_expand_event();
-    } else {
-        this->emit_collapse_event();
+    if (this->expanded != expanded) {
+        this->expanded = expanded;
+        this->Refresh();
     }
 }
 
-void ContactGroupHeadingPanel::emit_expand_event() {
-    wxCommandEvent evt(wxEVT_CONTACT_GROUP_EXPAND, GetId());
-    evt.SetEventObject(this);
-    ProcessWindowEvent(evt);
+bool ContactGroupHeadingPanel::get_expanded() const {
+    return this->expanded;
 }
 
-void ContactGroupHeadingPanel::emit_collapse_event() {
-    wxCommandEvent evt(wxEVT_CONTACT_GROUP_COLLAPSE, GetId());
-    evt.SetEventObject(this);
-    ProcessWindowEvent(evt);
+ContactGroup ContactGroupHeadingPanel::get_contact_group() const {
+    return this->contact_group;
 }

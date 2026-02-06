@@ -4,7 +4,7 @@ enum class Visibility;
 
 class UserStatusPanel: public wxPanel {
 public:
-    UserStatusPanel(wxWindow* parent);
+    explicit UserStatusPanel(wxWindow* parent);
 
 private:
     // event handlers

@@ -5,24 +5,37 @@ class ContactPanel: public wxControl {
 public:
     ContactPanel(ContactListPanel* parent, const wxString& nickname, const wxBitmap& avatar);
 
-private:
-    // event handlers
-    void on_paint(const wxPaintEvent&);
-    void on_set_focus(wxFocusEvent&);
-    void on_kill_focus(wxFocusEvent&);
-    void on_left_down(const wxMouseEvent&);
-    void on_char(wxKeyEvent&);
+    // insert 'first' before 'second'
+    static void insert_before(ContactPanel* first, ContactPanel* second);
+    // add 'first' after 'second'
+    static void add_after(ContactPanel* first, ContactPanel* second);
+    // remove 'panel' from its neighbors
+    static void remove(ContactPanel* panel);
+
+    ContactPanel* get_previous();
+    ContactPanel* get_next();
 
     // setters+getters
     void set_selected(bool);
     bool get_selected() const;
+    void set_mouse_hovering(bool mouse_hovering);
+    bool get_mouse_hovering() const;
     void set_nickname(const wxString&);
     const wxString& get_nickname() const;
     void set_avatar(const wxBitmap&);
 
-    bool selected = false;
+private:
+    // event handlers
+    void on_paint(const wxPaintEvent&);
+
+    ContactPanel* previous = nullptr;
+    ContactPanel* next = nullptr;
+
+    // render data
     wxString nickname;
     wxBitmap avatar;
 
-    friend class ContactListPanel;
+    // render state flags
+    bool selected = false;
+    bool mouse_hovering = false;
 };
