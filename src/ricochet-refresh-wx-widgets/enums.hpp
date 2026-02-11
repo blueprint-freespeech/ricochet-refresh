@@ -1,5 +1,16 @@
 #pragma once
 
+enum class LayoutDirection {
+    LeftToRight,
+    RightToLeft,
+};
+
+enum class Ordering {
+    Less,
+    Equal,
+    Greater
+};
+
 enum class ConnectionStatus {
     Offline,
     Connecting,

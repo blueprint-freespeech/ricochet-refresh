@@ -1,28 +1,25 @@
 #pragma once
 
 #include "enums.hpp"
+#include "locale.hpp"
 
 //clang-format off
 class Strings {
 public:
-    static void init();
-
-    static wxString raw(const char8_t str[]);
-    static wxString translate(const char8_t str[]);
-    static wxString translate_plural(const char8_t single[], const char8_t plural[], unsigned n);
+    static wxString from_utf8(const char8_t str[]);
 
     struct Common {
         static wxString app_name() {
             // we don't want to translate the application name
-            return raw(u8"Ricochet-Refresh");
+            return from_utf8(u8"Ricochet-Refresh");
         }
 
         static wxString close_button() {
-            return translate(u8"Close");
+            return Locale::translate(u8"Close");
         }
 
         static wxString new_line() {
-            return raw(u8"\n");
+            return from_utf8(u8"\n");
         }
     };
 
@@ -34,12 +31,12 @@ public:
 
         struct MenuBar {
             static wxString file() {
-                return translate(u8"&File");
+                return Locale::translate(u8"&File");
             }
 
             struct Menu {
                 static wxString quit() {
-                    return translate(u8"&Quit");
+                    return Locale::translate(u8"&Quit");
                 }
             };
         };
@@ -47,31 +44,31 @@ public:
 
     struct DisconnectedPanel {
         static wxString title() {
-            return translate(u8"Connect to Tor");
+            return Locale::translate(u8"Connect to Tor");
         }
 
         static wxString explainer_text() {
-            return translate(
+            return Locale::translate(
                 u8"Ricochet-Refresh routes your traffic over the Tor network, run by thousands of volunteers from around the world."
             );
         }
 
         static wxString connect_automatically_toggle() {
-            return translate(u8"Always connect automatically");
+            return Locale::translate(u8"Always connect automatically");
         }
 
         static wxString configure_button() {
-            return translate(u8"Configure…");
+            return Locale::translate(u8"Configure…");
         }
 
         static wxString connect_button() {
-            return translate(u8"Connect");
+            return Locale::translate(u8"Connect");
         }
     };
 
     struct ConnectingPanel {
         static wxString title() {
-            return translate(u8"Establishing a Connection");
+            return Locale::translate(u8"Establishing a Connection");
         }
 
         static wxString explainer_text() {
@@ -79,49 +76,49 @@ public:
         }
 
         static wxString view_logs_button() {
-            return translate(u8"View Logs…");
+            return Locale::translate(u8"View Logs…");
         }
 
         static wxString cancel_button() {
-            return translate(u8"Cancel");
+            return Locale::translate(u8"Cancel");
         }
     };
 
     struct ConnectedPanel {
         static wxString title() {
-            return translate(u8"Connected");
+            return Locale::translate(u8"Connected");
         }
 
         static wxString create_profile_button() {
-            return translate(u8"Create new profile…");
+            return Locale::translate(u8"Create new profile…");
         }
 
         static wxString open_profile_button() {
-            return translate(u8"Open existing profile");
+            return Locale::translate(u8"Open existing profile");
         }
 
         static wxString import_profile_button() {
-            return translate(u8"Import legacy profile…");
+            return Locale::translate(u8"Import legacy profile…");
         }
 
         static wxString recent_profiles_label() {
-            return translate(u8"Recent profiles:");
+            return Locale::translate(u8"Recent profiles:");
         }
     };
 
     struct ConnectionStatusPanel {
         static wxString title() {
-            return translate(u8"Connection Status");
+            return Locale::translate(u8"Connection Status");
         }
 
         static wxString bundled_client_string(const wxString& client, const wxString& version) {
             /* Bundled out-of-process tor implemenation (e.g. "bundled tor (version 0.4.8.21), bundled arti (version 1.8.0), etc)" */
-            auto fmt_string = translate(u8"bundled %s (version %s)");
+            auto fmt_string = Locale::translate(u8"bundled %s (version %s)");
             return wxString::Format(fmt_string, client, version);
         }
 
         static wxString backend_label(const wxString& backend_type) {
-            auto fmt_string = translate(u8"Backend: %s");
+            auto fmt_string = Locale::translate(u8"Backend: %s");
             return wxString::Format(fmt_string, backend_type);
         }
 
@@ -129,22 +126,22 @@ public:
             auto connection_status_string = [=]() {
                 switch (connection_status) {
                     case ConnectionStatus::Offline:
-                        return translate(u8"Offline");
+                        return Locale::translate(u8"Offline");
                     case ConnectionStatus::Connecting:
-                        return translate(u8"Connecting");
+                        return Locale::translate(u8"Connecting");
                     case ConnectionStatus::Online:
-                        return translate(u8"Online");
+                        return Locale::translate(u8"Online");
                     default:
-                        return translate(u8"Unknown");
+                        return Locale::translate(u8"Unknown");
                 }
             }();
 
-            auto fmt_string = translate(u8"Status: %s");
+            auto fmt_string = Locale::translate(u8"Status: %s");
             return wxString::Format(fmt_string, connection_status_string);
         }
 
         static wxString copy_tor_logs_button() {
-            return translate(u8"Copy Logs to Clipboard");
+            return Locale::translate(u8"Copy Logs to Clipboard");
         }
 
         static wxString close_button() {
@@ -154,31 +151,31 @@ public:
 
     struct ConnectionSettingsPanel {
         static wxString backend_heading() {
-            return translate(u8"Backend");
+            return Locale::translate(u8"Backend");
         }
 
         static wxString backend_description() {
-            return translate(u8"Select which underlying Tor implementation to use.");
+            return Locale::translate(u8"Select which underlying Tor implementation to use.");
         }
 
         static wxString bundled_legacy_tor_option() {
-            return translate(u8"Bundled legacy tor (Default)");
+            return Locale::translate(u8"Bundled legacy tor (Default)");
         }
 
         static wxString external_legacy_tor_option() {
-            return translate(u8"External legacy tor");
+            return Locale::translate(u8"External legacy tor");
         }
 
         static wxString in_process_arti_option() {
-            return translate(u8"In-Process Arti");
+            return Locale::translate(u8"In-Process Arti");
         }
 
         static wxString quickstart_heading() {
-            return translate(u8"Quickstart");
+            return Locale::translate(u8"Quickstart");
         }
 
         static wxString quickstart_description() {
-            auto fmt_string = translate(
+            auto fmt_string = Locale::translate(
                 u8"Quickstart connects %s to the Tor network automatically when launched, based on your last used connection setttings."
             );
             return wxString::Format(fmt_string, Strings::Common::app_name());
@@ -189,54 +186,54 @@ public:
         }
 
         static wxString bridges_heading() {
-            return translate(u8"Bridges");
+            return Locale::translate(u8"Bridges");
         }
 
         static wxString bridges_description() {
-            return translate(
+            return Locale::translate(
                 u8"Bridges help you securely access the Tor network in places where Tor is blocked. Depending on where you are, one bridge may work better than another."
             );
         }
 
         static wxString use_bridges_toggle() {
-            return translate(u8"Use bridges");
+            return Locale::translate(u8"Use bridges");
         }
 
         static wxString builtin_bridge_option() {
-            auto fmt_string = translate(u8"Choose from one of %s's built-in bridges");
+            auto fmt_string = Locale::translate(u8"Choose from one of %s's built-in bridges");
             return wxString::Format(fmt_string, Strings::Common::app_name());
         }
 
         static wxString custom_bridge_option() {
-            return translate(u8"Enter bridge addresses you already know");
+            return Locale::translate(u8"Enter bridge addresses you already know");
         }
 
         static wxString obfs4_bridge_option() {
-            return raw(u8"obfs4");
+            return from_utf8(u8"obfs4");
         }
 
         static wxString obfs4_bridge_description() {
-            return translate(
+            return Locale::translate(
                 u8"Makes your Tor traffic look like random data. May not work in heavily censored regions."
             );
         }
 
         static wxString snowflake_bridge_option() {
-            return raw(u8"Snowflake");
+            return from_utf8(u8"Snowflake");
         }
 
         static wxString snowflake_bridge_description() {
-            return translate(
+            return Locale::translate(
                 u8"Routes your connection through Snowflake proxies to make it look like you’re placing a video call, for example."
             );
         }
 
         static wxString meek_bridge_option() {
-            return raw(u8"meek");
+            return from_utf8(u8"meek");
         }
 
         static wxString meek_bridge_description() {
-            return translate(
+            return Locale::translate(
                 u8"Connects you to the Tor network through a big cloud provider. May work in heavily censored regions, but is usually very slow."
             );
         }
@@ -244,38 +241,38 @@ public:
         static wxString custom_bridge_textbox_hint() {
             // todo: use a list-formatter from icu crate to build list of supported transports
             // https://docs.rs/icu/2.1.1/icu/list/index.html
-            return translate(
+            return Locale::translate(
                 u8"Supported transports: meek_lite, obfs2, obfs3, obfs4, scramblesuit, webtunnel, snowflake, and conjure"
             );
         }
 
         static wxString network_settings_heading() {
-            return translate(u8"Network Settings");
+            return Locale::translate(u8"Network Settings");
         }
 
         static wxString network_settings_description() {
-            auto fmt_string = translate(u8"Configure how %s connects to the internet.");
+            auto fmt_string = Locale::translate(u8"Configure how %s connects to the internet.");
             return wxString::Format(fmt_string, Common::app_name());
         }
 
         static wxString use_proxy_toggle() {
-            return translate(u8"I use a proxy to connect to the internet");
+            return Locale::translate(u8"I use a proxy to connect to the internet");
         }
 
         static wxString proxy_type_label() {
-            return translate(u8"Proxy type");
+            return Locale::translate(u8"Proxy type");
         }
 
         static wxString proxy_socks4() {
-            return raw(u8"SOCKS4");
+            return from_utf8(u8"SOCKS4");
         }
 
         static wxString proxy_socks5() {
-            return raw(u8"SOCKS5");
+            return from_utf8(u8"SOCKS5");
         }
 
         static wxString proxy_https() {
-            return raw(u8"HTTPS");
+            return from_utf8(u8"HTTPS");
         }
 
         static wxArrayString proxy_types() {
@@ -287,27 +284,27 @@ public:
         }
 
         static wxString proxy_address_label() {
-            return translate(u8"Address");
+            return Locale::translate(u8"Address");
         }
 
         static wxString proxy_address_textbox_hint() {
-            return translate(u8"IP address or hostname");
+            return Locale::translate(u8"IP address or hostname");
         }
 
         static wxString proxy_port_label() {
-            return translate(u8"Port");
+            return Locale::translate(u8"Port");
         }
 
         static wxString proxy_username_label() {
-            return translate(u8"Username");
+            return Locale::translate(u8"Username");
         }
 
         static wxString proxy_username_textbox_hint() {
-            return translate(u8"Optional");
+            return Locale::translate(u8"Optional");
         }
 
         static wxString proxy_password_label() {
-            return translate(u8"Password");
+            return Locale::translate(u8"Password");
         }
 
         static wxString proxy_password_textbox_hint() {
@@ -315,25 +312,25 @@ public:
         }
 
         static wxString firewall_toggle() {
-            return translate(
+            return Locale::translate(
                 u8"This computer goes through a firewall that only allows connections to certain ports"
             );
         }
 
         static wxString allowed_ports_label() {
-            return translate(u8"Allowed ports");
+            return Locale::translate(u8"Allowed ports");
         }
 
         static wxString allowed_ports_textbox_hint() {
             // not translating this string is intentional, the tor backend expects a list in
             // this particular format
-            return raw(u8"80,443");
+            return from_utf8(u8"80,443");
         }
     };
 
     struct Language {
         static wxString system() {
-            return translate(u8"System language");
+            return Locale::translate(u8"System language");
         }
 
         // not translating these functions is intentional as the
@@ -346,33 +343,33 @@ public:
             // LEFT-TO-RIGHT OVERRIDE control character (\u202d) so that
             // (ar) always appears to the right rather than
             // relying on potentially platform-specific BiDi rendering
-            return raw(u8"\u202dةيبرعلا (ar)");
+            return from_utf8(u8"\u202dةيبرعلا (ar)");
         }
 
         static wxString de() {
-            return raw(u8"Deutsch (de)");
+            return from_utf8(u8"Deutsch (de)");
         }
 
         static wxString en() {
-            return raw(u8"English (en)");
+            return from_utf8(u8"English (en)");
         }
 
         static wxString es() {
-            return raw(u8"Español (es)");
+            return from_utf8(u8"Español (es)");
         }
 
         static wxString nl() {
-            return raw(u8"Nederlands (nl)");
+            return from_utf8(u8"Nederlands (nl)");
         }
     };
 
     struct InterfaceSettingsPanel {
         static wxString language_heading() {
-            return translate(u8"Language");
+            return Locale::translate(u8"Language");
         }
 
         static wxString select_interface_language_label() {
-            return translate(u8"Select interface language");
+            return Locale::translate(u8"Select interface language");
         }
 
         static wxArrayString supported_languages() {
@@ -389,31 +386,31 @@ public:
         }
 
         static wxString toolbars_heading() {
-            return translate(u8"Toolbars");
+            return Locale::translate(u8"Toolbars");
         }
 
         static wxString show_toolbar_toggle() {
-            return translate(u8"Show toolbar");
+            return Locale::translate(u8"Show toolbar");
         }
 
         static wxString button_style_label() {
-            return translate(u8"Button style");
+            return Locale::translate(u8"Button style");
         }
 
         static wxString button_style_icons() {
-            return translate(u8"Icons");
+            return Locale::translate(u8"Icons");
         }
 
         static wxString button_style_text() {
-            return translate(u8"Text");
+            return Locale::translate(u8"Text");
         }
 
         static wxString button_style_icons_and_text() {
-            return translate(u8"Icons and Text");
+            return Locale::translate(u8"Icons and Text");
         }
 
         static wxString button_style_icons_beside_text() {
-            return translate(u8"Icons beside Text");
+            return Locale::translate(u8"Icons beside Text");
         }
 
         static wxArrayString button_styles() {
@@ -427,68 +424,68 @@ public:
         }
 
         static wxString alerts_heading() {
-            return translate(u8"Alerts");
+            return Locale::translate(u8"Alerts");
         }
 
         static wxString show_desktop_notifications_toggle() {
-            return translate(u8"Show desktop notifications");
+            return Locale::translate(u8"Show desktop notifications");
         }
 
         static wxString blink_taskbar_icon_toggle() {
-            return translate(u8"Blink taskbar icon");
+            return Locale::translate(u8"Blink taskbar icon");
         }
 
         static wxString enable_audio_notifications_toggle() {
-            return translate(u8"Enable audio notifications");
+            return Locale::translate(u8"Enable audio notifications");
         }
 
         static wxString window_heading() {
-            return translate(u8"Window");
+            return Locale::translate(u8"Window");
         }
 
         static wxString minimize_instead_of_exit_toggle() {
-            return translate(u8"Minimize instead of exit");
+            return Locale::translate(u8"Minimize instead of exit");
         }
 
         static wxString show_system_tray_icon_toggle() {
-            return translate(u8"Show system tray icon");
+            return Locale::translate(u8"Show system tray icon");
         }
 
         static wxString minimize_to_system_tray_toggle() {
-            return translate(u8"Minimize to system tray");
+            return Locale::translate(u8"Minimize to system tray");
         }
     };
 
     struct GeneralSettingsPanel {
         static wxString startup_heading() {
-            return translate(u8"Startup");
+            return Locale::translate(u8"Startup");
         }
 
         static wxString start_only_single_instance_toggle() {
-            auto fmt_string = translate(u8"Start only single instance of %s");
+            auto fmt_string = Locale::translate(u8"Start only single instance of %s");
             return wxString::Format(fmt_string, Common::app_name());
         }
 
         static wxString check_for_updates_on_launch_toggle() {
-            return translate(u8"Check for updates on launch");
+            return Locale::translate(u8"Check for updates on launch");
         }
     };
 
     struct SettingsPanel {
         static wxString title() {
-            return translate(u8"Settings");
+            return Locale::translate(u8"Settings");
         }
 
         static wxString general_settings_choice() {
-            return translate(u8"General");
+            return Locale::translate(u8"General");
         }
 
         static wxString interface_settings_choice() {
-            return translate(u8"Interface");
+            return Locale::translate(u8"Interface");
         }
 
         static wxString connection_settings_choice() {
-            return translate(u8"Connection");
+            return Locale::translate(u8"Connection");
         }
     };
 
@@ -498,28 +495,28 @@ public:
                 const auto layout_direction = wxUILocale::GetCurrent().GetLayoutDirection();
                 if (expanded) {
                     if (layout_direction == wxLayout_RightToLeft) {
-                        return raw(u8"\u202b ⏷\u202c %s");
+                        return from_utf8(u8"\u202b ⏷\u202c %s");
                     } else {
-                        return raw(u8" ⏷ %s");
+                        return from_utf8(u8" ⏷ %s");
                     }
                 } else {
                     if (layout_direction == wxLayout_RightToLeft) {
-                        return raw(u8"\u202b ⏴\u202c %s");
+                        return from_utf8(u8"\u202b ⏴\u202c %s");
                     } else {
-                        return raw(u8" ⏵ %s");
+                        return from_utf8(u8" ⏵ %s");
                     }
                 }
             }();
             auto label = [=]() -> wxString {
                 switch (contact_group) {
                     case ContactGroup::Connected:
-                        return translate(u8"Connected");
+                        return Locale::translate(u8"Connected");
                     case ContactGroup::Disconnected:
-                        return translate(u8"Disconnected");
+                        return Locale::translate(u8"Disconnected");
                     case ContactGroup::Requesting:
-                        return translate(u8"Requesting");
+                        return Locale::translate(u8"Requesting");
                     case ContactGroup::Blocked:
-                        return translate(u8"Blocked");
+                        return Locale::translate(u8"Blocked");
                     default:
                         return wxEmptyString;
                 }
@@ -530,19 +527,19 @@ public:
 
     struct Visibility {
         static wxString online() {
-            return translate(u8"Online");
+            return Locale::translate(u8"Online");
         }
 
         static wxString restricted() {
-            return translate(u8"Restricted");
+            return Locale::translate(u8"Restricted");
         }
 
         static wxString hidden() {
-            return translate(u8"Hidden");
+            return Locale::translate(u8"Hidden");
         }
 
         static wxString offline() {
-            return translate(u8"Offline");
+            return Locale::translate(u8"Offline");
         }
 
         static wxString to_string(::Visibility visibility) {
@@ -564,26 +561,25 @@ public:
     struct UserStatusPanel {
         static wxString visibility_option(::Visibility visibility) {
             auto fmt_string = [=]() -> wxString {
-                const auto layout_direction = wxUILocale::GetCurrent().GetLayoutDirection();
-                if (layout_direction == wxLayout_RightToLeft) {
-                    return raw(u8"\u202b%s\u202c %s");
+                if (Locale::get_layout_direction() == LayoutDirection::RightToLeft) {
+                    return from_utf8(u8"\u202b%s\u202c %s");
                 } else {
-                    return raw(u8"%s %s");
+                    return from_utf8(u8"%s %s");
                 }
             }();
             wxString icon;
             switch (visibility) {
                 case ::Visibility::Online:
-                    icon = raw(u8"●");
+                    icon = from_utf8(u8"●");
                     break;
                 case ::Visibility::Restricted:
-                    icon = raw(u8"○");
+                    icon = from_utf8(u8"○");
                     break;
                 case ::Visibility::Hidden:
-                    icon = raw(u8"▤");
+                    icon = from_utf8(u8"▤");
                     break;
                 case ::Visibility::Offline:
-                    icon = raw(u8"■");
+                    icon = from_utf8(u8"■");
                     break;
                 default:
                     break;
@@ -595,23 +591,22 @@ public:
 
     struct MessageEntryPanel {
         static wxString bold_button() {
-            return raw(u8"B");
+            return from_utf8(u8"B");
         }
 
         static wxString italic_button() {
-            return raw(u8"I");
+            return from_utf8(u8"I");
         }
 
         static wxString underline_button() {
-            return raw(u8"U\u0332");
+            return from_utf8(u8"U\u0332");
         }
 
         static wxString send_message_button() {
-            const auto layout_direction = wxUILocale::GetCurrent().GetLayoutDirection();
-            if (layout_direction == wxLayout_RightToLeft) {
-                return raw(u8"◁");
+            if (Locale::get_layout_direction() == LayoutDirection::RightToLeft) {
+                return from_utf8(u8"◁");
             } else {
-                return raw(u8"▷");
+                return from_utf8(u8"▷");
             }
         }
     };

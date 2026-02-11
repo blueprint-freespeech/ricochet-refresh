@@ -1,3 +1,4 @@
+#include "locale.hpp"
 #include "strings.hpp"
 #include "ui/main_frame.hpp"
 
@@ -8,7 +9,7 @@ public:
             return false;
         }
 
-        Strings::init();
+        Locale::init();
 
         auto main_frame = new MainFrame();
         main_frame->Show(true);
