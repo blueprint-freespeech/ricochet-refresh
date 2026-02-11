@@ -490,38 +490,19 @@ public:
     };
 
     struct ContactGroupPanel {
-        static wxString group_label(ContactGroup contact_group, bool expanded) {
-            auto fmt_string = [=]() -> wxString {
-                const auto layout_direction = wxUILocale::GetCurrent().GetLayoutDirection();
-                if (expanded) {
-                    if (layout_direction == wxLayout_RightToLeft) {
-                        return from_utf8(u8"\u202b ⏷\u202c %s");
-                    } else {
-                        return from_utf8(u8" ⏷ %s");
-                    }
-                } else {
-                    if (layout_direction == wxLayout_RightToLeft) {
-                        return from_utf8(u8"\u202b ⏴\u202c %s");
-                    } else {
-                        return from_utf8(u8" ⏵ %s");
-                    }
-                }
-            }();
-            auto label = [=]() -> wxString {
-                switch (contact_group) {
-                    case ContactGroup::Connected:
-                        return Locale::translate(u8"Connected");
-                    case ContactGroup::Disconnected:
-                        return Locale::translate(u8"Disconnected");
-                    case ContactGroup::Requesting:
-                        return Locale::translate(u8"Requesting");
-                    case ContactGroup::Blocked:
-                        return Locale::translate(u8"Blocked");
-                    default:
-                        return wxEmptyString;
-                }
-            }();
-            return wxString::Format(fmt_string, label);
+        static wxString group_label(ContactGroup contact_group) {
+            switch (contact_group) {
+                case ContactGroup::Connected:
+                    return Locale::translate(u8"Connected");
+                case ContactGroup::Disconnected:
+                    return Locale::translate(u8"Disconnected");
+                case ContactGroup::Requesting:
+                    return Locale::translate(u8"Requesting");
+                case ContactGroup::Blocked:
+                    return Locale::translate(u8"Blocked");
+                default:
+                    return wxEmptyString;
+            }
         }
     };
 

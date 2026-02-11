@@ -3,6 +3,7 @@
 #include "contact_group_heading_panel.hpp"
 #include "contact_panel.hpp"
 #include "enums.hpp"
+#include "locale.hpp"
 #include "metrics.hpp"
 #include "mock_ffi.hpp"
 #include "strings.hpp"
@@ -85,8 +86,7 @@ void ContactListPanel::add_contact(
             auto window = item->GetWindow();
             auto cp = dynamic_cast<ContactPanel*>(window);
             assert(cp != nullptr);
-            // todo: implement locale-aware compare
-            if (cp->get_nickname() > nickname) {
+            if (Locale::string_compare(nickname, cp->get_nickname()) == Ordering::Less) {
                 v_sizer->Insert(i, contact_panel, 0, wxEXPAND);
                 ContactPanel::insert_before(contact_panel, cp);
                 break;
@@ -132,8 +132,7 @@ void ContactListPanel::on_char(wxKeyEvent& evt) {
             break;
         case WXK_LEFT:
         case WXK_NUMPAD_LEFT:
-            if (const auto layout_direction = wxUILocale::GetCurrent().GetLayoutDirection();
-                layout_direction == wxLayout_LeftToRight) {
+            if (Locale::get_layout_direction() == LayoutDirection::LeftToRight) {
                 this->navigate_out();
             } else {
                 this->navigate_in();
@@ -141,12 +140,12 @@ void ContactListPanel::on_char(wxKeyEvent& evt) {
             break;
         case WXK_RIGHT:
         case WXK_NUMPAD_RIGHT:
-            if (const auto layout_direction = wxUILocale::GetCurrent().GetLayoutDirection();
-                layout_direction == wxLayout_LeftToRight) {
+            if (Locale::get_layout_direction() == LayoutDirection::LeftToRight) {
                 this->navigate_in();
             } else {
                 this->navigate_out();
             }
+
             break;
         case WXK_DELETE:
             if (this->selected_contact_panel) {
@@ -161,8 +160,7 @@ void ContactListPanel::on_char(wxKeyEvent& evt) {
     if (this->selected_contact_group_heading_panel) {
         std::cout << "Selected ContactGroupHeadingPanel: "
                   << Strings::ContactGroupPanel::group_label(
-                         this->selected_contact_group_heading_panel->get_contact_group(),
-                         true
+                         this->selected_contact_group_heading_panel->get_contact_group()
                      )
                   << std::endl;
     } else if (this->selected_contact_panel) {

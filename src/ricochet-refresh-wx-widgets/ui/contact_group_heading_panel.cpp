@@ -40,10 +40,6 @@ void ContactGroupHeadingPanel::on_paint(const wxPaintEvent&) {
     dc.Clear();
     dc.SetBackground(wxNullBrush);
 
-    const auto client_rect = this->GetClientRect();
-
-    // draw heading
-
     dc.SetFont(this->GetFont());
     const auto text_colour = [this]() {
         if (this->get_selected()) {
@@ -53,13 +49,37 @@ void ContactGroupHeadingPanel::on_paint(const wxPaintEvent&) {
         }
     }();
     dc.SetTextForeground(text_colour);
+    this->SetForegroundColour(text_colour);
 
-    auto heading = Strings::ContactGroupPanel::group_label(this->contact_group, this->expanded);
+    const auto client_rect = this->GetClientRect();
+
+    // draw tree item button
+    auto& native_renderer = wxRendererNative::GetGeneric();
+    const auto expander_size = native_renderer.GetCollapseButtonSize(this, dc);
+    const auto h_padding = Metrics::HORIZONTAL_PADDING_SMALL;
+
+    const auto expander_x = client_rect.x + h_padding;
+    const auto expander_y =
+        client_rect.y + (client_rect.GetHeight() - expander_size.GetHeight()) / 2;
+    const auto expander_rect =
+        wxRect(expander_x, expander_y, expander_size.GetWidth(), expander_size.GetHeight());
+    auto tree_item_flags = 0;
+    if (this->expanded) {
+        tree_item_flags |= wxCONTROL_EXPANDED;
+    }
+    if (this->selected) {
+        tree_item_flags |= wxCONTROL_CURRENT;
+    }
+    native_renderer.DrawCollapseButton(this, dc, expander_rect, tree_item_flags);
+
+    // draw heading
+
+    auto heading = Strings::ContactGroupPanel::group_label(this->contact_group);
 
     wxCoord text_w, text_h;
     dc.GetTextExtent(heading, &text_w, &text_h);
 
-    const auto text_x = 0;
+    const auto text_x = expander_rect.GetRight() + h_padding;
     const auto text_y_center = client_rect.GetTop() + client_rect.GetHeight() / 2;
     const auto text_y = text_y_center - text_h / 2;
 

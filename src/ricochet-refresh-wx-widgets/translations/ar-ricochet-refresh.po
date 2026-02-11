@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Ricochet-Refresh 3.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-02-11 10:49+0000\n"
+"POT-Creation-Date: 2026-02-11 10:50+0000\n"
 "PO-Revision-Date: 2026-01-14 10:43+0000\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -62,7 +62,7 @@ msgstr ""
 msgid "Cancel"
 msgstr ""
 
-#: strings.hpp:89 strings.hpp:513
+#: strings.hpp:89 strings.hpp:496
 msgid "Connected"
 msgstr ""
 
@@ -97,7 +97,7 @@ msgstr ""
 msgid "Backend: %s"
 msgstr ""
 
-#: strings.hpp:129 strings.hpp:542
+#: strings.hpp:129 strings.hpp:523
 msgid "Offline"
 msgstr ""
 
@@ -105,7 +105,7 @@ msgstr ""
 msgid "Connecting"
 msgstr ""
 
-#: strings.hpp:133 strings.hpp:530
+#: strings.hpp:133 strings.hpp:511
 msgid "Online"
 msgstr ""
 
@@ -352,22 +352,22 @@ msgstr ""
 msgid "Connection"
 msgstr ""
 
-#: strings.hpp:515
+#: strings.hpp:498
 msgid "Disconnected"
 msgstr ""
 
-#: strings.hpp:517
+#: strings.hpp:500
 msgid "Requesting"
 msgstr ""
 
-#: strings.hpp:519
+#: strings.hpp:502
 msgid "Blocked"
 msgstr ""
 
-#: strings.hpp:534
+#: strings.hpp:515
 msgid "Restricted"
 msgstr ""
 
-#: strings.hpp:538
+#: strings.hpp:519
 msgid "Hidden"
 msgstr ""
