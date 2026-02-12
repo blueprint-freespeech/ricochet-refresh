@@ -2,6 +2,9 @@
 
 #include "enums.hpp"
 
+///
+// SendMessageEvent
+//
 wxDEFINE_EVENT(wxEVT_SEND_MESSAGE, SendMessageEvent);
 
 SendMessageEvent::SendMessageEvent(const wxDateTime& timestamp, const wxString& text) :
@@ -39,4 +42,21 @@ const wxDateTime& SendMessageEvent::get_timestamp() const {
 
 const wxString& SendMessageEvent::get_text() const {
     return this->data.text;
+}
+
+//
+// ContactSelectedEvent
+//
+wxDEFINE_EVENT(wxEVT_CONTACT_SELECTED, ContactSelectedEvent);
+
+ContactSelectedEvent::ContactSelectedEvent(std::optional<ContactHandle> contact_handle) :
+    wxCommandEvent(wxEVT_CONTACT_SELECTED),
+    contact_handle(contact_handle) {}
+
+wxEvent* ContactSelectedEvent::Clone() const {
+    return new ContactSelectedEvent(this->contact_handle);
+}
+
+std::optional<ContactHandle> ContactSelectedEvent::get_contact_handle() const {
+    return this->contact_handle;
 }

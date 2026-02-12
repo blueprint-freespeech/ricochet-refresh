@@ -3,6 +3,10 @@
 #include "mock_ffi.hpp"
 using namespace mock;
 
+/*
+SendMessageEvent: event is sent when the user submits a message through
+a MessageEntryPanel
+*/
 class SendMessageEvent;
 wxDECLARE_EVENT(wxEVT_SEND_MESSAGE, SendMessageEvent);
 enum class MessageType;
@@ -31,4 +35,22 @@ private:
     };
 
     const Data data;
+};
+
+/*
+ContactSelectedEvent: event is sent when the user selects a contact in the
+ContactListPanel
+*/
+class ContactSelectedEvent;
+wxDECLARE_EVENT(wxEVT_CONTACT_SELECTED, ContactSelectedEvent);
+
+class ContactSelectedEvent: public wxCommandEvent {
+public:
+    explicit ContactSelectedEvent(std::optional<ContactHandle> contact_handle);
+    wxEvent* Clone() const override;
+
+    std::optional<ContactHandle> get_contact_handle() const;
+
+private:
+    const std::optional<ContactHandle> contact_handle;
 };

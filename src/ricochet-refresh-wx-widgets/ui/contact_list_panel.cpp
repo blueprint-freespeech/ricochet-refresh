@@ -3,6 +3,7 @@
 #include "contact_group_heading_panel.hpp"
 #include "contact_panel.hpp"
 #include "enums.hpp"
+#include "events.hpp"
 #include "locale.hpp"
 #include "metrics.hpp"
 #include "mock_ffi.hpp"
@@ -65,7 +66,7 @@ void ContactListPanel::add_contact(
 ) {
     assert(this->contact_map.find(contact_handle) == this->contact_map.end());
 
-    auto contact_panel = new ContactPanel(this, nickname, avatar);
+    auto contact_panel = new ContactPanel(this, contact_handle, nickname, avatar);
     contact_panel->Bind(wxEVT_LEFT_DOWN, [=, this](wxMouseEvent& event) {
         this->set_selected_contact_panel(contact_panel);
     });
@@ -185,6 +186,8 @@ void ContactListPanel::set_selected_contact_group_heading_panel(
         this->selected_contact_panel = nullptr;
     }
 
+    this->emit_contact_selected(std::nullopt);
+
     this->SetFocus();
 }
 
@@ -202,7 +205,27 @@ void ContactListPanel::set_selected_contact_panel(ContactPanel* contact_panel) {
     this->selected_contact_panel = contact_panel;
     this->selected_contact_panel->set_selected(true);
 
+    this->emit_contact_selected(contact_panel->get_contact_handle());
+
     this->SetFocus();
+}
+
+void ContactListPanel::remove_contact_panel(ContactPanel* contact_panel) {
+    auto containing_sizer = contact_panel->GetContainingSizer();
+    auto begin = std::begin(this->group_v_sizer);
+    auto end = std::end(this->group_v_sizer);
+    if (auto it = std::find(begin, end, containing_sizer); it != end) {
+        if (*it == containing_sizer) {
+            containing_sizer->Detach(contact_panel);
+            ContactPanel::remove(contact_panel);
+            contact_panel->Destroy();
+            this->Layout();
+            if (this->selected_contact_panel == contact_panel) {
+                this->selected_contact_panel = nullptr;
+                this->emit_contact_selected(std::nullopt);
+            }
+        }
+    }
 }
 
 void ContactListPanel::set_group_expanded(ContactGroup contact_group, bool expanded) {
@@ -343,19 +366,8 @@ void ContactListPanel::navigate_in() {
     }
 }
 
-void ContactListPanel::remove_contact_panel(ContactPanel* contact_panel) {
-    auto containing_sizer = contact_panel->GetContainingSizer();
-    auto begin = std::begin(this->group_v_sizer);
-    auto end = std::end(this->group_v_sizer);
-    if (auto it = std::find(begin, end, containing_sizer); it != end) {
-        if (*it == containing_sizer) {
-            containing_sizer->Detach(contact_panel);
-            ContactPanel::remove(contact_panel);
-            contact_panel->Destroy();
-            this->Layout();
-            if (this->selected_contact_panel == contact_panel) {
-                this->selected_contact_panel = nullptr;
-            }
-        }
-    }
+void ContactListPanel::emit_contact_selected(std::optional<ContactHandle> contact_handle) {
+    auto evt = ContactSelectedEvent(contact_handle);
+    evt.SetEventObject(this);
+    this->GetEventHandler()->ProcessEvent(evt);
 }

@@ -30,10 +30,21 @@ ConversationsPanel::ConversationsPanel(wxWindow* parent) :
     auto left_v_sizer = new wxBoxSizer(wxVERTICAL);
 
     // todo: replace with actual implementation
-    auto contacts_list_panel = new ContactListPanel(left_panel, std::span(contacts, 8));
+    auto contact_list_panel = new ContactListPanel(left_panel, std::span(contacts, 8));
+    contact_list_panel->Bind(wxEVT_CONTACT_SELECTED, [this](const ContactSelectedEvent& evt) {
+        this->right_v_sizer->ShowItems(false);
+        const auto contact_handle = evt.get_contact_handle();
+        if (contact_handle) {
+            if (auto it = this->contact_widgets.find(*contact_handle);
+                it != this->contact_widgets.end()) {
+                const auto& contact_widgets = it->second;
+                this->right_v_sizer->Show(contact_widgets.v_sizer, true);
+            }
+        }
+    });
     auto user_status_panel = new UserStatusPanel(left_panel);
 
-    left_v_sizer->Add(contacts_list_panel, 1, wxEXPAND);
+    left_v_sizer->Add(contact_list_panel, 1, wxEXPAND);
     left_v_sizer->Add(user_status_panel, 0, wxEXPAND);
 
     left_panel->SetSizer(left_v_sizer);
@@ -41,10 +52,9 @@ ConversationsPanel::ConversationsPanel(wxWindow* parent) :
 
     // Conversation + Chat Entry
 
-    auto right_v_sizer = new wxBoxSizer(wxVERTICAL);
+    this->right_v_sizer = new wxBoxSizer(wxVERTICAL);
 
     for (auto contact_handle : contacts) {
-        // todo: we need a chat panel per contact
         auto chat_panel = new ChatPanel(right_panel);
         // todo: load chat back-log from profile
 
@@ -55,16 +65,17 @@ ConversationsPanel::ConversationsPanel(wxWindow* parent) :
             chat_panel->add_chat_message(timestamp, wxString("Me"), text);
         });
 
-        right_v_sizer->Add(chat_panel, 1, wxEXPAND);
-        right_v_sizer->Add(message_entry_panel, 0, wxEXPAND);
+        auto v_sizer = new wxBoxSizer(wxVERTICAL);
+        v_sizer->Add(chat_panel, 1, wxEXPAND);
+        v_sizer->Add(message_entry_panel, 0, wxEXPAND);
 
-        this->contact_widgets.insert({contact_handle, {chat_panel, message_entry_panel}});
+        this->right_v_sizer->Add(v_sizer, 1, wxEXPAND);
+
+        this->contact_widgets.insert({contact_handle, {v_sizer, chat_panel, message_entry_panel}});
     }
-    right_v_sizer->ShowItems(false);
-    right_v_sizer->Show(static_cast<size_t>(0), true);
-    right_v_sizer->Show(static_cast<size_t>(1), true);
+    this->right_v_sizer->ShowItems(false);
 
-    right_panel->SetSizer(right_v_sizer);
+    right_panel->SetSizer(this->right_v_sizer);
     right_panel->SetMinSize(wxSize(288, -1));
 
     // Layout

@@ -5,10 +5,12 @@
 
 ContactPanel::ContactPanel(
     ContactListPanel* parent,
+    const ContactHandle contact_handle,
     const wxString& nickname,
     const wxBitmap& avatar
 ) :
     wxControl(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxBORDER_NONE),
+    contact_handle(contact_handle),
     nickname(nickname),
     avatar(avatar) {
     this->SetBackgroundStyle(wxBG_STYLE_PAINT);
@@ -176,6 +178,10 @@ void ContactPanel::set_mouse_hovering(bool mouse_hovering) {
 
 bool ContactPanel::get_mouse_hovering() const {
     return this->mouse_hovering;
+}
+
+ContactHandle ContactPanel::get_contact_handle() const {
+    return this->contact_handle;
 }
 
 const wxString& ContactPanel::get_nickname() const {

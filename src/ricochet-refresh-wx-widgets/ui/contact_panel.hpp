@@ -7,7 +7,12 @@ class ContactListPanel;
 
 class ContactPanel: public wxControl {
 public:
-    ContactPanel(ContactListPanel* parent, const wxString& nickname, const wxBitmap& avatar);
+    ContactPanel(
+        ContactListPanel* parent,
+        const ContactHandle contact_handle,
+        const wxString& nickname,
+        const wxBitmap& avatar
+    );
 
     // insert 'first' before 'second'
     static void insert_before(ContactPanel* first, ContactPanel* second);
@@ -24,6 +29,8 @@ public:
     bool get_selected() const;
     void set_mouse_hovering(bool mouse_hovering);
     bool get_mouse_hovering() const;
+
+    ContactHandle get_contact_handle() const;
     void set_nickname(const wxString&);
     const wxString& get_nickname() const;
     void set_avatar(const wxBitmap&);
@@ -36,6 +43,7 @@ private:
     ContactPanel* next = nullptr;
 
     // render data
+    ContactHandle contact_handle;
     wxString nickname;
     wxBitmap avatar;
 

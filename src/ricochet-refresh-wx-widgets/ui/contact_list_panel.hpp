@@ -28,6 +28,8 @@ private:
     set_selected_contact_group_heading_panel(ContactGroupHeadingPanel* contact_group_heading_panel);
     void set_selected_contact_panel(ContactPanel* contact_panel);
 
+    void remove_contact_panel(ContactPanel* contact_panel);
+
     void set_group_expanded(ContactGroup contact_group, bool expanded);
     bool get_group_expanded(ContactGroup contact_group) const;
 
@@ -37,7 +39,8 @@ private:
     void navigate_out();
     void navigate_in();
 
-    void remove_contact_panel(ContactPanel* contact_panel);
+    // event emiitters
+    void emit_contact_selected(std::optional<ContactHandle> contact_handle);
 
     // parent group nodes for each of our contact groups
     ContactGroupHeadingPanel* group_heading_panel[static_cast<size_t>(ContactGroup::Count)];

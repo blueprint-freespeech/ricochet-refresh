@@ -11,7 +11,11 @@ public:
     explicit ConversationsPanel(wxWindow* parent);
 
 private:
+    wxBoxSizer* right_v_sizer = nullptr;
+
     struct ContactWidgets {
+        wxBoxSizer* v_sizer;
+        // Chat Widgets
         ChatPanel* chat_panel;
         MessageEntryPanel* message_entry_panel;
     };
