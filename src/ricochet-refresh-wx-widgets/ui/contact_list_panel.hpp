@@ -1,8 +1,8 @@
 #pragma once
 #include "enums.hpp"
+#include "mock_ffi.hpp"
+using namespace mock;
 
-// todo: replace with backend user-handle type
-typedef void* ContactHandle;
 struct ContactGroupHeadingPanel;
 struct ContactPanel;
 

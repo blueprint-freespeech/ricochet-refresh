@@ -1,7 +1,8 @@
 #pragma once
 
-// todo: replace with backend user-handle type
-typedef void* ContactHandle;
+#include "mock_ffi.hpp"
+using namespace mock;
+
 class ChatPanel;
 class MessageEntryPanel;
 

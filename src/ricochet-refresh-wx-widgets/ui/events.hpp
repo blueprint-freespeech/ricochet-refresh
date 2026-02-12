@@ -1,5 +1,8 @@
 #pragma once
 
+#include "mock_ffi.hpp"
+using namespace mock;
+
 class SendMessageEvent;
 wxDECLARE_EVENT(wxEVT_SEND_MESSAGE, SendMessageEvent);
 enum class MessageType;

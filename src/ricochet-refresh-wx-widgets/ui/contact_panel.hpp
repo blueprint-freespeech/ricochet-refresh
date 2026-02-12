@@ -1,4 +1,8 @@
 #pragma once
+
+#include "mock_ffi.hpp"
+using namespace mock;
+
 class ContactListPanel;
 
 class ContactPanel: public wxControl {
