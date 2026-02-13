@@ -8,7 +8,7 @@ class MessageEntryPanel;
 
 class ConversationsPanel: public wxSplitterWindow {
 public:
-    explicit ConversationsPanel(wxWindow* parent);
+    ConversationsPanel(wxWindow* parent, std::span<const ContactHandle> contacts);
 
     void receive_message(
         const ContactHandle recipient,

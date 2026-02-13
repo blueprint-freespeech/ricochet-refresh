@@ -30,14 +30,158 @@ public:
         }
 
         struct MenuBar {
-            static wxString file() {
-                return Locale::translate(u8"&File");
+            static wxString profile() {
+                return Locale::translate(u8"&Profile");
+            }
+
+            static wxString contacts() {
+                return Locale::translate(u8"C&ontacts");
+            }
+
+            static wxString chat() {
+                return Locale::translate(u8"Ch&at");
+            }
+
+            static wxString tools() {
+                return Locale::translate(u8"&Tools");
+            }
+
+            static wxString help() {
+                return Locale::translate(u8"&Help");
             }
 
             struct Menu {
-                static wxString quit() {
-                    return Locale::translate(u8"&Quit");
-                }
+                struct Profile {
+                    static wxString new_profile() {
+                        return Locale::translate(u8"New Profile…");
+                    }
+
+                    static wxString open_profile() {
+                        return Locale::translate(u8"Open Profile…");
+                    }
+
+                    static wxString save_profile_as() {
+                        return Locale::translate(u8"Save Profile As…");
+                    }
+
+                    static wxString edit_profile() {
+                        return Locale::translate(u8"Edit Profile…");
+                    }
+
+                    static wxString close_profile() {
+                        return Locale::translate(u8"Close Profile");
+                    }
+
+                    static wxString logout() {
+                        return Locale::translate(u8"Logout");
+                    }
+
+                    static wxString copy_user_id() {
+                        return Locale::translate(u8"Copy User Id");
+                    }
+
+                    struct SetVisibility {
+                        static wxString visible() {
+                            return Locale::translate(u8"Visible");
+                        }
+
+                        static wxString restricted() {
+                            return Locale::translate(u8"Restricted");
+                        }
+
+                        static wxString hidden() {
+                            return Locale::translate(u8"Hidden");
+                        }
+
+                        static wxString offline() {
+                            return Locale::translate(u8"Offline");
+                        }
+                    };
+
+                    static wxString set_visibility() {
+                        return Locale::translate(u8"Set Visibility");
+                    }
+
+                    static wxString logout_all() {
+                        return Locale::translate(u8"Logout All");
+                    }
+
+                    static wxString quit() {
+                        return Locale::translate(u8"&Quit");
+                    }
+                };
+
+                struct Contacts {
+                    static wxString add_contact() {
+                        return Locale::translate(u8"Add Contact…");
+                    }
+
+                    static wxString delete_contact() {
+                        return Locale::translate(u8"Delete Contact");
+                    }
+
+                    static wxString connect_contact() {
+                        return Locale::translate(u8"Connect Contact");
+                    }
+
+                    static wxString disconnect_contact() {
+                        return Locale::translate(u8"Disconnect Contact");
+                    }
+
+                    static wxString block_contact() {
+                        return Locale::translate(u8"Block Contact");
+                    }
+
+                    static wxString unblock_contact() {
+                        return Locale::translate(u8"Unblock Contact");
+                    }
+                };
+
+                struct Chat {
+                    static wxString export_logs() {
+                        return Locale::translate(u8"Export Logs…");
+                    }
+
+                    static wxString delete_logs() {
+                        return Locale::translate(u8"Delete Logs…");
+                    }
+                };
+
+                struct Tools {
+                    static wxString downloads() {
+                        return Locale::translate(u8"Downloads…");
+                    }
+
+                    static wxString tor_logs() {
+                        return Locale::translate(u8"Tor Logs…");
+                    }
+
+                    static wxString settings() {
+                        return Locale::translate(u8"Settings…");
+                    }
+                };
+
+                struct Help {
+                    static wxString manual() {
+                        return Locale::translate(u8"Manual");
+                    }
+
+                    static wxString changelog() {
+                        return Locale::translate(u8"Changelog");
+                    }
+
+                    static wxString licenses() {
+                        return Locale::translate(u8"Licenses");
+                    }
+
+                    static wxString check_for_updates() {
+                        return Locale::translate(u8"Check for Updates…");
+                    }
+
+                    static wxString about() {
+                        return Locale::translate(u8"About");
+                    }
+                };
             };
         };
     };

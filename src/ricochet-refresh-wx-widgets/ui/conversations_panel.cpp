@@ -8,21 +8,8 @@
 #include "strings.hpp"
 #include "user_status_panel.hpp"
 
-ConversationsPanel::ConversationsPanel(wxWindow* parent) :
+ConversationsPanel::ConversationsPanel(wxWindow* parent, std::span<const ContactHandle> contacts) :
     wxSplitterWindow(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxSP_LIVE_UPDATE) {
-    // todo: contacts come into this constructor
-
-    const static ContactHandle contacts[8] = {
-        reinterpret_cast<ContactHandle>(0),
-        reinterpret_cast<ContactHandle>(1),
-        reinterpret_cast<ContactHandle>(2),
-        reinterpret_cast<ContactHandle>(3),
-        reinterpret_cast<ContactHandle>(4),
-        reinterpret_cast<ContactHandle>(5),
-        reinterpret_cast<ContactHandle>(6),
-        reinterpret_cast<ContactHandle>(7),
-    };
-
     auto left_panel = new wxPanel(this);
     auto right_panel = new wxPanel(this);
 
@@ -31,7 +18,7 @@ ConversationsPanel::ConversationsPanel(wxWindow* parent) :
     auto left_v_sizer = new wxBoxSizer(wxVERTICAL);
 
     // todo: replace with actual implementation
-    auto contact_list_panel = new ContactListPanel(left_panel, std::span(contacts, 8));
+    auto contact_list_panel = new ContactListPanel(left_panel, contacts);
     contact_list_panel->Bind(wxEVT_CONTACT_SELECTED, [this](const ContactSelectedEvent& evt) {
         this->select_contact(evt.get_contact_handle());
     });

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Ricochet-Refresh 3.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-02-11 10:50+0000\n"
+"POT-Creation-Date: 2026-02-13 15:09+0000\n"
 "PO-Revision-Date: 2026-01-14 10:43+0000\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -22,353 +22,473 @@ msgid "Close"
 msgstr ""
 
 #: strings.hpp:34
-msgid "&File"
+msgid "&Profile"
 msgstr ""
 
-#: strings.hpp:39
+#: strings.hpp:38
+msgid "C&ontacts"
+msgstr ""
+
+#: strings.hpp:42
+msgid "Ch&at"
+msgstr ""
+
+#: strings.hpp:46
+msgid "&Tools"
+msgstr ""
+
+#: strings.hpp:50
+msgid "&Help"
+msgstr ""
+
+#: strings.hpp:56
+msgid "New Profile…"
+msgstr ""
+
+#: strings.hpp:60
+msgid "Open Profile…"
+msgstr ""
+
+#: strings.hpp:64
+msgid "Save Profile As…"
+msgstr ""
+
+#: strings.hpp:68
+msgid "Edit Profile…"
+msgstr ""
+
+#: strings.hpp:72
+msgid "Close Profile"
+msgstr ""
+
+#: strings.hpp:76
+msgid "Logout"
+msgstr ""
+
+#: strings.hpp:80
+msgid "Copy User Id"
+msgstr ""
+
+#: strings.hpp:85
+msgid "Visible"
+msgstr ""
+
+#: strings.hpp:89 strings.hpp:659
+msgid "Restricted"
+msgstr ""
+
+#: strings.hpp:93 strings.hpp:663
+msgid "Hidden"
+msgstr ""
+
+#: strings.hpp:97 strings.hpp:273 strings.hpp:667
+msgid "Offline"
+msgstr ""
+
+#: strings.hpp:102
+msgid "Set Visibility"
+msgstr ""
+
+#: strings.hpp:106
+msgid "Logout All"
+msgstr ""
+
+#: strings.hpp:110
 msgid "&Quit"
 msgstr ""
 
-#: strings.hpp:47
+#: strings.hpp:116
+msgid "Add Contact…"
+msgstr ""
+
+#: strings.hpp:120
+msgid "Delete Contact"
+msgstr ""
+
+#: strings.hpp:124
+msgid "Connect Contact"
+msgstr ""
+
+#: strings.hpp:128
+msgid "Disconnect Contact"
+msgstr ""
+
+#: strings.hpp:132
+msgid "Block Contact"
+msgstr ""
+
+#: strings.hpp:136
+msgid "Unblock Contact"
+msgstr ""
+
+#: strings.hpp:142
+msgid "Export Logs…"
+msgstr ""
+
+#: strings.hpp:146
+msgid "Delete Logs…"
+msgstr ""
+
+#: strings.hpp:152
+msgid "Downloads…"
+msgstr ""
+
+#: strings.hpp:156
+msgid "Tor Logs…"
+msgstr ""
+
+#: strings.hpp:160
+msgid "Settings…"
+msgstr ""
+
+#: strings.hpp:166
+msgid "Manual"
+msgstr ""
+
+#: strings.hpp:170
+msgid "Changelog"
+msgstr ""
+
+#: strings.hpp:174
+msgid "Licenses"
+msgstr ""
+
+#: strings.hpp:178
+msgid "Check for Updates…"
+msgstr ""
+
+#: strings.hpp:182
+msgid "About"
+msgstr ""
+
+#: strings.hpp:191
 msgid "Connect to Tor"
 msgstr ""
 
-#: strings.hpp:52
+#: strings.hpp:196
 msgid ""
 "Ricochet-Refresh routes your traffic over the Tor network, run by thousands "
 "of volunteers from around the world."
 msgstr ""
 
-#: strings.hpp:57
+#: strings.hpp:201
 msgid "Always connect automatically"
 msgstr ""
 
-#: strings.hpp:61
+#: strings.hpp:205
 msgid "Configure…"
 msgstr ""
 
-#: strings.hpp:65
+#: strings.hpp:209
 msgid "Connect"
 msgstr ""
 
-#: strings.hpp:71
+#: strings.hpp:215
 msgid "Establishing a Connection"
 msgstr ""
 
-#: strings.hpp:79
+#: strings.hpp:223
 msgid "View Logs…"
 msgstr ""
 
-#: strings.hpp:83
+#: strings.hpp:227
 msgid "Cancel"
 msgstr ""
 
-#: strings.hpp:89 strings.hpp:496
+#: strings.hpp:233 strings.hpp:640
 msgid "Connected"
 msgstr ""
 
-#: strings.hpp:93
+#: strings.hpp:237
 msgid "Create new profile…"
 msgstr ""
 
-#: strings.hpp:97
+#: strings.hpp:241
 msgid "Open existing profile"
 msgstr ""
 
-#: strings.hpp:101
+#: strings.hpp:245
 msgid "Import legacy profile…"
 msgstr ""
 
-#: strings.hpp:105
+#: strings.hpp:249
 msgid "Recent profiles:"
 msgstr ""
 
-#: strings.hpp:111
+#: strings.hpp:255
 msgid "Connection Status"
 msgstr ""
 
 #. Bundled out-of-process tor implemenation (e.g. "bundled tor (version 0.4.8.21), bundled arti (version 1.8.0), etc)"
-#: strings.hpp:116
+#: strings.hpp:260
 #, c-format
 msgid "bundled %s (version %s)"
 msgstr ""
 
-#: strings.hpp:121
+#: strings.hpp:265
 #, c-format
 msgid "Backend: %s"
 msgstr ""
 
-#: strings.hpp:129 strings.hpp:523
-msgid "Offline"
-msgstr ""
-
-#: strings.hpp:131
+#: strings.hpp:275
 msgid "Connecting"
 msgstr ""
 
-#: strings.hpp:133 strings.hpp:511
+#: strings.hpp:277 strings.hpp:655
 msgid "Online"
 msgstr ""
 
-#: strings.hpp:135
+#: strings.hpp:279
 msgid "Unknown"
 msgstr ""
 
-#: strings.hpp:139
+#: strings.hpp:283
 #, c-format
 msgid "Status: %s"
 msgstr ""
 
-#: strings.hpp:144
+#: strings.hpp:288
 msgid "Copy Logs to Clipboard"
 msgstr ""
 
-#: strings.hpp:154
+#: strings.hpp:298
 msgid "Backend"
 msgstr ""
 
-#: strings.hpp:158
+#: strings.hpp:302
 msgid "Select which underlying Tor implementation to use."
 msgstr ""
 
-#: strings.hpp:162
+#: strings.hpp:306
 msgid "Bundled legacy tor (Default)"
 msgstr ""
 
-#: strings.hpp:166
+#: strings.hpp:310
 msgid "External legacy tor"
 msgstr ""
 
-#: strings.hpp:170
+#: strings.hpp:314
 msgid "In-Process Arti"
 msgstr ""
 
-#: strings.hpp:174
+#: strings.hpp:318
 msgid "Quickstart"
 msgstr ""
 
-#: strings.hpp:179
+#: strings.hpp:323
 #, c-format
 msgid ""
 "Quickstart connects %s to the Tor network automatically when launched, based "
 "on your last used connection setttings."
 msgstr ""
 
-#: strings.hpp:189
+#: strings.hpp:333
 msgid "Bridges"
 msgstr ""
 
-#: strings.hpp:194
+#: strings.hpp:338
 msgid ""
 "Bridges help you securely access the Tor network in places where Tor is "
 "blocked. Depending on where you are, one bridge may work better than another."
 msgstr ""
 
-#: strings.hpp:199
+#: strings.hpp:343
 msgid "Use bridges"
 msgstr ""
 
-#: strings.hpp:203
+#: strings.hpp:347
 #, c-format
 msgid "Choose from one of %s's built-in bridges"
 msgstr ""
 
-#: strings.hpp:208
+#: strings.hpp:352
 msgid "Enter bridge addresses you already know"
 msgstr ""
 
-#: strings.hpp:217
+#: strings.hpp:361
 msgid ""
 "Makes your Tor traffic look like random data. May not work in heavily "
 "censored regions."
 msgstr ""
 
-#: strings.hpp:227
+#: strings.hpp:371
 msgid ""
 "Routes your connection through Snowflake proxies to make it look like you’re "
 "placing a video call, for example."
 msgstr ""
 
-#: strings.hpp:237
+#: strings.hpp:381
 msgid ""
 "Connects you to the Tor network through a big cloud provider. May work in "
 "heavily censored regions, but is usually very slow."
 msgstr ""
 
-#: strings.hpp:245
+#: strings.hpp:389
 msgid ""
 "Supported transports: meek_lite, obfs2, obfs3, obfs4, scramblesuit, "
 "webtunnel, snowflake, and conjure"
 msgstr ""
 
-#: strings.hpp:250
+#: strings.hpp:394
 msgid "Network Settings"
 msgstr ""
 
-#: strings.hpp:254
+#: strings.hpp:398
 #, c-format
 msgid "Configure how %s connects to the internet."
 msgstr ""
 
-#: strings.hpp:259
+#: strings.hpp:403
 msgid "I use a proxy to connect to the internet"
 msgstr ""
 
-#: strings.hpp:263
+#: strings.hpp:407
 msgid "Proxy type"
 msgstr ""
 
-#: strings.hpp:287
+#: strings.hpp:431
 msgid "Address"
 msgstr ""
 
-#: strings.hpp:291
+#: strings.hpp:435
 msgid "IP address or hostname"
 msgstr ""
 
-#: strings.hpp:295
+#: strings.hpp:439
 msgid "Port"
 msgstr ""
 
-#: strings.hpp:299
+#: strings.hpp:443
 msgid "Username"
 msgstr ""
 
-#: strings.hpp:303
+#: strings.hpp:447
 msgid "Optional"
 msgstr ""
 
-#: strings.hpp:307
+#: strings.hpp:451
 msgid "Password"
 msgstr ""
 
-#: strings.hpp:316
+#: strings.hpp:460
 msgid ""
 "This computer goes through a firewall that only allows connections to "
 "certain ports"
 msgstr ""
 
-#: strings.hpp:321
+#: strings.hpp:465
 msgid "Allowed ports"
 msgstr ""
 
-#: strings.hpp:333
+#: strings.hpp:477
 msgid "System language"
 msgstr ""
 
-#: strings.hpp:368
+#: strings.hpp:512
 msgid "Language"
 msgstr ""
 
-#: strings.hpp:372
+#: strings.hpp:516
 msgid "Select interface language"
 msgstr ""
 
-#: strings.hpp:389
+#: strings.hpp:533
 msgid "Toolbars"
 msgstr ""
 
-#: strings.hpp:393
+#: strings.hpp:537
 msgid "Show toolbar"
 msgstr ""
 
-#: strings.hpp:397
+#: strings.hpp:541
 msgid "Button style"
 msgstr ""
 
-#: strings.hpp:401
+#: strings.hpp:545
 msgid "Icons"
 msgstr ""
 
-#: strings.hpp:405
+#: strings.hpp:549
 msgid "Text"
 msgstr ""
 
-#: strings.hpp:409
+#: strings.hpp:553
 msgid "Icons and Text"
 msgstr ""
 
-#: strings.hpp:413
+#: strings.hpp:557
 msgid "Icons beside Text"
 msgstr ""
 
-#: strings.hpp:427
+#: strings.hpp:571
 msgid "Alerts"
 msgstr ""
 
-#: strings.hpp:431
+#: strings.hpp:575
 msgid "Show desktop notifications"
 msgstr ""
 
-#: strings.hpp:435
+#: strings.hpp:579
 msgid "Blink taskbar icon"
 msgstr ""
 
-#: strings.hpp:439
+#: strings.hpp:583
 msgid "Enable audio notifications"
 msgstr ""
 
-#: strings.hpp:443
+#: strings.hpp:587
 msgid "Window"
 msgstr ""
 
-#: strings.hpp:447
+#: strings.hpp:591
 msgid "Minimize instead of exit"
 msgstr ""
 
-#: strings.hpp:451
+#: strings.hpp:595
 msgid "Show system tray icon"
 msgstr ""
 
-#: strings.hpp:455
+#: strings.hpp:599
 msgid "Minimize to system tray"
 msgstr ""
 
-#: strings.hpp:461
+#: strings.hpp:605
 msgid "Startup"
 msgstr ""
 
-#: strings.hpp:465
+#: strings.hpp:609
 #, c-format
 msgid "Start only single instance of %s"
 msgstr ""
 
-#: strings.hpp:470
+#: strings.hpp:614
 msgid "Check for updates on launch"
 msgstr ""
 
-#: strings.hpp:476
+#: strings.hpp:620
 msgid "Settings"
 msgstr ""
 
-#: strings.hpp:480
+#: strings.hpp:624
 msgid "General"
 msgstr ""
 
-#: strings.hpp:484
+#: strings.hpp:628
 msgid "Interface"
 msgstr ""
 
-#: strings.hpp:488
+#: strings.hpp:632
 msgid "Connection"
 msgstr ""
 
-#: strings.hpp:498
+#: strings.hpp:642
 msgid "Disconnected"
 msgstr ""
 
-#: strings.hpp:500
+#: strings.hpp:644
 msgid "Requesting"
 msgstr ""
 
-#: strings.hpp:502
+#: strings.hpp:646
 msgid "Blocked"
-msgstr ""
-
-#: strings.hpp:515
-msgid "Restricted"
-msgstr ""
-
-#: strings.hpp:519
-msgid "Hidden"
 msgstr ""
