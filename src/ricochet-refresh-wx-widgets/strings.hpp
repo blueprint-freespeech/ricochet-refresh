@@ -60,8 +60,8 @@ public:
         };
 
         struct Visibility {
-            static wxString online() {
-                return Locale::translate(u8"Online");
+            static wxString visible() {
+                return Locale::translate(u8"Visible");
             }
 
             static wxString restricted() {
@@ -78,8 +78,8 @@ public:
 
             static wxString to_string(::Visibility visibility) {
                 switch (visibility) {
-                    case ::Visibility::Online:
-                        return online();
+                    case ::Visibility::Visible:
+                        return visible();
                     case ::Visibility::Restricted:
                         return restricted();
                     case ::Visibility::Hidden:
@@ -679,23 +679,6 @@ public:
                     return Locale::translate(u8"Requesting");
                 case ContactGroup::Blocked:
                     return Locale::translate(u8"Blocked");
-                default:
-                    return wxEmptyString;
-            }
-        }
-    };
-
-    struct UserStatusPanel {
-        static wxString visibility_option(::Visibility visibility) {
-            switch (visibility) {
-                case ::Visibility::Online:
-                    return Strings::Enums::Visibility::online();
-                case ::Visibility::Restricted:
-                    return Strings::Enums::Visibility::restricted();
-                case ::Visibility::Hidden:
-                    return Strings::Enums::Visibility::hidden();
-                case ::Visibility::Offline:
-                    return Strings::Enums::Visibility::offline();
                 default:
                     return wxEmptyString;
             }

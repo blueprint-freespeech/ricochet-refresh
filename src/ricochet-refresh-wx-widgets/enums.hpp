@@ -73,7 +73,7 @@ enum class ContactGroup {
 };
 
 enum class Visibility {
-    Online = 0,
+    Visible = 0,
     Restricted,
     Hidden,
     Offline,

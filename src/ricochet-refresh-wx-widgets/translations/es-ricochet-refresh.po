@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Ricochet-Refresh 3.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-02-13 15:19+0000\n"
+"POT-Creation-Date: 2026-02-13 18:05+0000\n"
 "PO-Revision-Date: 2026-01-14 10:43+0000\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -25,8 +25,8 @@ msgstr ""
 msgid "System language"
 msgstr ""
 
-#: strings.hpp:64 strings.hpp:347
-msgid "Online"
+#: strings.hpp:64 strings.hpp:155
+msgid "Visible"
 msgstr ""
 
 #: strings.hpp:68 strings.hpp:159
@@ -87,10 +87,6 @@ msgstr ""
 
 #: strings.hpp:150
 msgid "Copy User Id"
-msgstr ""
-
-#: strings.hpp:155
-msgid "Visible"
 msgstr ""
 
 #: strings.hpp:172
@@ -240,6 +236,10 @@ msgstr ""
 
 #: strings.hpp:345
 msgid "Connecting"
+msgstr ""
+
+#: strings.hpp:347
+msgid "Online"
 msgstr ""
 
 #: strings.hpp:349

@@ -29,19 +29,19 @@ MainFrame::MainFrame() : wxFrame(nullptr, wxID_ANY, Strings::MainFrame::title())
     // auto panel = new InterfaceSettingsPanel(this);
     // auto panel = new ConnectionSettingsPanel(this);
 
-    auto panel = new SettingsPanel(this);
+    // auto panel = new SettingsPanel(this);
 
-    // const static ContactHandle contacts[8] = {
-    //     reinterpret_cast<ContactHandle>(0),
-    //     reinterpret_cast<ContactHandle>(1),
-    //     reinterpret_cast<ContactHandle>(2),
-    //     reinterpret_cast<ContactHandle>(3),
-    //     reinterpret_cast<ContactHandle>(4),
-    //     reinterpret_cast<ContactHandle>(5),
-    //     reinterpret_cast<ContactHandle>(6),
-    //     reinterpret_cast<ContactHandle>(7),
-    // };
-    // auto panel = new ConversationsPanel(this, std::span(contacts, 8));
+    const static ContactHandle contacts[8] = {
+        reinterpret_cast<ContactHandle>(0),
+        reinterpret_cast<ContactHandle>(1),
+        reinterpret_cast<ContactHandle>(2),
+        reinterpret_cast<ContactHandle>(3),
+        reinterpret_cast<ContactHandle>(4),
+        reinterpret_cast<ContactHandle>(5),
+        reinterpret_cast<ContactHandle>(6),
+        reinterpret_cast<ContactHandle>(7),
+    };
+    auto panel = new ConversationsPanel(this, std::span(contacts, 8));
 
     // auto top_string =
     //     "Ricochet Refresh est applicatio nuntiorum inter pares quae Tor utitur ad clientes connectendos. Cum Ricochet Refresh incipis, servitium Tor occultum in computatro tuo creat. Inscriptio huius servitii occulti est identitas tua anonyma in rete Tor et modus quo alii tecum communicare poterunt.";

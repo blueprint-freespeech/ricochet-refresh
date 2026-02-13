@@ -8,10 +8,10 @@ UserStatusPanel::UserStatusPanel(wxWindow* parent) : wxPanel(parent) {
     auto h_sizer = new wxBoxSizer(wxHORIZONTAL);
 
     wxString visibility_options[static_cast<size_t>(Visibility::Count)] = {
-        Strings::UserStatusPanel::visibility_option(Visibility::Online),
-        Strings::UserStatusPanel::visibility_option(Visibility::Restricted),
-        Strings::UserStatusPanel::visibility_option(Visibility::Hidden),
-        Strings::UserStatusPanel::visibility_option(Visibility::Offline),
+        Strings::Enums::Visibility::visible(),
+        Strings::Enums::Visibility::restricted(),
+        Strings::Enums::Visibility::hidden(),
+        Strings::Enums::Visibility::offline(),
     };
 
     // todo: would neeed a custom widget to render as we envisioned using wxOwnerDrawnComboBox
@@ -24,7 +24,7 @@ UserStatusPanel::UserStatusPanel(wxWindow* parent) : wxPanel(parent) {
         visibility_options
     );
     // todo: load default visibility from profile
-    visibility_choice->SetSelection(static_cast<int>(Visibility::Online));
+    visibility_choice->SetSelection(static_cast<int>(Visibility::Visible));
     visibility_choice->Bind(wxEVT_CHOICE, [this](const wxCommandEvent& event) {
         this->set_visibility(static_cast<Visibility>(event.GetInt()));
     });
