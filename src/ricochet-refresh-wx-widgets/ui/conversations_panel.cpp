@@ -4,6 +4,7 @@
 #include "contact_list_panel.hpp"
 #include "events.hpp"
 #include "message_entry_panel.hpp"
+#include "mock_ffi.hpp"
 #include "strings.hpp"
 #include "user_status_panel.hpp"
 
@@ -59,6 +60,12 @@ ConversationsPanel::ConversationsPanel(wxWindow* parent) :
             const auto& timestamp = evt.get_timestamp();
             const auto& text = evt.get_text();
             chat_panel->add_chat_message(timestamp, wxString("Me"), text);
+            // todo: remove, this is just test plumbing
+            this->receive_message(
+                contact_handle,
+                timestamp + wxTimeSpan(0, 0, 1),
+                "auto-reply: I've received your message"
+            );
         });
 
         auto v_sizer = new wxBoxSizer(wxVERTICAL);
@@ -79,6 +86,18 @@ ConversationsPanel::ConversationsPanel(wxWindow* parent) :
     this->SetMinimumPaneSize(32); // prevent dbl-click collapse
     this->SplitVertically(left_panel, right_panel, 288);
     this->SetSashGravity(0.0);
+}
+
+void ConversationsPanel::receive_message(
+    const ContactHandle recipient,
+    const wxDateTime& timestamp,
+    const wxString& message
+) {
+    if (auto it = this->contact_widgets.find(recipient); it != this->contact_widgets.end()) {
+        auto& contact_widgets = it->second;
+        const auto nickname = mock::nickname_from_contact_handle(recipient);
+        contact_widgets.chat_panel->add_chat_message(timestamp, nickname, message);
+    }
 }
 
 void ConversationsPanel::select_contact(const std::optional<ContactHandle> contact_handle) {

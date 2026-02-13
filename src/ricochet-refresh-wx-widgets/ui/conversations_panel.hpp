@@ -10,6 +10,12 @@ class ConversationsPanel: public wxSplitterWindow {
 public:
     explicit ConversationsPanel(wxWindow* parent);
 
+    void receive_message(
+        const ContactHandle recipient,
+        const wxDateTime& timestamp,
+        const wxString& message
+    );
+
 private:
     void select_contact(const std::optional<ContactHandle> contact_handle);
     void remove_contact(ContactHandle contact_handle);
