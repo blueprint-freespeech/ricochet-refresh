@@ -11,6 +11,9 @@ public:
     explicit ConversationsPanel(wxWindow* parent);
 
 private:
+    void select_contact(const std::optional<ContactHandle> contact_handle);
+    void remove_contact(ContactHandle contact_handle);
+
     wxBoxSizer* right_v_sizer = nullptr;
 
     struct ContactWidgets {

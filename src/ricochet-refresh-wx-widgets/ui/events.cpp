@@ -60,3 +60,20 @@ wxEvent* ContactSelectedEvent::Clone() const {
 std::optional<ContactHandle> ContactSelectedEvent::get_contact_handle() const {
     return this->contact_handle;
 }
+
+//
+// ContactRemovedEvnet
+//
+wxDEFINE_EVENT(wxEVT_CONTACT_REMOVED, ContactRemovedEvent);
+
+ContactRemovedEvent::ContactRemovedEvent(ContactHandle contact_handle) :
+    wxCommandEvent(wxEVT_CONTACT_REMOVED),
+    contact_handle(contact_handle) {}
+
+wxEvent* ContactRemovedEvent::Clone() const {
+    return new ContactRemovedEvent(this->contact_handle);
+}
+
+ContactHandle ContactRemovedEvent::get_contact_handle() const {
+    return this->contact_handle;
+}

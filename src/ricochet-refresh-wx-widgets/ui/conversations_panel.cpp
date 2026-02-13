@@ -32,15 +32,11 @@ ConversationsPanel::ConversationsPanel(wxWindow* parent) :
     // todo: replace with actual implementation
     auto contact_list_panel = new ContactListPanel(left_panel, std::span(contacts, 8));
     contact_list_panel->Bind(wxEVT_CONTACT_SELECTED, [this](const ContactSelectedEvent& evt) {
-        this->right_v_sizer->ShowItems(false);
-        const auto contact_handle = evt.get_contact_handle();
-        if (contact_handle) {
-            if (auto it = this->contact_widgets.find(*contact_handle);
-                it != this->contact_widgets.end()) {
-                const auto& contact_widgets = it->second;
-                this->right_v_sizer->Show(contact_widgets.v_sizer, true);
-            }
-        }
+        this->select_contact(evt.get_contact_handle());
+    });
+    contact_list_panel->Bind(wxEVT_CONTACT_REMOVED, [this](ContactRemovedEvent& evt) {
+        this->remove_contact(evt.get_contact_handle());
+        evt.Skip();
     });
     auto user_status_panel = new UserStatusPanel(left_panel);
 
@@ -83,4 +79,35 @@ ConversationsPanel::ConversationsPanel(wxWindow* parent) :
     this->SetMinimumPaneSize(32); // prevent dbl-click collapse
     this->SplitVertically(left_panel, right_panel, 288);
     this->SetSashGravity(0.0);
+}
+
+void ConversationsPanel::select_contact(const std::optional<ContactHandle> contact_handle) {
+    // hide everything
+    this->right_v_sizer->ShowItems(false);
+    if (contact_handle) {
+        if (auto it = this->contact_widgets.find(*contact_handle);
+            it != this->contact_widgets.end()) {
+            // show contact's widgets
+            const auto& contact_widgets = it->second;
+            this->right_v_sizer->Show(contact_widgets.v_sizer, true);
+            this->right_v_sizer->Layout();
+        }
+    }
+}
+
+void ConversationsPanel::remove_contact(const ContactHandle contact_handle) {
+    if (auto it = this->contact_widgets.find(contact_handle); it != this->contact_widgets.end()) {
+        auto& v_sizer = it->second.v_sizer;
+
+        // remove and delete children
+        v_sizer->Clear(true);
+        this->right_v_sizer->Detach(v_sizer);
+        delete v_sizer;
+
+        // trigger re-layout
+        this->right_v_sizer->Layout();
+
+        // remove our record
+        this->contact_widgets.erase(it);
+    }
 }

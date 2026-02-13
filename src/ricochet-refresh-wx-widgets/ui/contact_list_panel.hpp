@@ -41,6 +41,7 @@ private:
 
     // event emiitters
     void emit_contact_selected(std::optional<ContactHandle> contact_handle);
+    void emit_contact_removed(ContactHandle contact_handle);
 
     // parent group nodes for each of our contact groups
     ContactGroupHeadingPanel* group_heading_panel[static_cast<size_t>(ContactGroup::Count)];

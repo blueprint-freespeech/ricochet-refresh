@@ -54,3 +54,21 @@ public:
 private:
     const std::optional<ContactHandle> contact_handle;
 };
+
+/*
+ContactRemovedEvent: event is sent when the user removes a contact from the
+ContactListPanel
+*/
+class ContactRemovedEvent;
+wxDECLARE_EVENT(wxEVT_CONTACT_REMOVED, ContactRemovedEvent);
+
+class ContactRemovedEvent: public wxCommandEvent {
+public:
+    explicit ContactRemovedEvent(ContactHandle contact_handle);
+    wxEvent* Clone() const override;
+
+    ContactHandle get_contact_handle() const;
+
+private:
+    const ContactHandle contact_handle;
+};

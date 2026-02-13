@@ -157,22 +157,13 @@ void ContactListPanel::on_char(wxKeyEvent& evt) {
             this->HandleAsNavigationKey(evt);
             break;
     }
-
-    if (this->selected_contact_group_heading_panel) {
-        std::cout << "Selected ContactGroupHeadingPanel: "
-                  << Strings::ContactGroupPanel::group_label(
-                         this->selected_contact_group_heading_panel->get_contact_group()
-                     )
-                  << std::endl;
-    } else if (this->selected_contact_panel) {
-        std::cout << "Selected ContactPanel: " << this->selected_contact_panel->get_nickname()
-                  << std::endl;
-    }
 }
 
 void ContactListPanel::set_selected_contact_group_heading_panel(
     ContactGroupHeadingPanel* contact_group_heading_panel
 ) {
+    assert(contact_group_heading_panel != nullptr);
+
     // handle contact group heading panel
     if (this->selected_contact_group_heading_panel) {
         this->selected_contact_group_heading_panel->set_selected(false);
@@ -189,9 +180,17 @@ void ContactListPanel::set_selected_contact_group_heading_panel(
     this->emit_contact_selected(std::nullopt);
 
     this->SetFocus();
+
+    std::cout << "Selected ContactGroupHeadingPanel: "
+              << Strings::ContactGroupPanel::group_label(
+                     this->selected_contact_group_heading_panel->get_contact_group()
+                 )
+              << std::endl;
 }
 
 void ContactListPanel::set_selected_contact_panel(ContactPanel* contact_panel) {
+    assert(contact_panel != nullptr);
+
     // handle contact group heading panel
     if (this->selected_contact_group_heading_panel) {
         this->selected_contact_group_heading_panel->set_selected(false);
@@ -208,9 +207,13 @@ void ContactListPanel::set_selected_contact_panel(ContactPanel* contact_panel) {
     this->emit_contact_selected(contact_panel->get_contact_handle());
 
     this->SetFocus();
+
+    std::cout << "Selected ContactPanel: " << this->selected_contact_panel->get_nickname()
+              << std::endl;
 }
 
 void ContactListPanel::remove_contact_panel(ContactPanel* contact_panel) {
+    const auto contact_handle = contact_panel->get_contact_handle();
     auto containing_sizer = contact_panel->GetContainingSizer();
     auto begin = std::begin(this->group_v_sizer);
     auto end = std::end(this->group_v_sizer);
@@ -226,6 +229,7 @@ void ContactListPanel::remove_contact_panel(ContactPanel* contact_panel) {
             }
         }
     }
+    this->emit_contact_removed(contact_handle);
 }
 
 void ContactListPanel::set_group_expanded(ContactGroup contact_group, bool expanded) {
@@ -368,6 +372,12 @@ void ContactListPanel::navigate_in() {
 
 void ContactListPanel::emit_contact_selected(std::optional<ContactHandle> contact_handle) {
     auto evt = ContactSelectedEvent(contact_handle);
+    evt.SetEventObject(this);
+    this->GetEventHandler()->ProcessEvent(evt);
+}
+
+void ContactListPanel::emit_contact_removed(ContactHandle contact_handle) {
+    auto evt = ContactRemovedEvent(contact_handle);
     evt.SetEventObject(this);
     this->GetEventHandler()->ProcessEvent(evt);
 }
