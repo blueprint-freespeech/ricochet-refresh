@@ -27,7 +27,7 @@ InterfaceSettingsPanel::InterfaceSettingsPanel(wxWindow* parent) :
     auto language_combobox = new wxComboBox(
         this,
         wxID_ANY,
-        Strings::Language::system(),
+        Strings::Enums::Language::system(),
         wxDefaultPosition,
         wxDefaultSize,
         Strings::InterfaceSettingsPanel::supported_languages(),
@@ -178,22 +178,22 @@ void InterfaceSettingsPanel::set_interface_language(Language language) {
     std::cout << "Set Language: ";
     switch (language) {
         case Language::System:
-            std::cout << Strings::Language::system();
+            std::cout << Strings::Enums::Language::system();
             break;
         case Language::Arabic:
-            std::cout << Strings::Language::ar();
+            std::cout << Strings::Enums::Language::ar();
             break;
         case Language::German:
-            std::cout << Strings::Language::de();
+            std::cout << Strings::Enums::Language::de();
             break;
         case Language::English:
-            std::cout << Strings::Language::en();
+            std::cout << Strings::Enums::Language::en();
             break;
         case Language::Spanish:
-            std::cout << Strings::Language::es();
+            std::cout << Strings::Enums::Language::es();
             break;
         case Language::Dutch:
-            std::cout << Strings::Language::nl();
+            std::cout << Strings::Enums::Language::nl();
             break;
     }
     std::cout << std::endl;

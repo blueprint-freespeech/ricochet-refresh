@@ -52,5 +52,6 @@ void UserStatusPanel::on_profile_button_clicked() {
 }
 
 void UserStatusPanel::set_visibility(Visibility visibility) {
-    std::cout << "Set Visibility: " << Strings::Visibility::to_string(visibility) << std::endl;
+    std::cout << "Set Visibility: " << Strings::Enums::Visibility::to_string(visibility)
+              << std::endl;
 }

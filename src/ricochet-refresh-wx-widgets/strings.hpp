@@ -23,6 +23,76 @@ public:
         }
     };
 
+    struct Enums {
+        struct Language {
+            static wxString system() {
+                return Locale::translate(u8"System language");
+            }
+
+            // not translating these functions is intentional as the
+            // language names are translated to the name of each language
+            // in the given language
+
+            static wxString ar() {
+                // note: we force rendering the reversed arabic word for
+                // arabic (العربية) left to right using the
+                // LEFT-TO-RIGHT OVERRIDE control character (\u202d) so that
+                // (ar) always appears to the right rather than
+                // relying on potentially platform-specific BiDi rendering
+                return from_utf8(u8"\u202dةيبرعلا (ar)");
+            }
+
+            static wxString de() {
+                return from_utf8(u8"Deutsch (de)");
+            }
+
+            static wxString en() {
+                return from_utf8(u8"English (en)");
+            }
+
+            static wxString es() {
+                return from_utf8(u8"Español (es)");
+            }
+
+            static wxString nl() {
+                return from_utf8(u8"Nederlands (nl)");
+            }
+        };
+
+        struct Visibility {
+            static wxString online() {
+                return Locale::translate(u8"Online");
+            }
+
+            static wxString restricted() {
+                return Locale::translate(u8"Restricted");
+            }
+
+            static wxString hidden() {
+                return Locale::translate(u8"Hidden");
+            }
+
+            static wxString offline() {
+                return Locale::translate(u8"Offline");
+            }
+
+            static wxString to_string(::Visibility visibility) {
+                switch (visibility) {
+                    case ::Visibility::Online:
+                        return online();
+                    case ::Visibility::Restricted:
+                        return restricted();
+                    case ::Visibility::Hidden:
+                        return hidden();
+                    case ::Visibility::Offline:
+                        return offline();
+                    default:
+                        return wxEmptyString;
+                }
+            }
+        };
+    };
+
     struct MainFrame {
         static wxString title() {
             /* Titlebar String */
@@ -472,41 +542,6 @@ public:
         }
     };
 
-    struct Language {
-        static wxString system() {
-            return Locale::translate(u8"System language");
-        }
-
-        // not translating these functions is intentional as the
-        // language names are translated to the name of each language
-        // in the given language
-
-        static wxString ar() {
-            // note: we force rendering the reversed arabic word for
-            // arabic (العربية) left to right using the
-            // LEFT-TO-RIGHT OVERRIDE control character (\u202d) so that
-            // (ar) always appears to the right rather than
-            // relying on potentially platform-specific BiDi rendering
-            return from_utf8(u8"\u202dةيبرعلا (ar)");
-        }
-
-        static wxString de() {
-            return from_utf8(u8"Deutsch (de)");
-        }
-
-        static wxString en() {
-            return from_utf8(u8"English (en)");
-        }
-
-        static wxString es() {
-            return from_utf8(u8"Español (es)");
-        }
-
-        static wxString nl() {
-            return from_utf8(u8"Nederlands (nl)");
-        }
-    };
-
     struct InterfaceSettingsPanel {
         static wxString language_heading() {
             return Locale::translate(u8"Language");
@@ -519,12 +554,12 @@ public:
         static wxArrayString supported_languages() {
             // should be sorted in order by their language code
             auto supported_languages = wxArrayString();
-            supported_languages.Add(Language::system());
-            supported_languages.Add(Language::ar());
-            supported_languages.Add(Language::de());
-            supported_languages.Add(Language::en());
-            supported_languages.Add(Language::es());
-            supported_languages.Add(Language::nl());
+            supported_languages.Add(Enums::Language::system());
+            supported_languages.Add(Enums::Language::ar());
+            supported_languages.Add(Enums::Language::de());
+            supported_languages.Add(Enums::Language::en());
+            supported_languages.Add(Enums::Language::es());
+            supported_languages.Add(Enums::Language::nl());
 
             return supported_languages;
         }
@@ -650,67 +685,20 @@ public:
         }
     };
 
-    struct Visibility {
-        static wxString online() {
-            return Locale::translate(u8"Online");
-        }
-
-        static wxString restricted() {
-            return Locale::translate(u8"Restricted");
-        }
-
-        static wxString hidden() {
-            return Locale::translate(u8"Hidden");
-        }
-
-        static wxString offline() {
-            return Locale::translate(u8"Offline");
-        }
-
-        static wxString to_string(::Visibility visibility) {
+    struct UserStatusPanel {
+        static wxString visibility_option(::Visibility visibility) {
             switch (visibility) {
                 case ::Visibility::Online:
-                    return online();
+                    return Strings::Enums::Visibility::online();
                 case ::Visibility::Restricted:
-                    return restricted();
+                    return Strings::Enums::Visibility::restricted();
                 case ::Visibility::Hidden:
-                    return hidden();
+                    return Strings::Enums::Visibility::hidden();
                 case ::Visibility::Offline:
-                    return offline();
+                    return Strings::Enums::Visibility::offline();
                 default:
                     return wxEmptyString;
             }
-        }
-    };
-
-    struct UserStatusPanel {
-        static wxString visibility_option(::Visibility visibility) {
-            auto fmt_string = [=]() -> wxString {
-                if (Locale::get_layout_direction() == LayoutDirection::RightToLeft) {
-                    return from_utf8(u8"\u202b%s\u202c %s");
-                } else {
-                    return from_utf8(u8"%s %s");
-                }
-            }();
-            wxString icon;
-            switch (visibility) {
-                case ::Visibility::Online:
-                    icon = from_utf8(u8"●");
-                    break;
-                case ::Visibility::Restricted:
-                    icon = from_utf8(u8"○");
-                    break;
-                case ::Visibility::Hidden:
-                    icon = from_utf8(u8"▤");
-                    break;
-                case ::Visibility::Offline:
-                    icon = from_utf8(u8"■");
-                    break;
-                default:
-                    break;
-            }
-            auto option = Strings::Visibility::to_string(visibility);
-            return wxString::Format(fmt_string, icon, option);
         }
     };
 
