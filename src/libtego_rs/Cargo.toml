@@ -2,5 +2,6 @@
 resolver = "2"
 members = [
     "crates/rico-protocol",
+    "crates/rico-settings",
     "crates/tego-rs",
 ]

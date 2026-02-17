@@ -1306,6 +1306,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "rico-settings"
+version = "0.1.0"
+
+[[package]]
 name = "rsa"
 version = "0.9.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"

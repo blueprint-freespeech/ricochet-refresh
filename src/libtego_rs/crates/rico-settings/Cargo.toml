@@ -1,0 +1,10 @@
+[package]
+name = "rico-settings"
+authors = ["morgan@blueprintforfreespeech.net"]
+version = "0.1.0"
+edition = "2021"
+license = "BSD-3-Clause"
+description = "A library for reading+writing Ricochet-Refresh settings files"
+repository = "https://github.com/blueprint-freespeech/ricochet-refresh"
+
+[dependencies]
