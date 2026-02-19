@@ -1,6 +1,8 @@
 set(rico_settings_depends
     Cargo.toml
-    src/lib.rs)
+    src/lib.rs
+    src/v3/mod.rs
+    src/v3/settings.rs)
 
 set(rico_settings_outputs
     ${CARGO_TARGET_DIR}/${CARGO_PROFILE}/librico_settings.d
@@ -17,3 +19,13 @@ add_custom_command(
 
 add_custom_target(rico_settings_target
     DEPENDS ${rico_settings_outputs})
+
+#
+# cargo test target
+#
+if (ENABLE_TESTS)
+    add_test(NAME rico_settings_cargo_test
+        COMMAND env CARGO_TARGET_DIR=${CARGO_TARGET_DIR} RUSTFLAGS=${RUSTFLAGS} RUST_BACKTRACE=full cargo test ${CARGO_FLAGS} -- --nocapture
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+endif()
