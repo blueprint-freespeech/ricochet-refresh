@@ -1,8 +1,11 @@
 set(rico_settings_depends
     Cargo.toml
+    src/common.rs
     src/lib.rs
     src/v3/mod.rs
-    src/v3/settings.rs)
+    src/v3/settings.rs
+    src/v4/mod.rs
+    src/v4/settings.rs)
 
 set(rico_settings_outputs
     ${CARGO_TARGET_DIR}/${CARGO_PROFILE}/librico_settings.d
