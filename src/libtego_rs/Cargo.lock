@@ -1295,6 +1295,7 @@ dependencies = [
  "anyhow",
  "serde",
  "serde_json",
+ "tor-interface",
 ]
 
 [[package]]
