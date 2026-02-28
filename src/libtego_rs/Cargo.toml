@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
+    "crates/rico-profile",
     "crates/rico-protocol",
     "crates/rico-settings",
     "crates/tego-rs",
