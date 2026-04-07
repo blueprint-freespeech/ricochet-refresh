@@ -1,7 +1,6 @@
 #![doc = include_str!("../README.md")]
 
 pub mod v3;
-
-// usage: https://github.com/stepancheg/rust-protobuf/blob/master/protobuf-examples/pure-vs-protoc/src/main.rs
+pub mod v4;
 
 use crate::v3::message::*;

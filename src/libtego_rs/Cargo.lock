@@ -1311,6 +1311,7 @@ dependencies = [
  "sha2",
  "sha3",
  "thiserror 1.0.69",
+ "time",
  "tor-interface",
  "unicode-general-category",
 ]

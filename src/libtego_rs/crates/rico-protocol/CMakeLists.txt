@@ -17,7 +17,9 @@ set(rico_protocol_depends
     src/v3/protos/ContactRequestChannel.proto
     src/v3/protos/AuthHiddenService.proto
     src/v3/protos/ControlChannel.proto
-    src/v3/protos/FileChannel.proto)
+    src/v3/protos/FileChannel.proto
+    src/v4/mod.rs
+    src/v4/payload.rs)
 
 set(rico_protocol_outputs
     ${CARGO_TARGET_DIR}/${CARGO_PROFILE}/librico_protocol.d
