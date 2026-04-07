@@ -8,12 +8,16 @@ description = "A library for reading+writing Ricochet-Refresh profile files"
 repository = "https://github.com/blueprint-freespeech/ricochet-refresh"
 
 [dependencies]
+anyhow = { version = "1.0", optional = true }
+rico-protocol = { path = "../rico-protocol", features = ["rusqlite-traits"]}
+rusqlite = { version = "0.38", features = ["bundled-sqlcipher-vendored-openssl"], optional = true }
 serde = { version = "1.0", features = ["derive"], optional = true}
 serde_json = { version = "1.0", optional = true}
-tor-interface = {version = "0.6.4", features = ["legacy-tor-provider"]}
-
-[dev-dependencies]
-anyhow = "1.0"
+thiserror = "2.0"
+time = "0.3"
+tor-interface = {version = "0.6.7", features = ["legacy-tor-provider"]}
 
 [features]
+test-features = ["anyhow"]
 v3-profile = ["serde", "serde_json"]
+v4-profile = ["rusqlite"]
