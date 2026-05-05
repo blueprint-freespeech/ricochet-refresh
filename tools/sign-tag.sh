@@ -12,7 +12,7 @@ version=$2
 commit=${3:-HEAD}
 
 # Check if the channel name is valid
-valid_projects=("ricochet-refresh" "rico-protocol")
+valid_projects=("ricochet-refresh" "rico-profile" "rico-protocol")
 if ! [[ " ${valid_projects[@]} " =~ " $project " ]]; then
     echo "Invalid project name. Valid project names are: ${valid_channels[*]}"
     exit 1
