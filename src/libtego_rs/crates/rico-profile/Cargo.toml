@@ -9,7 +9,7 @@ repository = "https://github.com/blueprint-freespeech/ricochet-refresh"
 
 [dependencies]
 anyhow = { version = "1.0", optional = true }
-rico-protocol = { path = "../rico-protocol", features = ["rusqlite-traits"]}
+rico-protocol = { version = "0.1.1", path = "../rico-protocol", features = ["rusqlite-traits"]}
 rusqlite = { version = "0.38", features = ["bundled-sqlcipher-vendored-openssl"], optional = true }
 serde = { version = "1.0", features = ["derive"], optional = true}
 serde_json = { version = "1.0", optional = true}
