@@ -3,7 +3,7 @@
 ## R<sup>2</sup>: Ricochet Refresh
 Ricochet Refresh is the new updated version of Ricochet, supported by Blueprint for Free Speech. We are a non-government, not-for-profit organisation working to safeguard the freedom of expression for whistleblowers, activists, and everybody else, worldwide. To find out more, check out our profile, or head to [blueprintforfreespeech.net](https://blueprintforfreespeech.net). Blueprint was the original sponsor of Ricochet, written by developer J. Brooks.
 
-Ricochet Refresh is currently available for OS X (10.12 or later), Linux, and Windows. Visit the [releases page](https://github.com/blueprint-freespeech/ricochet-refresh/releases) for the latest version and changelog.
+Ricochet Refresh is currently available for Windows, macOS (10.14 or later), and Linux. Visit the [releases page](https://github.com/blueprint-freespeech/ricochet-refresh/releases) for the latest version and changelog.
 
 ### What is Ricochet Refresh?
 Ricochet Refresh is an instant messenger where no one knows your identity, who you're talking to, or what you're talking about.
@@ -16,29 +16,29 @@ Ricochet Refresh is an instant messenger where no one knows your identity, who y
 [//]: # (we should update this screenshot)
 ![Screenshot](ricochetscreen.png) 
 
-### How does it work?
-Ricochet Refresh uses the [Tor network](https://www.torproject.org/docs/hidden-services.html.en) to establish a peer-to-peer connection between you and your contact. Ricochet Refresh creates a service on the Tor network which contacts can connect to. Tor's rendezvous system makes it extremely difficult for anyone to learn the identity of a Tor user, including you.
+### How to use
+Please consult our usage guide:
+- [Usage guide](https://github.com/blueprint-freespeech/ricochet-refresh/blob/main/doc/usage.md)
+
+### How it works
+Ricochet Refresh uses the Tor network to establish a peer-to-peer connection between you and your contact. Ricochet Refresh creates a service on the Tor network which contacts can connect to. Tor's rendezvous system makes it extremely difficult for anyone to learn the identity of a Tor user, including you.
 
 Ricochet Refresh is not affiliated with, or endorsed by, The Tor Project.
 
-For more information about Tor, you can [read about Tor](https://www.torproject.org/about/overview.html.en)
+For more information about Tor, you can:
+- [Learn about about Tor](https://support.torproject.org/about-tor/)
+
 For more information about Ricochet Refresh, you can:
-  * [Learn about its design](https://github.com/blueprint-freespeech/ricochet-refresh/blob/main/doc/design.md)
-  * [Learn about the protocol](https://github.com/blueprint-freespeech/ricochet-refresh/blob/main/doc/protocol.md)
+- [Learn about its design](https://github.com/blueprint-freespeech/ricochet-refresh/blob/main/doc/design.md)
+- [Learn about the protocol](https://github.com/blueprint-freespeech/ricochet-refresh/blob/main/doc/protocol-v3.md)
 
 ### Disclaimer
 Security and anonymity are difficult, complicated, and deep topics. We strongly encourage you to evaluate your risks, threats, and exposure with any software. *Do not rely on Ricochet Refresh for your safety*. We believe Ricochet Refresh does a really good job at protecting your privacy and anonymity, however, we can not guarantee this protection. 
-
-### Downloads
-Ricochet Refresh is currently available for OS X (10.12 or later), Linux, and Windows. Visit the [releases page](https://github.com/blueprint-freespeech/ricochet-refresh/releases) or [AUR page](https://aur.archlinux.org/packages/ricochet-refresh) for the latest version and changelog.
 
 ### Building from source
 See [BUILDING](https://github.com/blueprint-freespeech/ricochet-refresh/blob/master/BUILDING.md) for Linux, OS X, and Windows build instructions.
 
 ### Other
 Bugs can be reported on the [issue tracker](https://github.com/blueprint-freespeech/ricochet-refresh/issues).
-
-[//]: # (todo: update transifex link)
-[//]: # (Translations can be contributed on [Transifex]\(https://www.transifex.com/projects/p/ricochet/\).)
 
 You should support [The Tor Project](https://www.torproject.org/donate/donate.html.en), [EFF](https://www.eff.org/), and [run a Tor relay](https://www.torproject.org/docs/tor-relay-debian.html.en).
