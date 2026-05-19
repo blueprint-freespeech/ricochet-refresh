@@ -1,5 +1,11 @@
 # Ricochet Refresh
 
+## ⚠️ Legacy c-tor Deprecation! ⚠️
+
+The Tor Project will be applying a breaking protocol change to the Tor Networking on September 1st, 2026 (see their blog post for more details: https://blog.torproject.org/sunsetting-tor-048/ ). This means that only c-tor clients in the 0.4.9 series or newer will be able to connect to the Tor Network.
+
+For Ricochet-Refresh users, this means once these updates are applied across the network, clients older than version 3.0.43 will also no longer function. To ensure continued functionality, be sure to update to the latest [stable release](https://github.com/blueprint-freespeech/ricochet-refresh/releases) by the September 1st deadline!
+
 ## R<sup>2</sup>: Ricochet Refresh
 Ricochet Refresh is the new updated version of Ricochet, supported by Blueprint for Free Speech. We are a non-government, not-for-profit organisation working to safeguard the freedom of expression for whistleblowers, activists, and everybody else, worldwide. To find out more, check out our profile, or head to [blueprintforfreespeech.net](https://blueprintforfreespeech.net). Blueprint was the original sponsor of Ricochet, written by developer J. Brooks.
 
