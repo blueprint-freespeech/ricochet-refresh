@@ -6,7 +6,7 @@ namespace shims
     ContactIDValidator::ContactIDValidator(QObject *parent)
     : QRegularExpressionValidator(parent)
     {
-        QRegularExpressionValidator::setRegularExpression(QRegularExpression(QStringLiteral("ricochet:([a-z2-7]{56})")));
+        QRegularExpressionValidator::setRegularExpression(QRegularExpression(QStringLiteral("ricochet((:)|(-v3://))([a-z2-7]{56})")));
     }
 
     void ContactIDValidator::fixup(QString &text) const
@@ -21,14 +21,15 @@ namespace shims
 
         const auto result = QRegularExpressionValidator::validate(text, pos);
         switch(result) {
-        case QValidator::Acceptable:
-            if(isValidID(text)) {
-                if (auto contact = matchingContact(text); contact != nullptr) {
+        case QValidator::Acceptable: {
+            auto legacy_text = QString(text).replace("ricochet-v3://", "ricochet:");
+            if(isValidID(legacy_text)) {
+                if (auto contact = matchingContact(legacy_text); contact != nullptr) {
                     emit matchesContact(contact->getNickname());
                     logger::println(" - matches contact");
                     return QValidator::Invalid;
                 }
-                if (matchesIdentity(text)) {
+                if (matchesIdentity(legacy_text)) {
                     emit matchesSelf();
                     logger::println(" - matches self");
                     return QValidator::Invalid;
@@ -41,6 +42,7 @@ namespace shims
                 logger::println(" - invalid service id!");
                 return QValidator::Invalid;
             }
+        }
         case QValidator::Intermediate:
             emit intermediate();
             return QValidator::Intermediate;
