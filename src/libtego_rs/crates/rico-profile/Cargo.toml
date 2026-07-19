@@ -17,7 +17,19 @@ thiserror = "2.0"
 time = "0.3"
 tor-interface = {version = "0.6.7", features = ["legacy-tor-provider"]}
 
+[dev-dependencies]
+anyhow = "1.0"
+serde_json = "1.0"
+
 [features]
 test-features = ["anyhow"]
 v3-profile = ["serde", "serde_json"]
 v4-profile = ["rusqlite"]
+
+[[test]]
+name = "v3"
+required-features = ["v3-profile"]
+
+[[test]]
+name = "v4"
+required-features = ["v4-profile", "test-features"]

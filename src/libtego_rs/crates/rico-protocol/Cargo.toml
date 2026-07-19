@@ -29,3 +29,7 @@ anyhow = "1.0"
 [features]
 test-features = []
 rusqlite-traits = ["rusqlite"]
+
+[[test]]
+name = "v3"
+required-features = ["test-features"]
