@@ -10,10 +10,18 @@ fn main() {
         Ok(target) => target,
         Err(_) => panic!("PROFILE not set"),
     };
-    // set by cmake
+    // set by cmake; fall back to OUT_DIR's ancestor for standalone cargo builds
     let target_dir = match std::env::var("CARGO_TARGET_DIR") {
         Ok(target) => PathBuf::from(target).join(profile),
-        Err(_) => panic!("CARGO_TARGET_DIR not set"),
+        Err(_) => {
+            let out_dir = std::env::var("OUT_DIR").expect("OUT_DIR not set");
+            let mut path = PathBuf::from(out_dir);
+            // OUT_DIR is target/<profile>/build/<crate>-<hash>/out — walk up to target/<profile>
+            for _ in 0..3 {
+                path.pop();
+            }
+            path
+        }
     };
 
     let header_file_dir = target_dir.join("include").join("tego");
@@ -34,8 +42,8 @@ fn main() {
     let new_source = std::fs::read(temp_file_path.as_path()).unwrap();
 
     if prev_source != new_source {
-        std::fs::rename(temp_file_path.as_path(), header_file_path.as_path()).unwrap();
-    } else {
-        std::fs::remove_file(temp_file_path.as_path()).unwrap();
+        // copy+remove instead of rename: temp dir may be on a different filesystem
+        std::fs::copy(temp_file_path.as_path(), header_file_path.as_path()).unwrap();
     }
+    let _ = std::fs::remove_file(temp_file_path.as_path());
 }
