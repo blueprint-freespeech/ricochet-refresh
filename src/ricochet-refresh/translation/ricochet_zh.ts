@@ -172,9 +172,9 @@
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/ContactIDField.qml" line="55"/>
-        <source>Enter an ID starting with &lt;b&gt;ricochet:&lt;/b&gt;</source>
+        <source>Enter an ID starting with &lt;b&gt;ricochet-v3://&lt;/b&gt;</source>
         <extracomment>Error message showed when the provided ricochet id is invalid</extracomment>
-        <translation>输入一个ID并以&lt;b&gt;ricochet:&lt;/b&gt;打头</translation>
+        <translation>输入一个ID并以&lt;b&gt;ricochet-v3://&lt;/b&gt;打头</translation>
     </message>
     <message>
         <location filename="../../libtego_ui/ui/qml/ContactIDField.qml" line="97"/>

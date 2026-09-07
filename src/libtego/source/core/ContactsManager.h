@@ -59,7 +59,7 @@ public:
     ContactUser *lookupHostname(const QString &hostname) const;
 
     /* Create a new user and a contact request for that user. Use this instead of addContact.
-     * Note that contactID should be an ricochet: ID. */
+     * Note that contactID should be an ricochet-v3:// ID. */
     ContactUser *createContactRequest(const QString &contactID, const QString &message);
 
     /* addContact will add the contact, but does not create a request. Use createContactRequest */

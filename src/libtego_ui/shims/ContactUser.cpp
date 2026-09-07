@@ -31,7 +31,7 @@ namespace shims
 
     QString ContactUser::getContactID() const
     {
-        return QString("ricochet:") + serviceId;
+        return QString("ricochet-v3://") + serviceId;
     }
 
     ContactUser::Status ContactUser::getStatus() const

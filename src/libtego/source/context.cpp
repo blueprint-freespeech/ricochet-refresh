@@ -403,7 +403,7 @@ void tego_context::send_chat_request(
 
     TEGO_THROW_IF_FALSE(messageLength < std::numeric_limits<int>::max());
     contactsManager->createContactRequest(
-        QString::fromStdString(fmt::format("ricochet:{}", user->serviceId.data)),
+        QString::fromStdString(fmt::format("ricochet-v3://{}", user->serviceId.data)),
         (messageLength == 0) ? QString() : QString::fromUtf8(message, static_cast<int>(messageLength)));
 }
 

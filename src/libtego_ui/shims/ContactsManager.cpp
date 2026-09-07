@@ -17,8 +17,7 @@ namespace shims
         logger::println("{{ contactID : {}, nickname : {}, myNickname : {}, message : {} }}",
             contactID, nickname, myNickname, message);
 
-        // handle both the legacy (ricochet:) and the new (ricochet-v3://) prefixes
-        auto serviceId = QString(contactID).replace("ricochet:", "").replace("ricochet-v3://", "").toUtf8();
+        auto serviceId = QString(contactID).replace("ricochet-v3://", "").replace("ricochet:", "").toUtf8();
 
         // check that the service id is valid before anything else
         if (tego_v3_onion_service_id_string_is_valid(serviceId.constData(), static_cast<size_t>(serviceId.size()), nullptr) != TEGO_TRUE)

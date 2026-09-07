@@ -22,7 +22,7 @@ namespace shims
         const auto result = QRegularExpressionValidator::validate(text, pos);
         switch(result) {
         case QValidator::Acceptable: {
-            auto legacy_text = QString(text).replace("ricochet-v3://", "ricochet:");
+            auto legacy_text = QString(text).replace("ricochet:", "ricochet-v3://");
             if(isValidID(legacy_text)) {
                 if (auto contact = matchingContact(legacy_text); contact != nullptr) {
                     emit matchesContact(contact->getNickname());
@@ -70,7 +70,7 @@ namespace shims
         char serviceIdString[TEGO_V3_ONION_SERVICE_ID_SIZE] = {0};
         tego_v3_onion_service_id_to_string(serviceId.get(), serviceIdString, sizeof(serviceIdString), tego::throw_on_error());
 
-        auto utf8Text = text.mid(tego::static_strlen("ricochet:")).toUtf8();
+        auto utf8Text = text.mid(tego::static_strlen("ricochet-v3://")).toUtf8();
         auto utf8ServiceId = QByteArray(serviceIdString, TEGO_V3_ONION_SERVICE_ID_LENGTH);
 
         return utf8Text == utf8ServiceId;
@@ -78,7 +78,7 @@ namespace shims
 
     bool ContactIDValidator::isValidID(const QString &serviceID) const
     {
-        auto strippedID = serviceID.mid(tego::static_strlen("ricochet:")).toUtf8();
+        auto strippedID = serviceID.mid(tego::static_strlen("ricochet-v3://")).toUtf8();
         bool valid = tego_v3_onion_service_id_string_is_valid(strippedID.constData(), static_cast<size_t>(strippedID.size()), nullptr) == TEGO_TRUE;
 
         return valid;

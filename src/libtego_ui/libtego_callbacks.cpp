@@ -131,7 +131,7 @@ namespace
 
     QString serviceIdToContactId(const QString& serviceId)
     {
-        return QStringLiteral("ricochet:%1").arg(serviceId);
+        return QStringLiteral("ricochet-v3://%1").arg(serviceId);
     }
 
     QString tegoUserIdToServiceId(const tego_user_id_t* user)
@@ -146,7 +146,7 @@ namespace
         return contactId;
     }
 
-    // converts the our tego_user_id_t to ricochet's contactId in the form ricochet:serviceidserviceidserviceid...
+    // converts the our tego_user_id_t to ricochet's contactId in the form ricochet-v3://serviceidserviceidserviceid...
     QString tegoUserIdToContactId(const tego_user_id_t* user)
     {
         return serviceIdToContactId(tegoUserIdToServiceId(user));

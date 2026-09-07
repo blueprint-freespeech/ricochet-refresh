@@ -25,7 +25,7 @@ FocusScope {
             id: field
             Layout.fillWidth: true
             validator: readOnly ? null : idValidator
-            placeholderText: "ricochet:"
+            placeholderText: "ricochet-v3://"
             focus: true
 
             ContactIDValidator {
